@@ -1,0 +1,6 @@
+{
+  "name": "FindMySchool",
+  "description": "AI-driven school discovery and recommendation platform for parents in India, featuring explainable school matching, comprehensive profiles, fee transparency, and comparison tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
