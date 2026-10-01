@@ -77,24 +77,28 @@ export const SearchResultsPage: React.FC = () => {
           {/* Results Summary and Active Filter Summary */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900 tracking-tight leading-snug">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-teal-800 uppercase tracking-wider block">
+                  Based on your priorities
+                </span>
+                <h1 className="font-editorial text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900 tracking-tight leading-snug">
                   {isSavedMode
                     ? `${savedSchools.length} Shortlisted Schools`
-                    : `${displaySchools.length} Schools Matched for Your Family`}
+                    : "Schools that fit what you're looking for"}
                 </h1>
-                {isSavedMode && (
-                  <span className="text-xs bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-full font-bold border border-amber-200">
-                    Saved in browser
-                  </span>
-                )}
+                <p className="text-xs sm:text-sm text-stone-600 font-sans">
+                  {isSavedMode
+                    ? "Institutions you've saved to compare or revisit."
+                    : `${displaySchools.length} schools match your current priorities.`}
+                </p>
               </div>
 
               {!isSavedMode && (
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 mt-2 font-medium">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 mt-2.5 font-medium">
+                  <span className="text-stone-500 font-semibold mr-0.5">Looking for:</span>
                   {filters.grade && (
                     <span className="bg-[#F5F1E8] px-2.5 py-0.5 rounded-md border border-stone-200 font-semibold text-stone-800">
-                      Grade: {filters.grade}
+                      {filters.grade}
                     </span>
                   )}
                   {filters.curriculums.map((c) => {
@@ -111,13 +115,18 @@ export const SearchResultsPage: React.FC = () => {
                   <span className="bg-teal-50 text-teal-900 px-2.5 py-0.5 rounded-md border border-teal-200 font-semibold">
                     ≤ {filters.radiusKm} km radius
                   </span>
+                  {filters.requiredFacilities.map((fac) => (
+                    <span key={fac} className="bg-violet-50 text-violet-900 px-2 py-0.5 rounded-md border border-violet-200 font-semibold text-[11px]">
+                      {fac}
+                    </span>
+                  ))}
                   <button
                     type="button"
                     onClick={() => setIsEditingPreferences(true)}
                     className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-0.5"
                   >
                     <Edit3 className="w-3 h-3" />
-                    <span>Change filters</span>
+                    <span>Want to adjust your priorities?</span>
                   </button>
                 </div>
               )}
@@ -242,10 +251,10 @@ export const SearchResultsPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-editorial text-lg sm:text-xl font-bold text-stone-900">
-                    No schools match your exact criteria
+                    Looking for something different?
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto mt-1 leading-relaxed">
-                    Try expanding your commute radius (e.g. from {filters.radiusKm} km to 15 km) or broadening the fee bracket to see nearby institutions.
+                    We couldn't find schools that match all of these priorities together right now. You may want to check schools with a slightly wider commute radius (e.g. from {filters.radiusKm} km to 15 km) or adjust your fee target.
                   </p>
                 </div>
                 <div className="pt-2 flex justify-center gap-3">
@@ -261,7 +270,7 @@ export const SearchResultsPage: React.FC = () => {
                     onClick={() => setIsEditingPreferences(true)}
                     className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold cursor-pointer min-h-[44px]"
                   >
-                    Adjust Filter Values
+                    Want to adjust your priorities?
                   </button>
                 </div>
               </div>

@@ -120,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
             type="button"
             onClick={onOpenAdvisor}
             className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold text-teal-950 bg-[#F5F1E8] border border-teal-200/70 rounded-lg hover:bg-teal-50 hover:border-teal-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer shadow-2xs min-h-[40px] sm:min-h-[42px] group"
-            aria-label="Open AI School Advisor"
+            aria-label="Open School Advisor"
           >
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 group-hover:scale-110 transition-transform shrink-0" />
             <span className="whitespace-nowrap">

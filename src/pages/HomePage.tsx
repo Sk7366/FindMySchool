@@ -200,11 +200,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                 </button>
               </div>
 
-              {/* Dynamic Detected Concepts Bar: Previewing Intelligence */}
+              {/* Dynamic Detected Concepts Bar: What we understood */}
               {detectedConcepts.length > 0 && (
                 <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center gap-1.5 animate-in fade-in duration-200">
-                  <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider mr-1">
-                    Detected Priorities:
+                  <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider mr-1">
+                    What we understood:
                   </span>
                   {detectedConcepts.map((concept) => (
                     <span
@@ -222,7 +222,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               <div className="pt-2.5 border-t border-stone-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="text-xs text-stone-500 flex items-center gap-1.5 font-medium">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Transparent matching engine with explainable criteria</span>
+                  <span>Clear facts, parent audits & verified fee disclosures</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -240,7 +240,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                     onClick={handleSearchSubmit}
                     className="flex-1 sm:flex-initial px-6 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap min-h-[44px]"
                   >
-                    <span>Discover matching schools</span>
+                    <span>See schools that match your priorities</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -265,8 +265,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
 
           {/* Guided Category Quick Launchers */}
           <div className="mt-8 pt-6 border-t border-stone-200/80 max-w-4xl mx-auto">
-            <span className="block text-center text-[11px] font-semibold text-stone-500 uppercase tracking-wider mb-3">
-              Or filter schools by key priorities:
+            <span className="block text-center text-xs font-bold text-stone-600 uppercase tracking-wider mb-3">
+              Not sure what to look for? We can help:
             </span>
             <div className="flex flex-wrap items-center justify-center gap-2">
               <button
@@ -440,20 +440,20 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 pb-3 border-b border-stone-200 gap-2">
           <div>
             <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">
-              Editorial Shortlist
+              Schools Worth Looking Into
             </span>
             <h2 className="font-editorial text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight mt-0.5">
-              High-Match Schools in Chennai
+              Schools that fit what parents are looking for
             </h2>
-            <p className="text-xs text-stone-600 mt-1 font-sans">
-              Evaluated with factual score breakdowns for Class 5, CBSE / Cambridge, and ₹1.2L budget.
+            <p className="text-xs sm:text-sm text-stone-600 mt-1 font-sans">
+              These schools seem closest to common family priorities: Class 5, CBSE or Cambridge, and under ₹1.2L annual fees.
             </p>
           </div>
           <Link
             to="/results"
             className="text-xs sm:text-sm font-bold text-teal-800 hover:text-teal-900 flex items-center gap-1 group py-1"
           >
-            <span>Browse all 12 audited campuses</span>
+            <span>Browse all 12 verified campuses</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -560,10 +560,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               02
             </div>
             <h3 className="font-editorial text-base font-bold text-stone-900">
-              Discover matching schools
+              See relevant schools
             </h3>
             <p className="text-xs text-stone-600 leading-relaxed font-sans">
-              Our matching engine evaluates factual disclosures across CBSE, ICSE, Cambridge, and IB institutions across Chennai.
+              We review verified school disclosures across CBSE, ICSE, Cambridge, and IB institutions across Chennai.
             </p>
           </div>
 
@@ -572,10 +572,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               03
             </div>
             <h3 className="font-editorial text-base font-bold text-stone-900">
-              Understand why they match
+              See why each school matches
             </h3>
             <p className="text-xs text-stone-600 leading-relaxed font-sans">
-              Every school card highlights explainability points: verified fits, partial trade-offs, and items requiring campus confirmation.
+              Every school card clearly points out verified fits, trade-offs, and things you may want to check directly with the school.
             </p>
           </div>
 
