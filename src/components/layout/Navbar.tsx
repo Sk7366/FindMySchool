@@ -57,15 +57,39 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
         </div>
 
         {/* Zone 2: Navigation Links (Desktop) */}
-        <nav className="hidden md:flex items-center gap-7 lg:gap-8 text-sm font-medium text-stone-600">
+        <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium text-stone-600">
+          <Link
+            to="/results?target=preschool"
+            className={`relative py-1 transition-colors hover:text-stone-900 ${
+              location.search.includes('target=preschool') ? 'text-amber-950 font-bold' : ''
+            }`}
+          >
+            <span>Preschools</span>
+            {location.search.includes('target=preschool') && (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-500 rounded-full"></span>
+            )}
+          </Link>
+
+          <Link
+            to="/results?target=school"
+            className={`relative py-1 transition-colors hover:text-stone-900 ${
+              location.search.includes('target=school') ? 'text-teal-950 font-bold' : ''
+            }`}
+          >
+            <span>Schools</span>
+            {location.search.includes('target=school') && (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#0D9488] rounded-full"></span>
+            )}
+          </Link>
+
           <Link
             to="/results"
             className={`relative py-1 transition-colors hover:text-stone-900 ${
-              isActive('/results') || isActive('/search') ? 'text-teal-900 font-semibold' : ''
+              (isActive('/results') || isActive('/search')) && !location.search.includes('target=') ? 'text-teal-900 font-semibold' : ''
             }`}
           >
-            <span>Find Schools</span>
-            {(isActive('/results') || isActive('/search')) && (
+            <span>Explore All</span>
+            {(isActive('/results') || isActive('/search')) && !location.search.includes('target=') && (
               <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#0D9488] rounded-full"></span>
             )}
           </Link>
@@ -180,15 +204,41 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
             {/* Navigation Links with min 44px touch targets */}
             <nav className="flex flex-col space-y-1">
               <Link
+                to="/results?target=preschool"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-between transition-colors ${
+                  location.search.includes('target=preschool') ? 'bg-[#F5F1E8] text-amber-950 border border-amber-200' : 'text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                <span>Preschools & Early Years</span>
+                <span className="text-xs font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  Playschools & Nursery
+                </span>
+              </Link>
+
+              <Link
+                to="/results?target=school"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-between transition-colors ${
+                  location.search.includes('target=school') ? 'bg-[#F5F1E8] text-teal-900 border border-teal-200/60' : 'text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                <span>Regular K–12 Schools</span>
+                <span className="text-xs font-medium text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                  CBSE / Cambridge / IB
+                </span>
+              </Link>
+
+              <Link
                 to="/results"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`min-h-[44px] px-3.5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-between transition-colors ${
-                  isActive('/results') ? 'bg-[#F5F1E8] text-teal-900 border border-teal-200/60' : 'text-stone-700 hover:bg-stone-100'
+                  isActive('/results') && !location.search.includes('target=') ? 'bg-[#F5F1E8] text-teal-900 border border-teal-200/60' : 'text-stone-700 hover:bg-stone-100'
                 }`}
               >
-                <span>Browse All Schools</span>
-                <span className="text-xs font-medium text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                  12 in Chennai
+                <span>Browse All Places</span>
+                <span className="text-xs font-medium text-stone-600 bg-white px-2 py-0.5 rounded border border-stone-200">
+                  Chennai Directory
                 </span>
               </Link>
 

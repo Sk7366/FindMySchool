@@ -171,6 +171,77 @@ export const getFacilityCategoryColor = (category: string, name = ''): ColorToke
 };
 
 /**
+ * Pedagogy / Learning Approach Semantic Color Tokens
+ * Montessori → sky / indigo
+ * Play-way → emerald
+ * Reggio Emilia → violet
+ * Waldorf / Steiner → amber
+ * Activity-based → orange
+ * Traditional → slate / stone
+ */
+export const getPedagogyColor = (pedagogy: string): ColorToken => {
+  const norm = pedagogy.toLowerCase();
+  if (norm.includes('montessori')) {
+    return {
+      text: 'text-sky-900',
+      bg: 'bg-sky-50/90',
+      border: 'border-sky-200/90',
+      dot: 'bg-sky-600',
+      accentBar: 'bg-sky-600',
+      badge: 'bg-sky-50/90 text-sky-900 border border-sky-200/80',
+    };
+  }
+  if (norm.includes('play-way') || norm.includes('playway')) {
+    return {
+      text: 'text-emerald-900',
+      bg: 'bg-emerald-50/90',
+      border: 'border-emerald-200/90',
+      dot: 'bg-emerald-600',
+      accentBar: 'bg-emerald-600',
+      badge: 'bg-emerald-50/90 text-emerald-900 border border-emerald-200/80',
+    };
+  }
+  if (norm.includes('reggio')) {
+    return {
+      text: 'text-violet-900',
+      bg: 'bg-violet-50/90',
+      border: 'border-violet-200/90',
+      dot: 'bg-violet-600',
+      accentBar: 'bg-violet-600',
+      badge: 'bg-violet-50/90 text-violet-900 border border-violet-200/80',
+    };
+  }
+  if (norm.includes('waldorf')) {
+    return {
+      text: 'text-amber-900',
+      bg: 'bg-amber-50/90',
+      border: 'border-amber-200/90',
+      dot: 'bg-amber-600',
+      accentBar: 'bg-amber-600',
+      badge: 'bg-amber-50/90 text-amber-900 border border-amber-200/80',
+    };
+  }
+  if (norm.includes('activity')) {
+    return {
+      text: 'text-orange-900',
+      bg: 'bg-orange-50/90',
+      border: 'border-orange-200/90',
+      dot: 'bg-orange-600',
+      accentBar: 'bg-orange-600',
+      badge: 'bg-orange-50/90 text-orange-900 border border-orange-200/80',
+    };
+  }
+  return {
+    text: 'text-stone-900',
+    bg: 'bg-stone-50/90',
+    border: 'border-stone-200/90',
+    dot: 'bg-stone-600',
+    accentBar: 'bg-stone-600',
+    badge: 'bg-stone-50/90 text-stone-900 border border-stone-200/80',
+  };
+};
+
+/**
  * Match Score Semantic Rings:
  * 90–100 → emerald/teal
  * 75–89 → blue

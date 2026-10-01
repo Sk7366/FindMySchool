@@ -1,6 +1,7 @@
 import { School } from '../types/school';
+import { CHENNAI_PRESCHOOLS } from './preschools';
 
-export const CHENNAI_SCHOOLS: School[] = [
+const RAW_CHENNAI_SCHOOLS: School[] = [
   {
     id: 'sch-001',
     slug: 'the-shriram-millennium-school-omr',
@@ -15,6 +16,25 @@ export const CHENNAI_SCHOOLS: School[] = [
       mapX: 74,
       mapY: 62,
     },
+    institutionType: 'combined',
+    educationStages: ['nursery', 'lkg', 'ukg', 'primary', 'middle', 'secondary', 'senior_secondary'],
+    ageRange: { min: 3, max: 18 },
+    preschoolPrograms: ['nursery', 'lkg', 'ukg'],
+    preschoolProgramDetails: [
+      { program: 'nursery', displayName: 'Early Years (Pre-KG / Nursery)', ageRange: '3–4 years', timings: '8:45 AM – 12:30 PM', monthlyFee: 8500, annualFee: 105000, ratio: '1:10' },
+      { program: 'lkg', displayName: 'Kindergarten 1 (LKG)', ageRange: '4–5 years', timings: '8:45 AM – 1:15 PM', monthlyFee: 9200, annualFee: 110000, ratio: '1:12' },
+      { program: 'ukg', displayName: 'Kindergarten 2 (UKG)', ageRange: '5–6 years', timings: '8:45 AM – 1:45 PM', monthlyFee: 9600, annualFee: 115000, ratio: '1:12' },
+    ],
+    pedagogy: ['Activity-based', 'Montessori'],
+    daycare: true,
+    extendedHours: false,
+    meals: true,
+    outdoorPlay: true,
+    indoorPlay: true,
+    cctvSecurity: true,
+    medicalFirstAid: true,
+    timings: '8:45 AM – 3:15 PM',
+    childToCaregiverRatio: '1:10',
     curriculum: ['CBSE', 'Cambridge (IGCSE)'],
     schoolType: ['Co-educational', 'Day School'],
     grades: 'Pre-KG to Class 12',
@@ -422,6 +442,25 @@ export const CHENNAI_SCHOOLS: School[] = [
     schoolType: ['Co-educational', 'Day School'],
     grades: 'Pre-KG to Class 12',
     gradeLevels: { min: 'Pre-KG', max: 'Class 12' },
+    institutionType: 'combined',
+    educationStages: ['preschool', 'nursery', 'lkg', 'ukg', 'primary', 'middle', 'secondary', 'senior_secondary'],
+    ageRange: { min: 2.5, max: 18 },
+    preschoolPrograms: ['nursery', 'lkg', 'ukg'],
+    preschoolProgramDetails: [
+      { program: 'nursery', displayName: 'IB Early Years (PYP 1)', ageRange: '2.5–3.5 years', timings: '9:00 AM – 1:00 PM', monthlyFee: 14000, annualFee: 180000, ratio: '1:8' },
+      { program: 'lkg', displayName: 'IB Early Years (PYP 2)', ageRange: '3.5–4.5 years', timings: '9:00 AM – 1:30 PM', monthlyFee: 15500, annualFee: 195000, ratio: '1:8' },
+      { program: 'ukg', displayName: 'IB Early Years (PYP 3)', ageRange: '4.5–6 years', timings: '9:00 AM – 2:00 PM', monthlyFee: 16500, annualFee: 210000, ratio: '1:10' },
+    ],
+    pedagogy: ['Reggio Emilia', 'Activity-based'],
+    daycare: true,
+    extendedHours: true,
+    meals: true,
+    outdoorPlay: true,
+    indoorPlay: true,
+    cctvSecurity: true,
+    medicalFirstAid: true,
+    timings: '9:00 AM – 3:30 PM',
+    childToCaregiverRatio: '1:8',
     establishedYear: 2011,
     studentTeacherRatio: '1:12',
     annualFeeMin: 210000,
@@ -717,6 +756,26 @@ export const CHENNAI_SCHOOLS: School[] = [
     schoolType: ['Co-educational', 'Day Boarding', 'Day School'],
     grades: 'Pre-KG to Class 12',
     gradeLevels: { min: 'Pre-KG', max: 'Class 12' },
+    institutionType: 'combined',
+    educationStages: ['playgroup', 'nursery', 'lkg', 'ukg', 'primary', 'middle', 'secondary', 'senior_secondary'],
+    ageRange: { min: 2, max: 18 },
+    preschoolPrograms: ['playgroup', 'nursery', 'lkg', 'ukg'],
+    preschoolProgramDetails: [
+      { program: 'playgroup', displayName: 'Omega Toddler Nest', ageRange: '2–3 years', timings: '9:00 AM – 12:30 PM', monthlyFee: 6500, annualFee: 78000, ratio: '1:6' },
+      { program: 'nursery', displayName: 'Omega Pre-KG (Nursery)', ageRange: '3–4 years', timings: '9:00 AM – 1:00 PM', monthlyFee: 7200, annualFee: 85000, ratio: '1:8' },
+      { program: 'lkg', displayName: 'Omega LKG (Montessori & Play)', ageRange: '4–5 years', timings: '8:45 AM – 1:30 PM', monthlyFee: 7800, annualFee: 92000, ratio: '1:8' },
+      { program: 'ukg', displayName: 'Omega UKG (Pre-Primary)', ageRange: '5–6 years', timings: '8:45 AM – 2:00 PM', monthlyFee: 8200, annualFee: 98000, ratio: '1:10' },
+    ],
+    pedagogy: ['Montessori', 'Play-way', 'Activity-based'],
+    daycare: true,
+    extendedHours: true,
+    meals: true,
+    outdoorPlay: true,
+    indoorPlay: true,
+    cctvSecurity: true,
+    medicalFirstAid: true,
+    timings: '8:45 AM – 5:00 PM',
+    childToCaregiverRatio: '1:7',
     establishedYear: 2005,
     studentTeacherRatio: '1:14',
     annualFeeMin: 110000,
@@ -1196,6 +1255,12 @@ export const CHENNAI_SCHOOLS: School[] = [
   },
 ];
 
+// Combine traditional K-12 schools and dedicated Early Years institutions into the master CHENNAI_SCHOOLS directory
+export const CHENNAI_SCHOOLS: School[] = [
+  ...RAW_CHENNAI_SCHOOLS,
+  ...CHENNAI_PRESCHOOLS,
+];
+
 export const CHENNAI_NEIGHBOURHOODS = [
   {
     name: 'Tambaram & GST Corridor',
@@ -1235,4 +1300,7 @@ export const MOCK_ADVISOR_FAQ: Record<string, string> = {
   'cbse-vs-cambridge': 'CBSE follows the NCERT syllabus, which is directly aligned with national Indian competitive exams such as IIT-JEE, NEET, and CUET, and offers deep factual rigor at generally lower tuition rates. Cambridge (IGCSE/A-Levels) focuses on concept application, analytical writing, coursework research, and flexible subject combinations, making it exceptionally smooth for foreign university admissions and holistic critical thinking.',
   'omr-commute': 'Commuting along the OMR corridor requires planning around peak IT shifts (8:30 AM–9:30 AM and 5:00 PM–6:30 PM). While the six-lane expressway flows well, major pinch points occur at Sholinganallur and Karapakkam junctions. We recommend choosing schools with dedicated GPS-tracked air-conditioned bus services and an estimated commute under 40 minutes for children in primary grades.',
   'application-tips': 'Admissions in Chennai typically open between September and December for the subsequent academic year. Key tips: 1) Keep digitized birth certificates, vaccination records, and address proofs ready, 2) For pre-primary, schools focus on interaction and social comfort rather than academic tests, 3) Visit the campus during school hours to observe student-teacher dynamics in corridors and lunch bays.',
+  'montessori-vs-playway': 'Montessori emphasizes child-led exploration using self-correcting sensorial materials in mixed-age cohorts with trained facilitators, encouraging deep focus and independence. Play-way centers on guided thematic games, storytelling, music, and social pretend play to build vocabulary, motor coordination, and peer bonding. Both are nurturing; Montessori offers structured autonomy, while Play-way provides vibrant peer-led group energy.',
+  'preschool-checklist': 'When evaluating a preschool or daycare: 1) Verify adult-to-child ratio (ideally 1:6 for toddlers, 1:8–10 for preschool), 2) Check hygiene protocols for nap pods, child-height washrooms and sanitization, 3) Confirm live CCTV app access or daily video logs, 4) Ensure outdoor play has natural sand/mud or soft impact turf, 5) Ask how separation anxiety is handled in the first 2 weeks.',
+  'standalone-vs-k12': 'Standalone preschools often provide higher warmth, personalized caregiver intimacy, and flexible extended hours with afternoon daycare. Combined K-12 campuses eliminate future Grade 1 admission stress through guaranteed promotion, but feature larger campuses that can feel vast for toddlers. Many parents prefer standalone Montessori for ages 2–4, transitioning to K-12 for LKG/UKG or Grade 1.',
 };

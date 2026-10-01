@@ -130,10 +130,19 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
         return 'How do CBSE and Cambridge compare for my child?';
       case 'omr-commute':
         return 'What are the potential drawbacks for an 8 km commute on OMR?';
+      case 'montessori-vs-playway':
+        return 'What is the difference between Montessori and Play-way learning approaches?';
+      case 'preschool-checklist':
+        return 'What key things should I verify during a preschool or daycare campus visit?';
+      case 'standalone-vs-k12':
+        return 'Should I choose a standalone preschool or an integrated K-12 campus?';
       default:
         return 'Can you give me key recommendations for admissions?';
     }
   };
+
+  const isPreschoolMode = searchState.filters.educationTarget === 'preschool' || 
+    (searchState.filters.preschool.programs && searchState.filters.preschool.programs.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
@@ -176,34 +185,63 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
           <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider shrink-0 mr-1">
             Quick Ask:
           </span>
-          <button
-            type="button"
-            onClick={() => handleAsk('why-match')}
-            className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-teal-50 border border-teal-200 text-teal-900 hover:bg-teal-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-          >
-            Why this match?
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAsk('hidden-costs')}
-            className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-          >
-            Hidden fees to audit
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAsk('cbse-vs-cambridge')}
-            className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-          >
-            CBSE vs Cambridge
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAsk('omr-commute')}
-            className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-          >
-            Commute drawbacks
-          </button>
+
+          {isPreschoolMode ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleAsk('montessori-vs-playway')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-teal-50 border border-teal-200 text-teal-900 hover:bg-teal-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                Montessori vs Play-way
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAsk('preschool-checklist')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                Daycare & Visit Checklist
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAsk('standalone-vs-k12')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                Standalone vs K-12
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleAsk('why-match')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-teal-50 border border-teal-200 text-teal-900 hover:bg-teal-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                Why this match?
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAsk('hidden-costs')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                Hidden fees to audit
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAsk('cbse-vs-cambridge')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                CBSE vs Cambridge
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAsk('omr-commute')}
+                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+              >
+                Commute drawbacks
+              </button>
+            </>
+          )}
         </div>
 
         {/* Chat History */}

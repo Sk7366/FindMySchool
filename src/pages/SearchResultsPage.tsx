@@ -1,68 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, SlidersHorizontal, Map, List, ArrowUpDown, Edit3, X, Sparkles, AlertCircle, RotateCcw, Search } from 'lucide-react';
+import { Filter, Map, List, Edit3, X, AlertCircle, RotateCcw, Search, Sliders, Baby, School as SchoolIcon, Layers } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 import { useShortlist } from '../context/ShortlistContext';
 import { SchoolCard } from '../components/schools/SchoolCard';
 import { FilterSidebar } from '../components/filters/FilterSidebar';
 import { SchoolMapPreview } from '../components/schools/SchoolMapPreview';
-import { GuidedSearchModal } from '../components/search/GuidedSearchModal';
-import { SortField } from '../types/search';
-import { getCurriculumColor } from '../utils/categoryColors';
+import { PriorityTunerModal } from '../components/schools/PriorityTunerModal';
+import { WhatWeUnderstoodPanel } from '../components/search/WhatWeUnderstoodPanel';
+import { SortField, EducationTargetType } from '../types/search';
+import { getCurriculumColor, getPedagogyColor } from '../utils/categoryColors';
 
 export const SearchResultsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const filterParam = searchParams.get('filter');
+  const {
+    searchState,
+    filteredSchools,
+    updateFilters,
+    setEducationTarget,
+    setSortBy,
+    setRawQuery,
+    applyNaturalLanguageQuery,
+    resetFilters,
+    activeFilterCount,
+  } = useSearch();
 
-  const { searchState, filteredSchools, setSortBy, setRawQuery, applyNaturalLanguageQuery, resetFilters, activeFilterCount } = useSearch();
-  const { savedSchools, savedIds } = useShortlist();
+  const { savedSchools } = useShortlist();
+  const { filters, sortBy, rawQuery } = searchState;
 
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'split' | 'map'>('list');
+  const [quickQuery, setQuickQuery] = useState(rawQuery);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
-  const [quickQuery, setQuickQuery] = useState(searchState.rawQuery || '');
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | undefined>(filteredSchools[0]?.id);
+  const [priorityTunerOpen, setPriorityTunerOpen] = useState(false);
 
-  // Prevent background scrolling when mobile filter drawer is open
+  // Sync query params if passed in URL
   useEffect(() => {
-    if (showMobileFilters) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showMobileFilters]);
+    const qParam = searchParams.get('q');
+    const locParam = searchParams.get('location');
+    const currParam = searchParams.get('curriculum');
+    const targetParam = searchParams.get('target') as EducationTargetType;
+    const progParam = searchParams.get('program');
 
-  // If URL has ?filter=saved, show saved shortlist items
-  const isSavedMode = filterParam === 'saved';
+    if (qParam && qParam !== rawQuery) {
+      setRawQuery(qParam);
+      applyNaturalLanguageQuery(qParam);
+    } else {
+      if (locParam) updateFilters({ location: locParam });
+      if (currParam) updateFilters({ curriculums: [currParam as any] });
+      if (targetParam) updateFilters({ educationTarget: targetParam });
+      if (progParam) updateFilters({ preschool: { programs: [progParam as any] } });
+    }
+  }, [searchParams]);
+
+  // Sync quickQuery input if rawQuery changes
+  useEffect(() => {
+    setQuickQuery(rawQuery);
+  }, [rawQuery]);
+
+  const isSavedMode = searchParams.get('view') === 'saved';
   const displaySchools = isSavedMode ? savedSchools : filteredSchools;
 
-  const handleQuickSearchSubmit = (e: React.FormEvent) => {
+  const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (quickQuery.trim()) {
+      setRawQuery(quickQuery);
       applyNaturalLanguageQuery(quickQuery);
     }
   };
 
-  const { filters, sortBy } = searchState;
+  const isPreschoolSearch = filters.educationTarget === 'preschool' || 
+    (filters.preschool.programs && filters.preschool.programs.length > 0);
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900">
+    <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900">
       
-      {/* Search Header Banner */}
-      <section className="bg-white border-b border-stone-200/90 py-5 sm:py-7 px-3.5 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      {/* Top Search & Active Filters Header */}
+      <section className="bg-white border-b border-stone-200/90 py-5 sm:py-6 px-3.5 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto space-y-4">
           
-          {/* Quick Search input form */}
-          <form onSubmit={handleQuickSearchSubmit} className="max-w-3xl mb-5">
+          {/* Quick Search Input */}
+          <form onSubmit={handleQuickSearch} className="max-w-3xl">
             <div className="relative flex items-center">
               <input
                 type="text"
                 value={quickQuery}
                 onChange={(e) => setQuickQuery(e.target.value)}
-                placeholder="Describe your requirements (e.g. CBSE near OMR under ₹1.5L with swimming)..."
+                placeholder="Describe your requirements (e.g. Montessori preschool for 3-year-old in Velachery, or CBSE under ₹1.5L)..."
                 className="w-full bg-[#FAF9F6] border border-stone-300 hover:border-stone-400 focus:border-[#0D9488] focus:bg-white rounded-xl pl-4 pr-24 py-2.5 text-sm sm:text-base text-stone-900 focus:outline-none focus:ring-4 focus:ring-teal-700/10 transition-all shadow-2xs font-sans"
               />
               <button
@@ -74,34 +99,105 @@ export const SearchResultsPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Results Summary and Active Filter Summary */}
+          {/* Results Summary, Stage Switcher, and Sort Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
-            <div>
+            <div className="space-y-2">
               <div className="space-y-1">
                 <span className="text-xs font-bold text-teal-800 uppercase tracking-wider block">
                   Based on your priorities
                 </span>
                 <h1 className="font-editorial text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900 tracking-tight leading-snug">
                   {isSavedMode
-                    ? `${savedSchools.length} Shortlisted Schools`
+                    ? `${savedSchools.length} Shortlisted Institutions`
+                    : isPreschoolSearch
+                    ? "Preschools that fit what you're looking for"
                     : "Schools that fit what you're looking for"}
                 </h1>
                 <p className="text-xs sm:text-sm text-stone-600 font-sans">
                   {isSavedMode
                     ? "Institutions you've saved to compare or revisit."
-                    : `${displaySchools.length} schools match your current priorities.`}
+                    : `${displaySchools.length} places match your current family priorities.`}
                 </p>
               </div>
 
+              {/* EDUCATION TARGET TABS: [All] [Preschools] [Schools] */}
               {!isSavedMode && (
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 mt-2.5 font-medium">
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-xs font-semibold text-stone-500 mr-1 hidden sm:inline">Stage:</span>
+                  <div className="inline-flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setEducationTarget('all')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        filters.educationTarget === 'all'
+                          ? 'bg-white text-stone-900 shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5 text-stone-500" />
+                      <span>All Places</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEducationTarget('preschool')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        filters.educationTarget === 'preschool'
+                          ? 'bg-white text-amber-950 shadow-2xs border border-amber-200/80 font-bold'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <Baby className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Preschools & Early Years</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEducationTarget('school')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        filters.educationTarget === 'school'
+                          ? 'bg-white text-teal-950 shadow-2xs border border-teal-200/80 font-bold'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <SchoolIcon className="w-3.5 h-3.5 text-teal-700" />
+                      <span>Regular Schools</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* What We Understood Criteria Chips */}
+              {!isSavedMode && (
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 pt-1 font-medium">
                   <span className="text-stone-500 font-semibold mr-0.5">Looking for:</span>
-                  {filters.grade && (
+
+                  {filters.preschool.ageYears && (
+                    <span className="bg-amber-100 text-amber-950 px-2.5 py-0.5 rounded-md border border-amber-300 font-bold text-[11px]">
+                      Child: {filters.preschool.ageYears} yrs old
+                    </span>
+                  )}
+
+                  {filters.preschool.programs && filters.preschool.programs.map((prog) => (
+                    <span key={prog} className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-bold text-[11px] uppercase">
+                      {prog}
+                    </span>
+                  ))}
+
+                  {filters.preschool.pedagogy && filters.preschool.pedagogy.map((ped) => {
+                    const pColor = getPedagogyColor(ped);
+                    return (
+                      <span key={ped} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${pColor.badge}`}>
+                        {ped}
+                      </span>
+                    );
+                  })}
+
+                  {!isPreschoolSearch && filters.grade && (
                     <span className="bg-[#F5F1E8] px-2.5 py-0.5 rounded-md border border-stone-200 font-semibold text-stone-800">
                       {filters.grade}
                     </span>
                   )}
-                  {filters.curriculums.map((c) => {
+
+                  {!isPreschoolSearch && filters.curriculums.map((c) => {
                     const cColor = getCurriculumColor(c);
                     return (
                       <span key={c} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${cColor.badge}`}>
@@ -109,24 +205,33 @@ export const SearchResultsPage: React.FC = () => {
                       </span>
                     );
                   })}
+
                   <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-semibold">
                     ≤ ₹{(filters.budgetMax / 100000).toFixed(1)}L/yr
                   </span>
                   <span className="bg-teal-50 text-teal-900 px-2.5 py-0.5 rounded-md border border-teal-200 font-semibold">
                     ≤ {filters.radiusKm} km radius
                   </span>
-                  {filters.requiredFacilities.map((fac) => (
-                    <span key={fac} className="bg-violet-50 text-violet-900 px-2 py-0.5 rounded-md border border-violet-200 font-semibold text-[11px]">
-                      {fac}
+
+                  {filters.preschool.daycare && (
+                    <span className="bg-teal-50 text-teal-900 px-2 py-0.5 rounded-md border border-teal-200 font-semibold text-[11px]">
+                      Daycare Preferred
                     </span>
-                  ))}
+                  )}
+
+                  {filters.preschool.outdoorPlay && (
+                    <span className="bg-emerald-50 text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold text-[11px]">
+                      Outdoor Play
+                    </span>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setIsEditingPreferences(true)}
+                    onClick={() => setPriorityTunerOpen(true)}
                     className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-0.5"
                   >
-                    <Edit3 className="w-3 h-3" />
-                    <span>Want to adjust your priorities?</span>
+                    <Sliders className="w-3 h-3 text-teal-700" />
+                    <span>Tune priorities</span>
                   </button>
                 </div>
               )}
@@ -198,7 +303,7 @@ export const SearchResultsPage: React.FC = () => {
                   onChange={(e) => setSortBy(e.target.value as SortField)}
                   className="bg-white border border-stone-200 hover:border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer shadow-2xs transition-colors min-h-[40px]"
                 >
-                  <option value="best_match">Best match</option>
+                  <option value="best_match">Fit with priorities</option>
                   <option value="distance_asc">Nearest commute</option>
                   <option value="fee_asc">Fees: Low to high</option>
                   <option value="fee_desc">Fees: High to low</option>
@@ -218,7 +323,7 @@ export const SearchResultsPage: React.FC = () => {
           <div className="lg:hidden mb-6">
             <SchoolMapPreview
               schools={displaySchools}
-              selectedSchoolId={selectedSchoolId}
+              selectedSchoolId={selectedSchoolId || undefined}
               onSelectSchool={(id) => setSelectedSchoolId(id)}
               radiusKm={filters.radiusKm}
             />
@@ -235,6 +340,11 @@ export const SearchResultsPage: React.FC = () => {
           {/* Results List Area */}
           <div className={`md:col-span-8 ${viewMode === 'split' ? 'lg:col-span-5' : 'lg:col-span-9'} space-y-4`}>
             
+            {/* Interactive "What We Understood" Preferences Breakdown */}
+            {!isSavedMode && (
+              <WhatWeUnderstoodPanel onOpenPriorityTuner={() => setPriorityTunerOpen(true)} />
+            )}
+
             {displaySchools.length > 0 ? (
               displaySchools.map((school) => (
                 <div
@@ -249,40 +359,32 @@ export const SearchResultsPage: React.FC = () => {
                 <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
                   <AlertCircle className="w-7 h-7" />
                 </div>
-                <div>
-                  <h3 className="font-editorial text-lg sm:text-xl font-bold text-stone-900">
-                    Looking for something different?
+                <div className="max-w-md mx-auto space-y-2">
+                  <h3 className="font-editorial text-xl font-bold text-stone-900">
+                    No places currently match all selected filters
                   </h3>
-                  <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto mt-1 leading-relaxed">
-                    We couldn't find schools that match all of these priorities together right now. You may want to check schools with a slightly wider commute radius (e.g. from {filters.radiusKm} km to 15 km) or adjust your fee target.
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
+                    Try broadening your commute radius, expanding your fee ceiling, or switching between Preschools and Schools.
                   </p>
                 </div>
-                <div className="pt-2 flex justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold cursor-pointer min-h-[44px]"
-                  >
-                    Reset All Filters
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingPreferences(true)}
-                    className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold cursor-pointer min-h-[44px]"
-                  >
-                    Want to adjust your priorities?
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px]"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Reset All Filters</span>
+                </button>
               </div>
             )}
           </div>
 
-          {/* Desktop Split Map Preview */}
+          {/* Split Map View (Desktop) */}
           {viewMode === 'split' && (
             <div className="hidden lg:block lg:col-span-4 sticky top-20">
               <SchoolMapPreview
                 schools={displaySchools}
-                selectedSchoolId={selectedSchoolId}
+                selectedSchoolId={selectedSchoolId || undefined}
                 onSelectSchool={(id) => setSelectedSchoolId(id)}
                 radiusKm={filters.radiusKm}
               />
@@ -291,33 +393,31 @@ export const SearchResultsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Filters Bottom Drawer Sheet */}
+      {/* Mobile Filters Drawer */}
       {showMobileFilters && (
-        <div className="fixed inset-0 z-50 md:hidden bg-stone-900/50 backdrop-blur-xs flex flex-col justify-end animate-in fade-in duration-200">
-          <div className="bg-[#FAF9F6] rounded-t-3xl max-h-[85vh] overflow-y-auto p-5 shadow-2xl border-t border-stone-200 animate-in slide-in-from-bottom duration-200 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-teal-700" />
-                <h3 className="font-editorial text-base font-bold text-stone-900">Refine Search Priorities</h3>
+        <div className="fixed inset-0 z-50 md:hidden bg-stone-900/50 backdrop-blur-xs flex justify-end">
+          <div className="w-full max-w-xs bg-white h-full overflow-y-auto p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-3">
+                <h3 className="font-editorial font-bold text-base text-stone-900">Filters</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters(false)}
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowMobileFilters(false)}
-                className="min-h-[40px] min-w-[40px] p-2 rounded-lg text-stone-500 hover:text-stone-900 flex items-center justify-center"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <FilterSidebar onCloseMobile={() => setShowMobileFilters(false)} />
             </div>
-            
-            <FilterSidebar onCloseMobile={() => setShowMobileFilters(false)} />
           </div>
         </div>
       )}
 
-      {/* Guided Search Modal Component */}
-      <GuidedSearchModal
-        isOpen={isEditingPreferences}
-        onClose={() => setIsEditingPreferences(false)}
+      {/* Priority Tuner Modal */}
+      <PriorityTunerModal
+        isOpen={priorityTunerOpen}
+        onClose={() => setPriorityTunerOpen(false)}
       />
     </div>
   );

@@ -9,32 +9,25 @@ import {
   Phone,
   Mail,
   ShieldCheck,
-  Calendar,
   CheckCircle2,
   AlertTriangle,
   HelpCircle,
-  Bus,
   Sparkles,
-  ChevronRight,
-  Info,
-  Clock,
   ArrowLeft,
   Share2,
-  Check,
-  Building,
-  GraduationCap,
-  Waves,
-  Cpu,
-  Trophy,
-  BookOpen
+  Baby,
+  Clock,
+  School as SchoolIcon,
+  TreePine,
+  Layers,
+  Check
 } from 'lucide-react';
 import { CHENNAI_SCHOOLS } from '../data/schools';
 import { useComparison } from '../context/ComparisonContext';
 import { useShortlist } from '../context/ShortlistContext';
-import { useSearch } from '../context/SearchContext';
-import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle } from '../utils/categoryColors';
+import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
 
-type ProfileTab = 'overview' | 'academics' | 'fees' | 'facilities' | 'admissions' | 'neighbourhood';
+type ProfileTab = 'overview' | 'programs' | 'academics' | 'fees' | 'facilities' | 'admissions' | 'neighbourhood';
 
 interface SchoolProfilePageProps {
   onOpenAdvisorWithSchool?: (schoolName: string) => void;
@@ -42,30 +35,31 @@ interface SchoolProfilePageProps {
 
 export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvisorWithSchool }) => {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const { toggleComparison, isComparing } = useComparison();
   const { toggleSave, isSaved } = useShortlist();
-  const { searchState } = useSearch();
-
-  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   const school = CHENNAI_SCHOOLS.find((s) => s.slug === slug);
+
+  const isEarlyYears = school?.institutionType === 'preschool';
+  const isCombined = school?.institutionType === 'combined';
+
+  const [activeTab, setActiveTab] = useState<ProfileTab>(isEarlyYears ? 'programs' : 'overview');
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   if (!school) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] py-24 px-4 text-center">
         <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-stone-200 shadow-sm">
-          <h2 className="font-editorial text-2xl font-bold text-stone-900 mb-2">School Not Listed</h2>
+          <h2 className="font-editorial text-2xl font-bold text-stone-900 mb-2">Institution Not Listed</h2>
           <p className="text-xs text-stone-600 mb-6">
-            The school you are looking for is either unlisted or may have been updated in our 2026 directory.
+            The school or preschool you are looking for is either unlisted or may have been updated in our 2026 directory.
           </p>
           <Link
             to="/results"
             className="px-5 py-2.5 bg-[#0D9488] text-white rounded-xl text-xs font-bold hover:bg-[#115E59] transition-colors"
           >
-            Back to School Results
+            Back to Directory
           </Link>
         </div>
       </div>
@@ -75,8 +69,10 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
 
-  const primaryBoard = school.curriculum[0] || 'CBSE';
-  const boardColor = getCurriculumColor(primaryBoard);
+  const primaryBoard = school.curriculum[0] || (school.pedagogy?.[0] || 'Early Years');
+  const boardColor = isEarlyYears && school.pedagogy?.[0]
+    ? getPedagogyColor(school.pedagogy[0])
+    : getCurriculumColor(primaryBoard);
   const scoreStyle = getMatchScoreStyle(school.matchScore);
 
   const formatFee = (amount: number) => {
@@ -101,7 +97,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-teal-900 transition-colors shrink-0 py-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to results</span>
+            <span>Back to discovery</span>
           </Link>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -125,7 +121,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             >
               <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-current' : ''}`} />
               <span>
-                {saved ? 'Saved in Shortlist' : 'Save School'}
+                {saved ? 'Saved in Shortlist' : 'Save to Shortlist'}
               </span>
             </button>
           </div>
@@ -139,18 +135,48 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           {/* Main Info (Col 7) */}
           <div className="lg:col-span-7 space-y-4">
             
-            {/* Semantic Board Badges & Accents */}
+            {/* Semantic Board / Pedagogy Badges & Accents */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              {school.curriculum.map((c) => {
-                const cColor = getCurriculumColor(c);
-                return (
-                  <span key={c} className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] border ${cColor.badge}`}>
-                    {c}
+              {isEarlyYears ? (
+                <>
+                  <span className="font-bold px-2.5 py-0.5 rounded-md text-[11px] border bg-amber-50 text-amber-950 border-amber-300">
+                    Preschool & Playschool
                   </span>
-                );
-              })}
+                  {school.pedagogy?.map((ped) => {
+                    const pColor = getPedagogyColor(ped);
+                    return (
+                      <span key={ped} className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] border ${pColor.badge}`}>
+                        {ped}
+                      </span>
+                    );
+                  })}
+                </>
+              ) : isCombined ? (
+                <>
+                  <span className="font-bold px-2.5 py-0.5 rounded-md text-[11px] border bg-teal-50 text-teal-950 border-teal-300">
+                    Preschool + K–12 Campus
+                  </span>
+                  {school.curriculum.map((c) => (
+                    <span key={c} className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] border ${getCurriculumColor(c).badge}`}>
+                      {c}
+                    </span>
+                  ))}
+                </>
+              ) : (
+                school.curriculum.map((c) => {
+                  const cColor = getCurriculumColor(c);
+                  return (
+                    <span key={c} className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] border ${cColor.badge}`}>
+                      {c}
+                    </span>
+                  );
+                })
+              )}
+
               <span className="text-stone-400">·</span>
-              <span className="font-semibold text-stone-600">{school.grades}</span>
+              <span className="font-semibold text-stone-600">
+                {isEarlyYears && school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : school.grades}
+              </span>
               <span className="text-stone-400">·</span>
               <span className="text-stone-600">Est. {school.establishedYear}</span>
               <span className="text-stone-400">·</span>
@@ -168,30 +194,55 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               {school.tagline}
             </p>
 
+            {/* Combined Institution Visual Stage Callouts */}
+            {isCombined && (
+              <div className="p-3.5 rounded-xl bg-[#FAF9F6] border border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <Baby className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <span className="font-bold text-stone-900 block">Early Years Wing</span>
+                    <span className="text-stone-600">{school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ')}</span>
+                  </div>
+                </div>
+                <div className="h-4 w-px bg-stone-200 hidden sm:block" />
+                <div className="flex items-center gap-2">
+                  <SchoolIcon className="w-4 h-4 text-teal-700 shrink-0" />
+                  <div>
+                    <span className="font-bold text-stone-900 block">K–12 Academy</span>
+                    <span className="text-stone-600">Grade 1 to Class 12 ({school.curriculum.join(', ')})</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quick Metrics Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
-                <span className="text-[11px] text-stone-500 font-medium block">Match Score</span>
+                <span className="text-[11px] text-stone-500 font-medium block">Fit with Priorities</span>
                 <span className={`font-bold text-sm sm:text-base tabular-nums ${scoreStyle.textColor}`}>
                   {school.matchScore}% Fit
                 </span>
-                <span className="text-[10px] text-stone-500 block">{school.matchTier}</span>
+                <span className="text-[10px] text-stone-500 block">{scoreStyle.tier}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
-                <span className="text-[11px] text-stone-500 font-medium block">Est. Annual Tuition</span>
+                <span className="text-[11px] text-stone-500 font-medium block">
+                  {isEarlyYears ? 'Annual Fee' : 'Est. Annual Tuition'}
+                </span>
                 <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
                   ₹{(school.annualFeeMin / 100000).toFixed(1)}L – {(school.annualFeeMax / 100000).toFixed(1)}L
                 </span>
-                <span className="text-[10px] text-stone-500 block">Grade specific</span>
+                <span className="text-[10px] text-stone-500 block">{isEarlyYears ? 'Program specific' : 'Grade specific'}</span>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
-                <span className="text-[11px] text-stone-500 font-medium block">Student:Teacher</span>
-                <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
-                  {school.studentTeacherRatio}
+                <span className="text-[11px] text-stone-500 font-medium block">
+                  {isEarlyYears ? 'Caregiver Ratio' : 'Student:Teacher'}
                 </span>
-                <span className="text-[10px] text-stone-500 block">Audited ratio</span>
+                <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
+                  {school.childToCaregiverRatio || school.studentTeacherRatio}
+                </span>
+                <span className="text-[10px] text-stone-500 block">Audited cohort</span>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
@@ -199,7 +250,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
                   {school.distanceKm} km
                 </span>
-                <span className="text-[10px] text-teal-800 font-semibold block">Bus fleet verified</span>
+                <span className="text-[10px] text-teal-800 font-semibold block">Transit verified</span>
               </div>
             </div>
 
@@ -215,7 +266,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 }`}
               >
                 <Scale className="w-3.5 h-3.5" />
-                <span>{compared ? 'In Comparison Matrix (✓)' : 'Compare School'}</span>
+                <span>{compared ? 'In Comparison Matrix (✓)' : 'Compare Institution'}</span>
               </button>
 
               <button
@@ -224,7 +275,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-[#F5F1E8] text-teal-950 border border-teal-200/80 hover:bg-teal-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs min-h-[42px]"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Ask Advisor About This School</span>
+                <span>Ask Advisor About This Place</span>
               </button>
 
               <a
@@ -282,10 +333,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
       <div className="sticky top-16 z-30 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-none gap-1 sm:gap-2 py-1.5">
           {[
-            { id: 'overview', label: 'Overview' },
-            { id: 'academics', label: 'Academics & Board' },
+            ...(isEarlyYears || isCombined ? [{ id: 'programs', label: isEarlyYears ? 'Programs & Timings' : 'Early Years Programs' }] : []),
+            { id: 'overview', label: 'Overview & Fit' },
+            ...(!isEarlyYears ? [{ id: 'academics', label: 'Academics & Board' }] : []),
             { id: 'fees', label: 'Fee Transparency' },
-            { id: 'facilities', label: 'Campus Facilities' },
+            { id: 'facilities', label: isEarlyYears ? 'Play & Care Facilities' : 'Campus Facilities' },
             { id: 'admissions', label: 'Admissions 2026' },
             { id: 'neighbourhood', label: 'Commute & Corridor' },
           ].map((tab) => {
@@ -311,11 +363,111 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
       {/* Tab Panels */}
       <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 mt-6 sm:mt-8">
         
+        {/* PROGRAMS TAB (Preschool / Combined) */}
+        {activeTab === 'programs' && (
+          <div className="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 gap-2">
+              <div>
+                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
+                  Early Childhood Cohorts
+                </span>
+                <h3 className="font-editorial text-xl font-bold text-stone-900 mt-1">
+                  Programs, Age Groups & Daily Schedule
+                </h3>
+                <p className="text-xs text-stone-600 mt-0.5 font-sans">
+                  Learning approach: {school.pedagogy?.join(' · ') || 'Activity-based & Montessori'} · Caregiver Ratio: {school.childToCaregiverRatio || '1:8'}
+                </p>
+              </div>
+
+              {school.daycare && (
+                <span className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200 self-start sm:self-auto">
+                  ✓ Daycare & Nap Pods Available
+                </span>
+              )}
+            </div>
+
+            {/* Programs Table */}
+            {school.preschoolProgramDetails && school.preschoolProgramDetails.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#FAF9F6] text-stone-700 uppercase tracking-wider font-bold border-b border-stone-200">
+                    <tr>
+                      <th className="py-3 px-4">Program</th>
+                      <th className="py-3 px-4">Eligible Age</th>
+                      <th className="py-3 px-4">Timing</th>
+                      <th className="py-3 px-4">Care Ratio</th>
+                      <th className="py-3 px-4">Tuition (Approx)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {school.preschoolProgramDetails.map((detail) => (
+                      <tr key={detail.program} className="hover:bg-stone-50/60">
+                        <td className="py-3.5 px-4 font-bold text-stone-900">
+                          {detail.displayName}
+                        </td>
+                        <td className="py-3.5 px-4 text-stone-700 font-medium">
+                          {detail.ageRange}
+                        </td>
+                        <td className="py-3.5 px-4 text-stone-700">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-stone-400" />
+                            <span>{detail.timings}</span>
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-stone-900">
+                          {detail.ratio}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-teal-800 tabular-nums">
+                          {detail.annualFee ? `₹${(detail.annualFee / 1000).toFixed(0)}k/yr` : 'Included'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {['playgroup', 'nursery', 'lkg', 'ukg'].map((p) => (
+                  <div key={p} className="p-3.5 rounded-xl bg-[#FAF9F6] border border-stone-200 text-xs">
+                    <span className="font-bold text-stone-900 uppercase block">{p}</span>
+                    <span className="text-[11px] text-stone-500">Contact school for exact timings and seat availability.</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Childcare & Working Parent Logistics */}
+            <div className="p-4 rounded-xl bg-[#F5F1E8] border border-stone-200 space-y-2 text-xs">
+              <span className="font-bold text-stone-900 uppercase tracking-wider block">
+                Childcare, Meals & Security Specifications
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-stone-700">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
+                  <span>{school.daycare ? 'Afternoon Daycare' : 'Half-Day Only'}</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
+                  <span>{school.meals ? 'Fresh Kitchen Meals' : 'Home-Packed Meals'}</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
+                  <span>{school.cctvSecurity ? 'Parent App CCTV Access' : 'Internal CCTV'}</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
+                  <span>{school.outdoorPlay ? 'Nature Sand/Mud Yard' : 'Indoor Activity Play'}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-6 sm:space-y-8">
             
-            {/* Why This School Matches Section - Softly Tinted Editorial Panel */}
+            {/* Why This Place Matches Section - Softly Tinted Editorial Panel */}
             <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 gap-2">
                 <div>
@@ -323,7 +475,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                     Explainable Matching Analysis
                   </span>
                   <h3 className="font-editorial text-lg sm:text-xl font-bold text-stone-900">
-                    Why this school fits your family requirements
+                    Why this institution matches your requirements
                   </h3>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border self-start sm:self-auto ${scoreStyle.badge}`}>
@@ -376,7 +528,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
 
                   <div className="mt-6 pt-5 border-t border-stone-100">
                     <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider mb-2">
-                      Teaching & Pedagogical Philosophy
+                      {isEarlyYears ? 'Pedagogical Philosophy & Learning Environment' : 'Teaching & Pedagogical Philosophy'}
                     </h4>
                     <p className="text-xs sm:text-sm text-stone-700 leading-relaxed italic bg-[#FAF9F6] p-4 rounded-xl border border-stone-200/70 font-sans">
                       "{school.teachingPhilosophy}"
@@ -389,10 +541,10 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="bg-white rounded-2xl border border-teal-200/80 bg-teal-50/20 p-6 shadow-xs">
                     <h3 className="font-editorial text-base font-bold text-teal-950 mb-2 flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-teal-600" />
-                      <span>Inclusive Education & Learning Support (SEN)</span>
+                      <span>Inclusive Care & Learning Support</span>
                     </h3>
                     <p className="text-xs sm:text-sm text-teal-900 leading-relaxed font-sans">
-                      {school.specialNeedsDescription || 'Dedicated resource rooms and certified remedial facilitators available for mild learning variations.'}
+                      {school.specialNeedsDescription || 'Dedicated resource rooms and certified remedial facilitators available.'}
                     </p>
                   </div>
                 )}
@@ -402,34 +554,106 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <div className="space-y-4">
                 <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs space-y-3">
                   <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider pb-2 border-b border-stone-100">
-                    Key School Disclosures
+                    {isEarlyYears ? 'Preschool Quick Facts' : 'School Quick Facts'}
                   </h4>
 
                   <div className="space-y-2 text-xs font-sans">
-                    <div className="flex justify-between py-1 border-b border-stone-50">
-                      <span className="text-stone-500">Audit Status</span>
-                      <span className="font-bold text-teal-800">{school.verificationStatus}</span>
-                    </div>
+                    {isEarlyYears ? (
+                      <>
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Age Range</span>
+                          <span className="font-semibold text-stone-900">
+                            {school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : '1.5–6 yrs'}
+                          </span>
+                        </div>
 
-                    <div className="flex justify-between py-1 border-b border-stone-50">
-                      <span className="text-stone-500">Established Year</span>
-                      <span className="font-bold text-stone-900 tabular-nums">{school.establishedYear}</span>
-                    </div>
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Programs Offered</span>
+                          <span className="font-semibold text-stone-900 text-right">
+                            {school.preschoolPrograms?.map((p) => p.toUpperCase()).join(', ') || 'Playgroup, Nursery, LKG, UKG'}
+                          </span>
+                        </div>
 
-                    <div className="flex justify-between py-1 border-b border-stone-50">
-                      <span className="text-stone-500">School Type</span>
-                      <span className="font-semibold text-stone-900">{school.schoolType.join(', ')}</span>
-                    </div>
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Learning Approach</span>
+                          <span className="font-semibold text-stone-900 text-right">
+                            {school.pedagogy?.join(' · ') || 'Play-way & Montessori'}
+                          </span>
+                        </div>
 
-                    <div className="flex justify-between py-1 border-b border-stone-50">
-                      <span className="text-stone-500">Bus Radius</span>
-                      <span className="font-semibold text-stone-900 tabular-nums">Up to {school.transportRadiusKm} km</span>
-                    </div>
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Annual Fees</span>
+                          <span className="font-bold text-stone-900 tabular-nums">
+                            ₹{(school.annualFeeMin / 1000).toFixed(0)}k – ₹{(school.annualFeeMax / 1000).toFixed(0)}k/yr
+                          </span>
+                        </div>
 
-                    <div className="flex justify-between py-1">
-                      <span className="text-stone-500">Boarding Facility</span>
-                      <span className="font-semibold text-stone-900">{school.hasHostel ? 'Available' : 'Day School Only'}</span>
-                    </div>
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Timings</span>
+                          <span className="font-semibold text-stone-900">{school.timings || '8:30 AM – 1:30 PM'}</span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Daycare & Care</span>
+                          <span className="font-semibold text-stone-900">
+                            {school.daycare ? (school.extendedHours ? 'Extended (to 6:00 PM)' : 'Available (Afternoon)') : 'Half-day Only'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Transport</span>
+                          <span className="font-semibold text-stone-900">
+                            {school.hasTransport ? `AC Vans (up to ${school.transportRadiusKm} km)` : 'Parent Drop'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-1">
+                          <span className="text-stone-500">Location</span>
+                          <span className="font-semibold text-stone-900">{school.area}, Chennai</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Affiliated Board</span>
+                          <span className="font-semibold text-stone-900">{school.curriculum.join(', ')}</span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Grades Offered</span>
+                          <span className="font-semibold text-stone-900">{school.grades}</span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Annual Tuition</span>
+                          <span className="font-bold text-stone-900 tabular-nums">
+                            ₹{(school.annualFeeMin / 100000).toFixed(1)}L – {(school.annualFeeMax / 100000).toFixed(1)}L/yr
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Location</span>
+                          <span className="font-semibold text-stone-900">{school.area}, Chennai</span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Campus Facilities</span>
+                          <span className="font-semibold text-stone-900 text-right truncate max-w-[140px]">
+                            {school.facilities.slice(0, 3).map((f) => f.name).join(', ')}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-1 border-b border-stone-50">
+                          <span className="text-stone-500">Student:Teacher</span>
+                          <span className="font-semibold text-stone-900 tabular-nums">{school.studentTeacherRatio}</span>
+                        </div>
+
+                        <div className="flex justify-between py-1">
+                          <span className="text-stone-500">Transport Radius</span>
+                          <span className="font-semibold text-stone-900 tabular-nums">Up to {school.transportRadiusKm} km</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -458,8 +682,8 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           </div>
         )}
 
-        {/* ACADEMICS TAB */}
-        {activeTab === 'academics' && (
+        {/* ACADEMICS TAB (Schools only) */}
+        {!isEarlyYears && activeTab === 'academics' && (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-6">
             <div className="pb-3 border-b border-stone-100">
               <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">
@@ -486,22 +710,6 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 ))}
               </ul>
             </div>
-
-            <div className="pt-4 border-t border-stone-100">
-              <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider mb-2.5">
-                Extracurricular Enrichment & Activity Clubs
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {school.extracurriculars.map((activity) => (
-                  <span
-                    key={activity}
-                    className="bg-[#F5F1E8] text-stone-800 font-semibold px-3 py-1 rounded-lg text-xs border border-stone-200"
-                  >
-                    {activity}
-                  </span>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -522,12 +730,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </div>
 
               <div className="text-xs text-teal-800 font-bold bg-teal-50 px-3 py-1 rounded-full border border-teal-200 self-start sm:self-auto">
-                Verified with Parent Receipts
+                Verified with Parent Disclosures
               </div>
             </div>
 
             {/* Desktop Fee Table */}
-            <div className="hidden sm:block overflow-x-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="bg-[#FAF9F6] text-stone-700 uppercase tracking-wider font-bold border-b border-stone-200">
                   <tr>
@@ -539,16 +747,18 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   <tr>
-                    <td className="py-3.5 px-4 font-bold text-stone-900">Tuition & Term Fee</td>
+                    <td className="py-3.5 px-4 font-bold text-stone-900">
+                      {isEarlyYears ? 'Preschool Tuition & Activity Kit' : 'Tuition & Term Fee'}
+                    </td>
                     <td className="py-3.5 px-4 text-stone-600">Annual (Quarterly splits)</td>
                     <td className="py-3.5 px-4 font-bold text-teal-800 tabular-nums">
                       {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
                     </td>
-                    <td className="py-3.5 px-4 text-stone-600">Covers core academics, laboratory access, and library.</td>
+                    <td className="py-3.5 px-4 text-stone-600">Covers sensory materials, classroom guides, and learning kits.</td>
                   </tr>
 
                   <tr>
-                    <td className="py-3.5 px-4 font-bold text-stone-900">One-Time Admission Fee</td>
+                    <td className="py-3.5 px-4 font-bold text-stone-900">One-Time Registration Fee</td>
                     <td className="py-3.5 px-4 text-stone-600">One-Time (Non-refundable)</td>
                     <td className="py-3.5 px-4 font-bold text-stone-900 tabular-nums">
                       {formatFee(school.admissionFee)}
@@ -558,65 +768,16 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
 
                   {school.transportFeeMin && (
                     <tr>
-                      <td className="py-3.5 px-4 font-bold text-stone-900">School Bus Transport</td>
+                      <td className="py-3.5 px-4 font-bold text-stone-900">Van / Bus Transport</td>
                       <td className="py-3.5 px-4 text-stone-600">Optional / Annual</td>
                       <td className="py-3.5 px-4 font-semibold text-stone-900 tabular-nums">
                         {formatFee(school.transportFeeMin)} – {formatFee(school.transportFeeMax || 0)}
                       </td>
-                      <td className="py-3.5 px-4 text-stone-600">Tiered based on radial km distance from campus gate.</td>
+                      <td className="py-3.5 px-4 text-stone-600">Doorstep pickup with female attendants and GPS.</td>
                     </tr>
                   )}
-
-                  <tr>
-                    <td className="py-3.5 px-4 font-bold text-stone-900">Books & Uniform Kit</td>
-                    <td className="py-3.5 px-4 text-stone-600">Annual (Direct vendor)</td>
-                    <td className="py-3.5 px-4 font-semibold text-stone-900 tabular-nums">
-                      ~₹9,000 – ₹15,000
-                    </td>
-                    <td className="py-3.5 px-4 text-stone-600">Estimate based on NCERT / Cambridge textbook bundles.</td>
-                  </tr>
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile Fee Cards */}
-            <div className="sm:hidden space-y-3">
-              <div className="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-stone-900 text-xs">Tuition & Term Fee</span>
-                  <span className="text-[10px] text-teal-800 bg-teal-50 px-2 py-0.5 rounded font-bold border border-teal-200">
-                    Annual / Splits
-                  </span>
-                </div>
-                <div className="text-base font-bold text-teal-800 tabular-nums">
-                  {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
-                </div>
-                <p className="text-xs text-stone-600 leading-relaxed font-sans">
-                  Covers core academics, laboratory access, and library.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-stone-900 text-xs">One-Time Admission Fee</span>
-                  <span className="text-[10px] text-stone-700 bg-stone-100 px-2 py-0.5 rounded font-bold border border-stone-200">
-                    One-Time
-                  </span>
-                </div>
-                <div className="text-sm font-bold text-stone-900 tabular-nums">
-                  {formatFee(school.admissionFee)}
-                </div>
-                <p className="text-xs text-stone-600 leading-relaxed font-sans">
-                  Payable upon admission confirmation (non-refundable).
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
-              <span className="font-bold block">Important Parent Note on Fee Transparency:</span>
-              <p className="leading-relaxed font-sans">
-                Schools in Tamil Nadu are regulated under the Private Schools Fee Determination Committee. While tuition fees follow notified ceilings, elective activity fees and bus fees vary. Always request the itemized fee voucher prior to signing the admission acceptance form.
-              </p>
             </div>
           </div>
         )}
@@ -626,13 +787,13 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           <div className="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-6">
             <div className="pb-3 border-b border-stone-100">
               <span className="text-[11px] font-bold text-violet-800 uppercase tracking-wider">
-                Infrastructure & Athletics
+                {isEarlyYears ? 'Sensory & Play Infrastructure' : 'Campus Infrastructure & Sporting Facilities'}
               </span>
               <h3 className="font-editorial text-xl font-bold text-stone-900 mt-1">
-                Campus Infrastructure & Sporting Facilities
+                {isEarlyYears ? 'Play Areas, Nap Pods & Safety' : 'Campus Infrastructure & Sporting Facilities'}
               </h3>
               <p className="text-xs text-stone-600 mt-1 font-sans">
-                Verified on-campus facilities for STEM innovation, athletics, and performing arts.
+                Verified on-campus facilities for child growth, gross motor play, and wellness.
               </p>
             </div>
 
@@ -704,35 +865,36 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
 
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-xs font-bold text-stone-900 block mb-1">
-                  Age Cutoff Standard (Tamil Nadu)
+                  Age Cutoff Standard
                 </span>
                 <p className="text-xs text-stone-600 leading-relaxed font-sans">
-                  Child must complete 3 years as of July 31, 2026 for Pre-KG / LKG entry.
+                  {isEarlyYears
+                    ? 'Playgroup entry from 1.5–2 years; Nursery entry requires completion of 2.5–3 years.'
+                    : 'Child must complete 3 years as of July 31, 2026 for Pre-KG / LKG entry.'}
                 </p>
               </div>
             </div>
 
-            <div className="pt-2">
-              <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider mb-2.5">
-                Mandatory Application Documents
-              </h4>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-stone-700">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Original Municipal Birth Certificate</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Residential Address Proof (Aadhaar / Passport)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Immunization & Medical Records</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Transfer Certificate (for Class 2 onwards)</span>
-                </li>
+            {/* Things to verify directly with institution */}
+            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1.5">
+              <span className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-700" />
+                <span>Things to verify during your campus visit:</span>
+              </span>
+              <ul className="space-y-1 pl-5 list-disc text-stone-700">
+                {isEarlyYears ? (
+                  <>
+                    <li>Confirm whether daycare pickup hours include emergency extension buffers.</li>
+                    <li>Inspect diaper-changing and child washroom sanitation first-hand.</li>
+                    <li>Ask about caregiver tenure and annual staff turnover in early years classrooms.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Confirm exact morning bus pickup timings at your residential gate.</li>
+                    <li>Request the previous 3-year fee escalation record.</li>
+                    <li>Check student-to-teacher ratio on primary school floors.</li>
+                  </>
+                )}
               </ul>
             </div>
           </div>

@@ -1,5 +1,30 @@
 export type Curriculum = 'CBSE' | 'ICSE' | 'Cambridge (IGCSE)' | 'IB World' | 'State Board';
 
+export type EducationStage =
+  | 'playgroup'
+  | 'preschool'
+  | 'nursery'
+  | 'lkg'
+  | 'ukg'
+  | 'primary'
+  | 'middle'
+  | 'secondary'
+  | 'senior_secondary';
+
+export type PreschoolProgram = 'playgroup' | 'nursery' | 'lkg' | 'ukg';
+
+export type InstitutionType = 'school' | 'preschool' | 'combined';
+
+export interface PreschoolProgramDetail {
+  program: PreschoolProgram;
+  displayName: string;
+  ageRange: string;
+  timings: string;
+  monthlyFee?: number;
+  annualFee?: number;
+  ratio: string;
+}
+
 export type SchoolType = 'Co-educational' | 'All-Girls' | 'All-Boys' | 'Day School' | 'Day Boarding' | 'Residential';
 
 export type VerificationStatus = 'Verified by School' | 'Parent Audited' | 'Awaiting 2026 Confirmation';
@@ -112,4 +137,28 @@ export interface School {
     category: 'Campus' | 'Labs' | 'Sports' | 'Classrooms';
   }[];
   neighbourhood: NeighbourhoodContext;
+
+  // Preschool & Early Years extensions (optional to maintain full backward compatibility)
+  institutionType?: InstitutionType;
+  educationStages?: EducationStage[];
+  ageRange?: {
+    min: number;
+    max: number;
+  };
+  preschoolPrograms?: PreschoolProgram[];
+  preschoolProgramDetails?: PreschoolProgramDetail[];
+  pedagogy?: string[];
+  daycare?: boolean;
+  extendedHours?: boolean;
+  meals?: boolean;
+  outdoorPlay?: boolean;
+  indoorPlay?: boolean;
+  cctvSecurity?: boolean;
+  medicalFirstAid?: boolean;
+  timings?: string;
+  monthlyFeeMin?: number;
+  monthlyFeeMax?: number;
+  languages?: string[];
+  childToCaregiverRatio?: string;
+  pottyTrainingRequired?: boolean;
 }

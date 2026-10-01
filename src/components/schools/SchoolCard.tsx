@@ -6,7 +6,6 @@ import {
   Scale, 
   Check, 
   AlertTriangle, 
-  HelpCircle, 
   ChevronRight, 
   School as SchoolIcon, 
   MapPin, 
@@ -19,12 +18,14 @@ import {
   HeartHandshake, 
   FlaskConical, 
   Sparkles,
-  ShieldCheck
+  TreePine,
+  Clock,
+  Baby
 } from 'lucide-react';
 import { School } from '../../types/school';
 import { useComparison } from '../../context/ComparisonContext';
 import { useShortlist } from '../../context/ShortlistContext';
-import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle } from '../../utils/categoryColors';
+import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../../utils/categoryColors';
 
 interface SchoolCardProps {
   school: School;
@@ -39,8 +40,14 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
 
-  const primaryBoard = school.curriculum[0] || 'CBSE';
-  const boardColor = getCurriculumColor(primaryBoard);
+  const isEarlyYears = school.institutionType === 'preschool';
+  const isCombined = school.institutionType === 'combined';
+
+  // Badge and Accent calculation
+  const primaryBoard = school.curriculum[0] || (school.pedagogy?.[0] || 'Early Years');
+  const boardColor = isEarlyYears && school.pedagogy?.[0]
+    ? getPedagogyColor(school.pedagogy[0])
+    : getCurriculumColor(primaryBoard);
   const scoreStyle = getMatchScoreStyle(school.matchScore);
 
   const formatFee = (amount: number) => {
@@ -53,13 +60,14 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   // Helper to pick appropriate Lucide icon for facility
   const getFacilityIcon = (iconName: string, name: string) => {
     const n = (iconName + ' ' + name).toLowerCase();
-    if (n.includes('wave') || n.includes('swim')) return Waves;
-    if (n.includes('cpu') || n.includes('robot')) return Cpu;
+    if (n.includes('tree') || n.includes('garden') || n.includes('sand')) return TreePine;
+    if (n.includes('wave') || n.includes('swim') || n.includes('splash')) return Waves;
+    if (n.includes('cpu') || n.includes('robot') || n.includes('maker') || n.includes('stem')) return Cpu;
     if (n.includes('trophy') || n.includes('turf') || n.includes('sport') || n.includes('cricket')) return Trophy;
     if (n.includes('flask') || n.includes('lab') || n.includes('science')) return FlaskConical;
-    if (n.includes('drama') || n.includes('art') || n.includes('theatre')) return Drama;
-    if (n.includes('music')) return Music;
-    if (n.includes('heart') || n.includes('wellness') || n.includes('counsell')) return HeartHandshake;
+    if (n.includes('drama') || n.includes('art') || n.includes('theatre') || n.includes('clay') || n.includes('atelier')) return Drama;
+    if (n.includes('music') || n.includes('song')) return Music;
+    if (n.includes('heart') || n.includes('wellness') || n.includes('care') || n.includes('daycare') || n.includes('nap')) return HeartHandshake;
     return BookOpen;
   };
 
@@ -75,7 +83,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   return (
     <article className="group relative bg-white rounded-2xl border border-stone-200/90 hover:border-stone-300 transition-all duration-300 overflow-hidden flex flex-col md:flex-row hover:shadow-md">
       
-      {/* Top/Side subtle accent stripe based on primary curriculum */}
+      {/* Top/Side subtle accent stripe based on primary curriculum / pedagogy */}
       <div 
         className={`hidden md:block w-1.5 shrink-0 ${boardColor.accentBar} opacity-90 transition-opacity group-hover:opacity-100`} 
         aria-hidden="true" 
@@ -98,7 +106,11 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#FAF9F6] to-[#F5F1E8] p-4 text-center">
-            <SchoolIcon className="w-10 h-10 text-stone-400 mb-2" />
+            {isEarlyYears ? (
+              <Baby className="w-10 h-10 text-stone-400 mb-2" />
+            ) : (
+              <SchoolIcon className="w-10 h-10 text-stone-400 mb-2" />
+            )}
             <span className="text-xs font-editorial font-medium text-stone-600 line-clamp-1">{school.name}</span>
           </div>
         )}
@@ -106,19 +118,52 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
         {/* Subtle photo vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-stone-900/40 via-transparent to-black/10 pointer-events-none" />
 
-        {/* Board Badges - semantic coloring */}
+        {/* Badges - semantic coloring */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-1">
-          {school.curriculum.slice(0, 2).map((board) => {
-            const bColor = getCurriculumColor(board);
-            return (
-              <span
-                key={board}
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs ${bColor.badge}`}
-              >
-                {board}
+          {isEarlyYears ? (
+            <>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs bg-amber-50/95 text-amber-950 border border-amber-200">
+                Preschool & Early Years
               </span>
-            );
-          })}
+              {school.pedagogy?.slice(0, 1).map((ped) => {
+                const pColor = getPedagogyColor(ped);
+                return (
+                  <span
+                    key={ped}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs ${pColor.badge}`}
+                  >
+                    {ped}
+                  </span>
+                );
+              })}
+            </>
+          ) : isCombined ? (
+            <>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs bg-teal-50/95 text-teal-950 border border-teal-200">
+                Early Years + School
+              </span>
+              {school.curriculum.slice(0, 1).map((board) => (
+                <span
+                  key={board}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs ${getCurriculumColor(board).badge}`}
+                >
+                  {board}
+                </span>
+              ))}
+            </>
+          ) : (
+            school.curriculum.slice(0, 2).map((board) => {
+              const bColor = getCurriculumColor(board);
+              return (
+                <span
+                  key={board}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs ${bColor.badge}`}
+                >
+                  {board}
+                </span>
+              );
+            })
+          )}
         </div>
 
         {/* Quick action: Save bookmark with 44px tap target */}
@@ -138,33 +183,28 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
         >
           <Bookmark className={`w-4 h-4 transition-transform active:scale-90 ${saved ? 'fill-current' : ''}`} />
         </button>
-
-        {/* Commute Distance Tag bottom-left overlay */}
-        <div className="absolute bottom-2.5 left-3 text-[11px] font-medium text-white/95 drop-shadow-sm flex items-center gap-1">
-          <MapPin className="w-3 h-3 text-white/80" />
-          <span>{school.distanceKm} km commute</span>
-        </div>
       </div>
 
-      {/* Main Editorial Content Zone */}
-      <div className="p-4 sm:p-5 lg:p-6 flex-1 flex flex-col justify-between space-y-4">
-        
-        {/* Header & School Identity */}
+      {/* Editorial Content Zone */}
+      <div className="flex-1 p-4 sm:p-5 flex flex-col justify-between">
         <div>
+          {/* Header Row: Identity & Fit Ring */}
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-medium text-stone-500 tracking-wide uppercase block mb-1">
-                {school.area} · Established {school.establishedYear}
-              </span>
-              <h3 className="font-editorial text-lg sm:text-xl font-bold text-stone-900 tracking-tight leading-snug group-hover:text-teal-900 transition-colors">
-                <Link 
-                  to={`/school/${school.slug}`} 
-                  className="focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded"
-                >
+            <div className="min-w-0 pr-2">
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium mb-1">
+                <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <span className="truncate">{school.area}</span>
+                <span>·</span>
+                <span className="tabular-nums">{school.distanceKm} km</span>
+              </div>
+
+              <h2 className="font-editorial text-lg sm:text-xl font-bold text-stone-900 group-hover:text-teal-900 transition-colors leading-snug">
+                <Link to={`/school/${school.slug}`} className="focus:outline-none focus-visible:underline">
                   {school.name}
                 </Link>
-              </h3>
-              <p className="text-xs text-stone-600 mt-1 line-clamp-1 font-sans">
+              </h2>
+
+              <p className="text-xs text-stone-600 mt-1 line-clamp-2 leading-relaxed font-sans">
                 {school.tagline}
               </p>
             </div>
@@ -209,30 +249,48 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
           {/* Pricing & Key Metrics Bar */}
           <div className="mt-3.5 pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2.5 text-xs">
             <div>
-              <span className="text-stone-500 text-[11px] block font-medium">Estimated Annual Tuition</span>
+              <span className="text-stone-500 text-[11px] block font-medium">
+                {isEarlyYears ? 'Annual Fee' : 'Estimated Annual Tuition'}
+              </span>
               <span className="font-bold text-stone-900 text-sm tabular-nums">
                 {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
               </span>
             </div>
 
-            <div className="hidden sm:block">
-              <span className="text-stone-500 text-[11px] block font-medium">Teacher Ratio</span>
+            <div>
+              <span className="text-stone-500 text-[11px] block font-medium">
+                {isEarlyYears ? 'Caregiver Ratio' : 'Teacher Ratio'}
+              </span>
               <span className="font-semibold text-stone-800 tabular-nums">
-                {school.studentTeacherRatio}
+                {school.childToCaregiverRatio || school.studentTeacherRatio}
               </span>
             </div>
 
-            <div className="hidden lg:block">
-              <span className="text-stone-500 text-[11px] block font-medium">Grades</span>
+            <div>
+              <span className="text-stone-500 text-[11px] block font-medium">
+                {isEarlyYears ? 'Programs' : 'Grades'}
+              </span>
               <span className="font-semibold text-stone-800">
-                {school.grades}
+                {isEarlyYears 
+                  ? (school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ') || 'Toddler to UKG')
+                  : school.grades}
               </span>
             </div>
+
+            {isEarlyYears && school.timings && (
+              <div className="hidden lg:block">
+                <span className="text-stone-500 text-[11px] block font-medium">Hours</span>
+                <span className="font-semibold text-stone-800 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-stone-400" />
+                  <span className="truncate max-w-[130px]">{school.timings}</span>
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center gap-1.5 text-stone-800 bg-[#F5F1E8]/70 px-2.5 py-1 rounded-lg border border-stone-200/70">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
               <span className="font-bold text-xs tabular-nums">{school.rating.toFixed(1)}</span>
-              <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount} parents)</span>
+              <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount})</span>
             </div>
           </div>
 
@@ -259,10 +317,12 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             <div className="flex items-center justify-between pb-1 border-b border-stone-200/60">
               <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px] tracking-wider uppercase">
                 <Sparkles className="w-3 h-3 text-amber-600" />
-                <span>Why this school for your family</span>
+                <span>
+                  {isEarlyYears ? 'Why this preschool matches' : 'Why this school for your family'}
+                </span>
               </div>
               <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.2 rounded border border-teal-200">
-                Decision Fit
+                Fit with your priorities
               </span>
             </div>
 
@@ -285,7 +345,9 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                     <AlertTriangle className="w-2.5 h-2.5" />
                   </span>
                   <span>
-                    <span className="font-bold text-amber-900 text-[11px]">One thing to verify: </span>
+                    <span className="font-bold text-amber-900 text-[11px]">
+                      {isEarlyYears ? 'One thing to check: ' : 'One thing to verify: '}
+                    </span>
                     <strong className="font-semibold text-stone-900">{verifyReasons[0].title}</strong>
                   </span>
                 </div>
@@ -316,7 +378,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             to={`/school/${school.slug}`}
             className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#0D9488] hover:bg-[#115E59] py-2 px-4 rounded-lg shadow-2xs hover:shadow-xs transition-all group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
           >
-            <span>View School Profile</span>
+            <span>{isEarlyYears ? 'View Preschool Profile' : 'View School Profile'}</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
           </Link>
         </div>

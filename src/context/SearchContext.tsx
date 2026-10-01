@@ -1,27 +1,40 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { SearchState, SearchFilters, SortField } from '../types/search';
-import { School, Curriculum, SchoolType } from '../types/school';
+import { SearchState, SearchFilters, SortField, EducationTargetType, UpdateFiltersPayload } from '../types/search';
+import { School, Curriculum, SchoolType, PreschoolProgram } from '../types/school';
 import { CHENNAI_SCHOOLS } from '../data/schools';
+import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 
 const DEFAULT_FILTERS: SearchFilters = {
-  location: 'Tambaram / South Chennai',
-  radiusKm: 10,
+  location: 'All Chennai',
+  radiusKm: 12,
+  budgetMin: 30000,
+  budgetMax: 150000,
+  educationTarget: 'all',
+
+  // K-12 defaults
   grade: 'Class 5',
-  budgetMin: 40000,
-  budgetMax: 140000,
   curriculums: ['CBSE'],
   schoolTypes: ['Co-educational'],
   requiredFacilities: ['Robotics & STEM Lab', 'Swimming Pool'],
   requiredActivities: [],
-  requiresTransport: true,
+  requiresTransport: false,
   requiresHostel: false,
   requiresSpecialNeeds: false,
+
+  // Preschool defaults
+  preschool: {
+    programs: [],
+    pedagogy: [],
+    daycare: false,
+    outdoorPlay: false,
+  },
 };
 
 interface SearchContextType {
   searchState: SearchState;
   setSearchState: React.Dispatch<React.SetStateAction<SearchState>>;
-  updateFilters: (partial: Partial<SearchFilters>) => void;
+  updateFilters: (partial: UpdateFiltersPayload) => void;
+  setEducationTarget: (target: EducationTargetType) => void;
   setRawQuery: (query: string) => void;
   setSortBy: (sortBy: SortField) => void;
   resetFilters: () => void;
@@ -38,7 +51,14 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('fms_search_state');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.filters && !parsed.filters.preschool) {
+          parsed.filters.preschool = DEFAULT_FILTERS.preschool;
+        }
+        if (parsed.filters && !parsed.filters.educationTarget) {
+          parsed.filters.educationTarget = 'all';
+        }
+        return parsed;
       } catch (e) {
         // fallback
       }
@@ -54,14 +74,23 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem('fms_search_state', JSON.stringify(searchState));
   }, [searchState]);
 
-  const updateFilters = (partial: Partial<SearchFilters>) => {
+  const updateFilters = (partial: UpdateFiltersPayload) => {
     setSearchState((prev) => ({
       ...prev,
       filters: {
         ...prev.filters,
         ...partial,
+        // merge preschool object if provided
+        preschool: {
+          ...prev.filters.preschool,
+          ...(partial.preschool || {}),
+        },
       },
     }));
+  };
+
+  const setEducationTarget = (educationTarget: EducationTargetType) => {
+    updateFilters({ educationTarget });
   };
 
   const setRawQuery = (rawQuery: string) => {
@@ -78,9 +107,10 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       filters: {
         location: 'All Chennai',
         radiusKm: 25,
-        grade: 'Any Grade',
-        budgetMin: 40000,
+        budgetMin: 30000,
         budgetMax: 350000,
+        educationTarget: 'all',
+        grade: 'Any Grade',
         curriculums: [],
         schoolTypes: [],
         requiredFacilities: [],
@@ -88,31 +118,83 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         requiresTransport: false,
         requiresHostel: false,
         requiresSpecialNeeds: false,
+        preschool: {
+          programs: [],
+          pedagogy: [],
+          daycare: false,
+          outdoorPlay: false,
+        },
       },
       sortBy: 'best_match',
     });
   };
 
-  // Natural language query processor that updates the structured filters
+  // Natural language query processor that updates structured filters
   const applyNaturalLanguageQuery = (query: string) => {
     const lower = query.toLowerCase();
-    const newFilters = { ...searchState.filters };
+    const newFilters: SearchFilters = {
+      ...searchState.filters,
+      preschool: { ...searchState.filters.preschool },
+    };
 
-    // Extract location
-    if (lower.includes('tambaram')) {
-      newFilters.location = 'Tambaram & GST Corridor';
-    } else if (lower.includes('omr') || lower.includes('sholinganallur')) {
-      newFilters.location = 'OMR / Sholinganallur';
-    } else if (lower.includes('adyar')) {
-      newFilters.location = 'Adyar & Besant Nagar';
-    } else if (lower.includes('anna nagar')) {
-      newFilters.location = 'Anna Nagar & Mogappair';
-    } else if (lower.includes('porur')) {
-      newFilters.location = 'Porur & Manapakkam';
+    // 1. Detect Education Target: Preschool vs School vs Combined
+    const hasPreschoolKeyword =
+      lower.includes('preschool') ||
+      lower.includes('playschool') ||
+      lower.includes('playgroup') ||
+      lower.includes('nursery') ||
+      lower.includes('lkg') ||
+      lower.includes('ukg') ||
+      lower.includes('kindergarten') ||
+      lower.includes('montessori') ||
+      lower.includes('toddler') ||
+      lower.includes('daycare') ||
+      lower.includes('3-year') ||
+      lower.includes('3 year') ||
+      lower.includes('4-year') ||
+      lower.includes('4 year') ||
+      lower.includes('2-year') ||
+      lower.includes('2 year');
+
+    const hasSchoolKeyword =
+      lower.includes('class') ||
+      lower.includes('grade') ||
+      lower.includes('cbse') ||
+      lower.includes('icse') ||
+      lower.includes('cambridge') ||
+      lower.includes('igcse') ||
+      lower.includes('high school') ||
+      lower.includes('secondary');
+
+    if (lower.includes('preschool and') || lower.includes('preschool +') || lower.includes('grade 1 onwards') || (hasPreschoolKeyword && hasSchoolKeyword)) {
+      newFilters.educationTarget = 'combined';
+    } else if (hasPreschoolKeyword) {
+      newFilters.educationTarget = 'preschool';
+    } else if (hasSchoolKeyword) {
+      newFilters.educationTarget = 'school';
     }
 
-    // Extract budget
-    if (lower.includes('1 lakh') || lower.includes('1l') || lower.includes('1,00,000')) {
+    // 2. Extract Location
+    if (lower.includes('tambaram')) {
+      newFilters.location = 'Tambaram & GST Corridor';
+    } else if (lower.includes('omr') || lower.includes('sholinganallur') || lower.includes('karapakkam')) {
+      newFilters.location = 'OMR / Sholinganallur';
+    } else if (lower.includes('adyar') || lower.includes('besant nagar')) {
+      newFilters.location = 'Adyar & Besant Nagar';
+    } else if (lower.includes('anna nagar') || lower.includes('mogappair')) {
+      newFilters.location = 'Anna Nagar & Mogappair';
+    } else if (lower.includes('porur') || lower.includes('manapakkam') || lower.includes('gerugambakkam')) {
+      newFilters.location = 'Porur & Manapakkam';
+    } else if (lower.includes('velachery') || lower.includes('guindy')) {
+      newFilters.location = 'Velachery & Guindy';
+    }
+
+    // 3. Extract Budget
+    if (lower.includes('50k') || lower.includes('50,000') || lower.includes('50 thousand')) {
+      newFilters.budgetMax = 50000;
+    } else if (lower.includes('80,000') || lower.includes('80k') || lower.includes('80 thousand')) {
+      newFilters.budgetMax = 80000;
+    } else if (lower.includes('1 lakh') || lower.includes('1l') || lower.includes('1,00,000')) {
       newFilters.budgetMax = 100000;
     } else if (lower.includes('1.2') || lower.includes('1.2l') || lower.includes('1.2 lakh')) {
       newFilters.budgetMax = 125000;
@@ -122,17 +204,62 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       newFilters.budgetMax = 200000;
     }
 
-    // Extract curriculum
-    const curriculums: Curriculum[] = [];
-    if (lower.includes('cbse')) curriculums.push('CBSE');
-    if (lower.includes('icse')) curriculums.push('ICSE');
-    if (lower.includes('cambridge') || lower.includes('igcse')) curriculums.push('Cambridge (IGCSE)');
-    if (lower.includes('ib') || lower.includes('international baccalaureate')) curriculums.push('IB World');
-    if (curriculums.length > 0) {
-      newFilters.curriculums = curriculums;
+    // 4. Preschool specific: Age and Programs
+    const ageMatch = lower.match(/(\d+)[ -]year[ -]old/) || lower.match(/(\d+)\s*years/);
+    if (ageMatch && ageMatch[1]) {
+      const age = parseInt(ageMatch[1], 10);
+      newFilters.preschool.ageYears = age;
+      if (age <= 2.5) {
+        newFilters.preschool.programs = ['playgroup'];
+      } else if (age <= 3.5) {
+        newFilters.preschool.programs = ['nursery'];
+      } else if (age <= 4.5) {
+        newFilters.preschool.programs = ['lkg'];
+      } else {
+        newFilters.preschool.programs = ['ukg'];
+      }
     }
 
-    // Extract facilities
+    const preschoolProgs: PreschoolProgram[] = [];
+    if (lower.includes('playgroup') || lower.includes('toddler')) preschoolProgs.push('playgroup');
+    if (lower.includes('nursery')) preschoolProgs.push('nursery');
+    if (lower.includes('lkg') || lower.includes('junior kg')) preschoolProgs.push('lkg');
+    if (lower.includes('ukg') || lower.includes('senior kg')) preschoolProgs.push('ukg');
+    if (preschoolProgs.length > 0) {
+      newFilters.preschool.programs = preschoolProgs;
+    }
+
+    // 5. Preschool specific: Learning Approach / Pedagogy
+    const pedagogyList: string[] = [];
+    if (lower.includes('montessori')) pedagogyList.push('Montessori');
+    if (lower.includes('play-way') || lower.includes('play way') || lower.includes('playway')) pedagogyList.push('Play-way');
+    if (lower.includes('reggio')) pedagogyList.push('Reggio Emilia');
+    if (lower.includes('waldorf') || lower.includes('steiner')) pedagogyList.push('Waldorf-inspired');
+    if (lower.includes('activity')) pedagogyList.push('Activity-based');
+    if (pedagogyList.length > 0) {
+      newFilters.preschool.pedagogy = pedagogyList;
+    }
+
+    // 6. Childcare & Daycare
+    if (lower.includes('daycare') || lower.includes('day care') || lower.includes('creche')) {
+      newFilters.preschool.daycare = true;
+    }
+    if (lower.includes('extended') || lower.includes('late hours') || lower.includes('working parent')) {
+      newFilters.preschool.extendedHours = true;
+    }
+    if (lower.includes('meal') || lower.includes('snack') || lower.includes('food')) {
+      newFilters.preschool.meals = true;
+    }
+
+    // 7. Facilities (Outdoor play, splash, robotics, swimming)
+    if (lower.includes('outdoor play') || lower.includes('outdoor') || lower.includes('garden') || lower.includes('sand pit')) {
+      newFilters.preschool.outdoorPlay = true;
+    }
+    if (lower.includes('indoor play') || lower.includes('soft play')) {
+      newFilters.preschool.indoorPlay = true;
+    }
+
+    // K-12 facilities
     const facilities: string[] = [];
     if (lower.includes('robotics') || lower.includes('stem')) facilities.push('Robotics & STEM Lab');
     if (lower.includes('swimming') || lower.includes('pool')) facilities.push('Swimming Pool');
@@ -142,13 +269,27 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       newFilters.requiredFacilities = facilities;
     }
 
-    // Extract radius
+    // 8. Transport
+    if (lower.includes('transport') || lower.includes('bus') || lower.includes('van')) {
+      newFilters.requiresTransport = true;
+      newFilters.preschool.transport = true;
+    }
+
+    // 9. Curriculum for K-12
+    const curriculums: Curriculum[] = [];
+    if (lower.includes('cbse')) curriculums.push('CBSE');
+    if (lower.includes('icse')) curriculums.push('ICSE');
+    if (lower.includes('cambridge') || lower.includes('igcse')) curriculums.push('Cambridge (IGCSE)');
+    if (lower.includes('ib') || lower.includes('international baccalaureate')) curriculums.push('IB World');
+    if (curriculums.length > 0) {
+      newFilters.curriculums = curriculums;
+    }
+
+    // 10. Radius & Grade
     const kmMatch = lower.match(/(\d+)\s*km/);
     if (kmMatch && kmMatch[1]) {
       newFilters.radiusKm = parseInt(kmMatch[1], 10);
     }
-
-    // Extract grade
     const gradeMatch = lower.match(/class\s*(\d+)/) || lower.match(/grade\s*(\d+)/);
     if (gradeMatch && gradeMatch[1]) {
       newFilters.grade = `Class ${gradeMatch[1]}`;
@@ -161,49 +302,118 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
-  // Filter and sort computation
+  // Filter and dynamic scoring computation
   const filteredSchools = useMemo(() => {
     const { filters, sortBy } = searchState;
 
     const list = CHENNAI_SCHOOLS.filter((school) => {
-      // Distance filter
-      if (school.distanceKm > filters.radiusKm + 3) {
-        // give small grace room for display matching
+      // 1. Education target filtering
+      const isEarlyYearsInst = school.institutionType === 'preschool';
+      const isCombined = school.institutionType === 'combined';
+      const isStandardSchool = !school.institutionType || school.institutionType === 'school';
+
+      if (filters.educationTarget === 'preschool') {
+        if (!isEarlyYearsInst && !isCombined) return false;
+      } else if (filters.educationTarget === 'school') {
+        if (!isStandardSchool && !isCombined) return false;
+      } else if (filters.educationTarget === 'combined') {
+        if (!isCombined) return false;
+      }
+
+      // 2. Distance filter
+      if (filters.radiusKm > 0 && school.distanceKm > filters.radiusKm + 4) {
         return false;
       }
 
-      // Budget filter (check if minimum fee <= budgetMax)
+      // 3. Location corridor filter (if not "All Chennai")
+      if (filters.location && filters.location !== 'All Chennai') {
+        const normLoc = filters.location.toLowerCase();
+        const schoolArea = (school.area + ' ' + school.neighbourhood.area).toLowerCase();
+        // Match key parts
+        if (normLoc.includes('tambaram') && !schoolArea.includes('tambaram') && !schoolArea.includes('mudichur')) {
+          if (school.distanceKm > 10) return false;
+        } else if (normLoc.includes('omr') && !schoolArea.includes('omr') && !schoolArea.includes('sholinganallur') && !schoolArea.includes('karapakkam')) {
+          if (school.distanceKm > 10) return false;
+        } else if (normLoc.includes('adyar') && !schoolArea.includes('adyar') && !schoolArea.includes('besant')) {
+          if (school.distanceKm > 10) return false;
+        } else if (normLoc.includes('anna nagar') && !schoolArea.includes('anna nagar') && !schoolArea.includes('mogappair')) {
+          if (school.distanceKm > 10) return false;
+        } else if (normLoc.includes('porur') && !schoolArea.includes('porur') && !schoolArea.includes('gerugambakkam') && !schoolArea.includes('kolapakkam')) {
+          if (school.distanceKm > 10) return false;
+        } else if (normLoc.includes('velachery') && !schoolArea.includes('velachery') && !schoolArea.includes('guindy')) {
+          if (school.distanceKm > 10) return false;
+        }
+      }
+
+      // 4. Budget filter (minimum fee <= budgetMax with 20% grace)
       if (filters.budgetMax > 0 && school.annualFeeMin > filters.budgetMax * 1.25) {
         return false;
       }
 
-      // Curriculums filter (if any selected, school must support at least one)
-      if (filters.curriculums.length > 0) {
-        const hasCurriculum = school.curriculum.some((c) => filters.curriculums.includes(c));
-        if (!hasCurriculum) return false;
+      // 5. Preschool specific filters
+      if (isEarlyYearsInst || (isCombined && filters.educationTarget === 'preschool')) {
+        // Program filter
+        if (filters.preschool.programs && filters.preschool.programs.length > 0) {
+          const supported = school.preschoolPrograms || [];
+          const hasProg = filters.preschool.programs.some((p) => supported.includes(p));
+          if (!hasProg) return false;
+        }
+
+        // Pedagogy filter
+        if (filters.preschool.pedagogy && filters.preschool.pedagogy.length > 0) {
+          const supportedPedagogy = (school.pedagogy || []).map((p) => p.toLowerCase());
+          const hasPedagogy = filters.preschool.pedagogy.some((req) =>
+            supportedPedagogy.some((sp) => sp.includes(req.toLowerCase()))
+          );
+          if (!hasPedagogy) return false;
+        }
+
+        // Daycare filter
+        if (filters.preschool.daycare && !school.daycare) {
+          return false;
+        }
+
+        // Outdoor play filter
+        if (filters.preschool.outdoorPlay && !school.outdoorPlay) {
+          return false;
+        }
       }
 
-      // School type filter
-      if (filters.schoolTypes.length > 0) {
-        const hasType = school.schoolType.some((t) => filters.schoolTypes.includes(t));
-        if (!hasType) return false;
-      }
+      // 6. Regular K-12 specific filters (only apply when not strictly filtering dedicated preschools)
+      if (!isEarlyYearsInst && filters.educationTarget !== 'preschool') {
+        if (filters.curriculums.length > 0) {
+          const hasCurriculum = school.curriculum.some((c) => filters.curriculums.includes(c));
+          if (!hasCurriculum) return false;
+        }
 
-      // Special needs
-      if (filters.requiresSpecialNeeds && !school.hasSpecialNeedsSupport) {
-        return false;
-      }
+        if (filters.schoolTypes.length > 0) {
+          const hasType = school.schoolType.some((t) => filters.schoolTypes.includes(t));
+          if (!hasType) return false;
+        }
 
-      // Hostel
-      if (filters.requiresHostel && !school.hasHostel) {
-        return false;
+        if (filters.requiresSpecialNeeds && !school.hasSpecialNeedsSupport) {
+          return false;
+        }
+
+        if (filters.requiresHostel && !school.hasHostel) {
+          return false;
+        }
       }
 
       return true;
     });
 
-    // Dynamic match score adjustment & sorting
-    return list.sort((a, b) => {
+    // Compute dynamic fit score for each candidate school based on current priorities
+    const scoredList = list.map((school) => {
+      const dynamicScore = calculateSchoolFitScore(school, filters);
+      return {
+        ...school,
+        matchScore: dynamicScore,
+      };
+    });
+
+    // Dynamic sort
+    return scoredList.sort((a, b) => {
       switch (sortBy) {
         case 'distance_asc':
           return a.distanceKm - b.distanceKm;
@@ -222,13 +432,23 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (searchState.filters.curriculums.length > 0) count += searchState.filters.curriculums.length;
-    if (searchState.filters.schoolTypes.length > 0) count += searchState.filters.schoolTypes.length;
-    if (searchState.filters.requiredFacilities.length > 0) count += searchState.filters.requiredFacilities.length;
-    if (searchState.filters.budgetMax < 300000) count += 1;
-    if (searchState.filters.radiusKm < 20) count += 1;
-    if (searchState.filters.requiresSpecialNeeds) count += 1;
-    if (searchState.filters.requiresHostel) count += 1;
+    const f = searchState.filters;
+    if (f.educationTarget !== 'all') count += 1;
+    if (f.curriculums.length > 0) count += f.curriculums.length;
+    if (f.schoolTypes.length > 0) count += f.schoolTypes.length;
+    if (f.requiredFacilities.length > 0) count += f.requiredFacilities.length;
+    if (f.budgetMax < 250000) count += 1;
+    if (f.radiusKm < 20) count += 1;
+    if (f.requiresSpecialNeeds) count += 1;
+    if (f.requiresHostel) count += 1;
+
+    // Preschool count
+    if (f.preschool.programs && f.preschool.programs.length > 0) count += f.preschool.programs.length;
+    if (f.preschool.pedagogy && f.preschool.pedagogy.length > 0) count += f.preschool.pedagogy.length;
+    if (f.preschool.daycare) count += 1;
+    if (f.preschool.outdoorPlay) count += 1;
+    if (f.preschool.ageYears) count += 1;
+
     return count;
   }, [searchState.filters]);
 
@@ -238,6 +458,7 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         searchState,
         setSearchState,
         updateFilters,
+        setEducationTarget,
         setRawQuery,
         setSortBy,
         resetFilters,

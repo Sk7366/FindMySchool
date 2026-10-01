@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { X, Check, MapPin, GraduationCap, IndianRupee, BookOpen, Building2, Trophy, HeartHandshake } from 'lucide-react';
+import { X, Check, MapPin, GraduationCap, IndianRupee, BookOpen, Building2, Trophy, HeartHandshake, Baby } from 'lucide-react';
 import { useSearch } from '../../context/SearchContext';
-import { Curriculum, SchoolType } from '../../types/school';
+import { Curriculum, SchoolType, PreschoolProgram } from '../../types/school';
 import { useNavigate } from 'react-router-dom';
-import { getCurriculumColor, getFacilityCategoryColor } from '../../utils/categoryColors';
+import { getCurriculumColor, getFacilityCategoryColor, getPedagogyColor } from '../../utils/categoryColors';
 
-export type GuidedCategory = 'location' | 'grade' | 'budget' | 'curriculum' | 'schoolType' | 'activities' | 'special';
+export type GuidedCategory = 'location' | 'preschool' | 'curriculum' | 'budget' | 'activities' | 'grade' | 'schoolType' | 'special';
 
 interface GuidedSearchModalProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ interface GuidedSearchModalProps {
 
 const CATEGORIES: { id: GuidedCategory; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'location', label: 'Locality & Radius', icon: MapPin },
+  { id: 'preschool', label: 'Early Years / Playschool', icon: Baby },
   { id: 'curriculum', label: 'Board / Curriculum', icon: BookOpen },
   { id: 'budget', label: 'Annual Budget', icon: IndianRupee },
   { id: 'activities', label: 'Sports & STEM', icon: Trophy },
@@ -30,6 +31,23 @@ const CHENNAI_AREAS = [
   'Adyar & Besant Nagar',
   'Porur & Manapakkam',
   'Anna Nagar & Mogappair',
+  'Velachery & Guindy',
+];
+
+const PRESCHOOL_PROGRAMS: { id: PreschoolProgram; label: string; ageRange: string }[] = [
+  { id: 'playgroup', label: 'Playgroup / Toddler', ageRange: '1.5–2.5 years' },
+  { id: 'nursery', label: 'Nursery / Pre-KG', ageRange: '2.5–3.5 years' },
+  { id: 'lkg', label: 'LKG (Junior KG)', ageRange: '3.5–4.5 years' },
+  { id: 'ukg', label: 'UKG (Senior KG)', ageRange: '4.5–6 years' },
+];
+
+const PEDAGOGIES = [
+  'Montessori',
+  'Play-way',
+  'Reggio Emilia',
+  'Waldorf-inspired',
+  'Activity-based',
+  'Traditional',
 ];
 
 const GRADES = [
@@ -85,6 +103,28 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
     navigate('/results');
   };
 
+  const togglePreschoolProgram = (prog: PreschoolProgram) => {
+    const current = filters.preschool.programs || [];
+    const next = current.includes(prog)
+      ? current.filter((p) => p !== prog)
+      : [...current, prog];
+    updateFilters({
+      educationTarget: next.length > 0 ? 'preschool' : filters.educationTarget,
+      preschool: { ...filters.preschool, programs: next },
+    });
+  };
+
+  const togglePedagogy = (ped: string) => {
+    const current = filters.preschool.pedagogy || [];
+    const next = current.includes(ped)
+      ? current.filter((p) => p !== ped)
+      : [...current, ped];
+    updateFilters({
+      educationTarget: next.length > 0 ? 'preschool' : filters.educationTarget,
+      preschool: { ...filters.preschool, pedagogy: next },
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
@@ -123,21 +163,23 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveTab(cat.id)}
-                className={`flex items-center gap-1.5 py-2.5 sm:py-3 px-3 sm:px-3.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors cursor-pointer min-h-[40px] shrink-0 font-sans ${
+                className={`py-3 px-3.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all flex items-center gap-1.5 cursor-pointer min-h-[40px] shrink-0 ${
                   isCurrent
-                    ? 'border-[#0D9488] text-teal-900 bg-white'
-                    : 'border-transparent text-stone-600 hover:text-stone-900'
+                    ? 'border-[#0D9488] text-[#0D9488] bg-white/60'
+                    : 'border-transparent text-stone-600 hover:text-stone-900 hover:border-stone-300'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-teal-700' : 'text-stone-500'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-[#0D9488]' : 'text-stone-500'}`} />
                 <span>{cat.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Tab Content Body */}
+        {/* Tab Body */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 font-sans">
+          
+          {/* Location Tab */}
           {activeTab === 'location' && (
             <div className="space-y-4">
               <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
@@ -168,7 +210,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                 </div>
                 <input
                   type="range"
-                  min={3}
+                  min={2}
                   max={25}
                   value={filters.radiusKm}
                   onChange={(e) => updateFilters({ radiusKm: Number(e.target.value) })}
@@ -178,10 +220,105 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
+          {/* Preschool & Early Years Tab */}
+          {activeTab === 'preschool' && (
+            <div className="space-y-5">
+              <div>
+                <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                  Target Program
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRESCHOOL_PROGRAMS.map((prog) => {
+                    const isSelected = filters.preschool.programs?.includes(prog.id);
+                    return (
+                      <button
+                        key={prog.id}
+                        type="button"
+                        onClick={() => togglePreschoolProgram(prog.id)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-amber-400 bg-amber-50/80 text-amber-950 shadow-2xs'
+                            : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs">{prog.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-amber-700 stroke-[3]" />}
+                        </div>
+                        <span className="text-[11px] text-stone-500 mt-1">{prog.ageRange}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-stone-100">
+                <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
+                  Learning Approach / Pedagogy
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {PEDAGOGIES.map((ped) => {
+                    const isSelected = filters.preschool.pedagogy?.includes(ped);
+                    const pColor = getPedagogyColor(ped);
+                    return (
+                      <button
+                        key={ped}
+                        type="button"
+                        onClick={() => togglePedagogy(ped)}
+                        className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? `${pColor.badge} shadow-2xs`
+                            : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        <span>{ped}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-stone-100">
+                <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
+                  Working Parent Logistics & Care
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(filters.preschool.daycare)}
+                      onChange={(e) => updateFilters({
+                        educationTarget: 'preschool',
+                        preschool: { ...filters.preschool, daycare: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
+                    />
+                    <span className="font-semibold text-stone-800">Afternoon Daycare Available</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(filters.preschool.outdoorPlay)}
+                      onChange={(e) => updateFilters({
+                        educationTarget: 'preschool',
+                        preschool: { ...filters.preschool, outdoorPlay: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
+                    />
+                    <span className="font-semibold text-stone-800">Outdoor Sand & Nature Play</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Curriculum Tab */}
           {activeTab === 'curriculum' && (
             <div className="space-y-4">
               <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
-                Select Primary Educational Boards
+                Select Primary Educational Boards (Grades 1–12)
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {CURRICULUMS.map((curr) => {
@@ -212,6 +349,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
+          {/* Budget Tab */}
           {activeTab === 'budget' && (
             <div className="space-y-5">
               <div>
@@ -234,7 +372,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
 
               <input
                 type="range"
-                min={50000}
+                min={30000}
                 max={500000}
                 step={10000}
                 value={filters.budgetMax}
@@ -244,6 +382,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
+          {/* Activities / STEM */}
           {activeTab === 'activities' && (
             <div className="space-y-4">
               <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
@@ -278,10 +417,11 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
+          {/* Grade Level */}
           {activeTab === 'grade' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
-                Target Admission Grade for 2026-27
+                Select Classroom Entry Grade
               </span>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {GRADES.map((grade) => (
@@ -289,19 +429,20 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                     key={grade}
                     type="button"
                     onClick={() => updateFilters({ grade })}
-                    className={`py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
                       filters.grade === grade
-                        ? 'border-[#0D9488] bg-teal-50 text-teal-950 font-bold shadow-2xs'
+                        ? 'border-teal-600 bg-teal-50 text-teal-950 shadow-2xs'
                         : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
                     }`}
                   >
-                    {grade}
+                    <span>{grade}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
+          {/* School Type */}
           {activeTab === 'schoolType' && (
             <div className="space-y-4">
               <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
@@ -335,6 +476,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
+          {/* Special Support */}
           {activeTab === 'special' && (
             <div className="space-y-4">
               <div className="p-5 bg-teal-50/70 rounded-2xl border border-teal-200">
