@@ -46,11 +46,18 @@ export const SearchResultsPage: React.FC = () => {
     if (qParam && qParam !== rawQuery) {
       setRawQuery(qParam);
       applyNaturalLanguageQuery(qParam);
-    } else {
-      if (locParam) updateFilters({ location: locParam });
-      if (currParam) updateFilters({ curriculums: [currParam as any] });
-      if (targetParam) updateFilters({ educationTarget: targetParam });
-      if (progParam) updateFilters({ preschool: { programs: [progParam as any] } });
+    }
+    
+    const filterUpdates: any = {};
+    if (locParam) filterUpdates.location = locParam;
+    if (currParam) filterUpdates.curriculums = [currParam as any];
+    if (targetParam && ['all', 'preschool', 'school', 'combined'].includes(targetParam)) {
+      filterUpdates.educationTarget = targetParam;
+    }
+    if (progParam) filterUpdates.preschool = { programs: [progParam as any] };
+
+    if (Object.keys(filterUpdates).length > 0) {
+      updateFilters(filterUpdates);
     }
   }, [searchParams]);
 
@@ -59,7 +66,7 @@ export const SearchResultsPage: React.FC = () => {
     setQuickQuery(rawQuery);
   }, [rawQuery]);
 
-  const isSavedMode = searchParams.get('view') === 'saved';
+  const isSavedMode = searchParams.get('view') === 'saved' || searchParams.get('filter') === 'saved';
   const displaySchools = isSavedMode ? savedSchools : filteredSchools;
 
   const handleQuickSearch = (e: React.FormEvent) => {
@@ -70,8 +77,8 @@ export const SearchResultsPage: React.FC = () => {
     }
   };
 
-  const isPreschoolSearch = filters.educationTarget === 'preschool' || 
-    (filters.preschool.programs && filters.preschool.programs.length > 0);
+  const isPreschoolSearch = filters?.educationTarget === 'preschool' || 
+    Boolean(filters?.preschool?.programs && filters.preschool.programs.length > 0);
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900">
@@ -170,19 +177,19 @@ export const SearchResultsPage: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 pt-1 font-medium">
                   <span className="text-stone-500 font-semibold mr-0.5">Looking for:</span>
 
-                  {filters.preschool.ageYears && (
+                  {filters.preschool?.ageYears && (
                     <span className="bg-amber-100 text-amber-950 px-2.5 py-0.5 rounded-md border border-amber-300 font-bold text-[11px]">
                       Child: {filters.preschool.ageYears} yrs old
                     </span>
                   )}
 
-                  {filters.preschool.programs && filters.preschool.programs.map((prog) => (
+                  {filters.preschool?.programs && filters.preschool.programs.map((prog) => (
                     <span key={prog} className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-bold text-[11px] uppercase">
                       {prog}
                     </span>
                   ))}
 
-                  {filters.preschool.pedagogy && filters.preschool.pedagogy.map((ped) => {
+                  {filters.preschool?.pedagogy && filters.preschool.pedagogy.map((ped) => {
                     const pColor = getPedagogyColor(ped);
                     return (
                       <span key={ped} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${pColor.badge}`}>
@@ -197,7 +204,7 @@ export const SearchResultsPage: React.FC = () => {
                     </span>
                   )}
 
-                  {!isPreschoolSearch && filters.curriculums.map((c) => {
+                  {!isPreschoolSearch && (filters.curriculums || []).map((c) => {
                     const cColor = getCurriculumColor(c);
                     return (
                       <span key={c} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${cColor.badge}`}>
@@ -207,19 +214,19 @@ export const SearchResultsPage: React.FC = () => {
                   })}
 
                   <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-semibold">
-                    ≤ ₹{(filters.budgetMax / 100000).toFixed(1)}L/yr
+                    ≤ ₹{((filters.budgetMax || 150000) / 100000).toFixed(1)}L/yr
                   </span>
                   <span className="bg-teal-50 text-teal-900 px-2.5 py-0.5 rounded-md border border-teal-200 font-semibold">
-                    ≤ {filters.radiusKm} km radius
+                    ≤ {filters.radiusKm || 12} km radius
                   </span>
 
-                  {filters.preschool.daycare && (
+                  {filters.preschool?.daycare && (
                     <span className="bg-teal-50 text-teal-900 px-2 py-0.5 rounded-md border border-teal-200 font-semibold text-[11px]">
                       Daycare Preferred
                     </span>
                   )}
 
-                  {filters.preschool.outdoorPlay && (
+                  {filters.preschool?.outdoorPlay && (
                     <span className="bg-emerald-50 text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold text-[11px]">
                       Outdoor Play
                     </span>

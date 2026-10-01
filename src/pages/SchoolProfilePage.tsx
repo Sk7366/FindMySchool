@@ -69,7 +69,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
 
-  const primaryBoard = school.curriculum[0] || (school.pedagogy?.[0] || 'Early Years');
+  const primaryBoard = school.curriculum?.[0] || (school.pedagogy?.[0] || 'Early Years');
   const boardColor = isEarlyYears && school.pedagogy?.[0]
     ? getPedagogyColor(school.pedagogy[0])
     : getCurriculumColor(primaryBoard);
@@ -156,14 +156,14 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <span className="font-bold px-2.5 py-0.5 rounded-md text-[11px] border bg-teal-50 text-teal-950 border-teal-300">
                     Preschool + K–12 Campus
                   </span>
-                  {school.curriculum.map((c) => (
+                  {(school.curriculum || []).map((c) => (
                     <span key={c} className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] border ${getCurriculumColor(c).badge}`}>
                       {c}
                     </span>
                   ))}
                 </>
               ) : (
-                school.curriculum.map((c) => {
+                (school.curriculum || []).map((c) => {
                   const cColor = getCurriculumColor(c);
                   return (
                     <span key={c} className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] border ${cColor.badge}`}>
@@ -209,7 +209,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <SchoolIcon className="w-4 h-4 text-teal-700 shrink-0" />
                   <div>
                     <span className="font-bold text-stone-900 block">K–12 Academy</span>
-                    <span className="text-stone-600">Grade 1 to Class 12 ({school.curriculum.join(', ')})</span>
+                    <span className="text-stone-600">Grade 1 to Class 12 ({school.curriculum?.join(', ') || 'Standard Curriculum'})</span>
                   </div>
                 </div>
               </div>
@@ -294,23 +294,23 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           <div className="lg:col-span-5 space-y-2.5">
             <div className="aspect-16/10 rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 relative group shadow-sm">
               <img
-                src={school.photos[selectedPhotoIndex]?.url || school.photos[0]?.url}
-                alt={school.photos[selectedPhotoIndex]?.caption || school.name}
+                src={school.photos?.[selectedPhotoIndex]?.url || school.photos?.[0]?.url || ''}
+                alt={school.photos?.[selectedPhotoIndex]?.caption || school.name}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
               />
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-stone-950/80 via-stone-900/40 to-transparent p-3.5 text-white">
                 <span className="text-xs font-semibold block font-sans">
-                  {school.photos[selectedPhotoIndex]?.caption}
+                  {school.photos?.[selectedPhotoIndex]?.caption || school.name}
                 </span>
                 <span className="text-[11px] text-stone-300">
-                  {school.photos[selectedPhotoIndex]?.category} · Photo {selectedPhotoIndex + 1} of {school.photos.length}
+                  {school.photos?.[selectedPhotoIndex]?.category || 'Campus'} · Photo {selectedPhotoIndex + 1} of {school.photos?.length || 1}
                 </span>
               </div>
             </div>
 
             {/* Thumbnail selector */}
             <div className="grid grid-cols-4 gap-2">
-              {school.photos.map((photo, idx) => (
+              {(school.photos || []).map((photo, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -484,7 +484,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {school.matchReasons.map((reason) => (
+                {(school.matchReasons || []).map((reason) => (
                   <div
                     key={reason.id}
                     className={`p-4 rounded-xl border flex items-start gap-3 ${
@@ -616,7 +616,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       <>
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Affiliated Board</span>
-                          <span className="font-semibold text-stone-900">{school.curriculum.join(', ')}</span>
+                          <span className="font-semibold text-stone-900">{school.curriculum?.join(', ') || 'Independent / State Recognized'}</span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
@@ -639,7 +639,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Campus Facilities</span>
                           <span className="font-semibold text-stone-900 text-right truncate max-w-[140px]">
-                            {school.facilities.slice(0, 3).map((f) => f.name).join(', ')}
+                            {(school.facilities || []).slice(0, 3).map((f) => f.name).join(', ')}
                           </span>
                         </div>
 
@@ -693,7 +693,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 Academic Framework & Board Affiliation
               </h3>
               <p className="text-xs text-stone-600 mt-1 font-sans">
-                Accredited boards: {school.curriculum.join(', ')} · Average Student-Teacher Cohort: {school.studentTeacherRatio}
+                Accredited boards: {school.curriculum?.join(', ') || 'Independent'} · Average Student-Teacher Cohort: {school.studentTeacherRatio}
               </p>
             </div>
 
@@ -702,7 +702,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 Scholastic Achievements & Milestones
               </h4>
               <ul className="space-y-2.5">
-                {school.academicHighlights.map((highlight, idx) => (
+                {(school.academicHighlights || []).map((highlight, idx) => (
                   <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-stone-700">
                     <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                     <span>{highlight}</span>
@@ -798,7 +798,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {school.facilities.map((fac) => {
+              {(school.facilities || []).map((fac) => {
                 const fColor = getFacilityCategoryColor(fac.category, fac.name);
                 return (
                   <div
@@ -845,11 +845,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </div>
 
               <span className={`text-xs font-bold px-3 py-1 rounded-full border self-start sm:self-auto ${
-                school.admissionStatus.includes('Open')
+                school.admissionStatus?.includes('Open')
                   ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
                   : 'bg-amber-50 text-amber-900 border-amber-200'
               }`}>
-                {school.admissionStatus}
+                {school.admissionStatus || 'Admissions Enquire'}
               </span>
             </div>
 
@@ -918,25 +918,25 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-[11px] text-stone-500 font-medium block">Commute Traffic</span>
-                <span className="text-sm font-bold text-stone-900">{school.neighbourhood.trafficIntensity}</span>
+                <span className="text-sm font-bold text-stone-900">{school.neighbourhood?.trafficIntensity || 'Moderate'}</span>
               </div>
 
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-[11px] text-stone-500 font-medium block">Nearest Transit</span>
-                <span className="text-sm font-semibold text-stone-900">{school.neighbourhood.nearestTransit}</span>
+                <span className="text-sm font-semibold text-stone-900">{school.neighbourhood?.nearestTransit || 'City transit corridors'}</span>
               </div>
 
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-[11px] text-stone-500 font-medium block">Surrounding Localities</span>
                 <span className="text-xs font-semibold text-stone-700">
-                  {school.neighbourhood.neighbouringLocalities.join(', ')}
+                  {school.neighbourhood?.neighbouringLocalities?.join(', ') || school.area}
                 </span>
               </div>
             </div>
 
             <div className="p-4 bg-teal-50/50 rounded-xl border border-teal-200/80 text-xs text-teal-950 leading-relaxed font-sans">
               <strong className="text-teal-900 block mb-1">Local Commute Advisory:</strong>
-              {school.neighbourhood.commuteNote}
+              {school.neighbourhood?.commuteNote || `Convenient access across ${school.area} and adjacent arterial sectors.`}
             </div>
           </div>
         )}

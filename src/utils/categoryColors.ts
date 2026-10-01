@@ -17,7 +17,18 @@ export interface ColorToken {
  * State Board → orange / coral
  * Cambridge / IGCSE → rose
  */
-export const getCurriculumColor = (curriculum: Curriculum | string): ColorToken => {
+export const getCurriculumColor = (curriculum?: Curriculum | string | null): ColorToken => {
+  if (!curriculum || typeof curriculum !== 'string') {
+    return {
+      text: 'text-stone-800',
+      bg: 'bg-stone-100/90',
+      border: 'border-stone-200/90',
+      dot: 'bg-stone-500',
+      accentBar: 'bg-teal-600',
+      badge: 'bg-stone-100/90 text-stone-800 border border-stone-200/80',
+    };
+  }
+
   const norm = curriculum.toLowerCase();
 
   if (norm.includes('cbse')) {
@@ -95,9 +106,9 @@ export const getCurriculumColor = (curriculum: Curriculum | string): ColorToken 
  * Student Support / Wellness → teal
  * Transport / Campus → slate / stone
  */
-export const getFacilityCategoryColor = (category: string, name = ''): ColorToken => {
-  const normCat = category.toLowerCase();
-  const normName = name.toLowerCase();
+export const getFacilityCategoryColor = (category?: string | null, name = ''): ColorToken => {
+  const normCat = (category || '').toLowerCase();
+  const normName = (name || '').toLowerCase();
 
   // Music check
   if (normName.includes('music') || normCat.includes('music')) {
@@ -179,7 +190,18 @@ export const getFacilityCategoryColor = (category: string, name = ''): ColorToke
  * Activity-based → orange
  * Traditional → slate / stone
  */
-export const getPedagogyColor = (pedagogy: string): ColorToken => {
+export const getPedagogyColor = (pedagogy?: string | null): ColorToken => {
+  if (!pedagogy || typeof pedagogy !== 'string') {
+    return {
+      text: 'text-stone-900',
+      bg: 'bg-stone-50/90',
+      border: 'border-stone-200/90',
+      dot: 'bg-stone-600',
+      accentBar: 'bg-stone-600',
+      badge: 'bg-stone-50/90 text-stone-900 border border-stone-200/80',
+    };
+  }
+
   const norm = pedagogy.toLowerCase();
   if (norm.includes('montessori')) {
     return {
@@ -248,8 +270,10 @@ export const getPedagogyColor = (pedagogy: string): ColorToken => {
  * 60–74 → amber
  * below 60 → slate
  */
-export const getMatchScoreStyle = (score: number) => {
-  if (score >= 90) {
+export const getMatchScoreStyle = (score?: number | null) => {
+  const safeScore = typeof score === 'number' && !isNaN(score) ? score : 75;
+
+  if (safeScore >= 90) {
     return {
       tier: 'Strong fit',
       textColor: 'text-teal-900',
@@ -260,7 +284,7 @@ export const getMatchScoreStyle = (score: number) => {
       badge: 'text-teal-900 bg-teal-50/80 border-teal-200',
     };
   }
-  if (score >= 75) {
+  if (safeScore >= 75) {
     return {
       tier: 'Good match',
       textColor: 'text-blue-900',
@@ -271,7 +295,7 @@ export const getMatchScoreStyle = (score: number) => {
       badge: 'text-blue-900 bg-blue-50/80 border-blue-200',
     };
   }
-  if (score >= 60) {
+  if (safeScore >= 60) {
     return {
       tier: 'Moderate fit',
       textColor: 'text-amber-900',

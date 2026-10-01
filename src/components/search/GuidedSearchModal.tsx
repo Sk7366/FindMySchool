@@ -104,7 +104,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
   };
 
   const togglePreschoolProgram = (prog: PreschoolProgram) => {
-    const current = filters.preschool.programs || [];
+    const current = filters?.preschool?.programs || [];
     const next = current.includes(prog)
       ? current.filter((p) => p !== prog)
       : [...current, prog];
@@ -115,7 +115,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
   };
 
   const togglePedagogy = (ped: string) => {
-    const current = filters.preschool.pedagogy || [];
+    const current = filters?.preschool?.pedagogy || [];
     const next = current.includes(ped)
       ? current.filter((p) => p !== ped)
       : [...current, ped];
@@ -229,7 +229,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   {PRESCHOOL_PROGRAMS.map((prog) => {
-                    const isSelected = filters.preschool.programs?.includes(prog.id);
+                    const isSelected = Boolean(filters?.preschool?.programs?.includes(prog.id));
                     return (
                       <button
                         key={prog.id}
@@ -258,7 +258,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PEDAGOGIES.map((ped) => {
-                    const isSelected = filters.preschool.pedagogy?.includes(ped);
+                    const isSelected = Boolean(filters?.preschool?.pedagogy?.includes(ped));
                     const pColor = getPedagogyColor(ped);
                     return (
                       <button
@@ -287,10 +287,10 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                   <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={Boolean(filters.preschool.daycare)}
+                      checked={Boolean(filters?.preschool?.daycare)}
                       onChange={(e) => updateFilters({
                         educationTarget: 'preschool',
-                        preschool: { ...filters.preschool, daycare: e.target.checked }
+                        preschool: { ...(filters?.preschool || {}), daycare: e.target.checked }
                       })}
                       className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
                     />
@@ -300,10 +300,10 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                   <label className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={Boolean(filters.preschool.outdoorPlay)}
+                      checked={Boolean(filters?.preschool?.outdoorPlay)}
                       onChange={(e) => updateFilters({
                         educationTarget: 'preschool',
-                        preschool: { ...filters.preschool, outdoorPlay: e.target.checked }
+                        preschool: { ...(filters?.preschool || {}), outdoorPlay: e.target.checked }
                       })}
                       className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
                     />
@@ -322,7 +322,8 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {CURRICULUMS.map((curr) => {
-                  const selected = filters.curriculums.includes(curr);
+                  const curriculums = filters?.curriculums || [];
+                  const selected = curriculums.includes(curr);
                   const cColor = getCurriculumColor(curr);
                   return (
                     <button
@@ -330,8 +331,8 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                       type="button"
                       onClick={() => {
                         const next = selected
-                          ? filters.curriculums.filter((c) => c !== curr)
-                          : [...filters.curriculums, curr];
+                          ? curriculums.filter((c) => c !== curr)
+                          : [...curriculums, curr];
                         updateFilters({ curriculums: next });
                       }}
                       className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
@@ -390,7 +391,8 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {FACILITIES.map((facility) => {
-                  const selected = filters.requiredFacilities.includes(facility);
+                  const required = filters?.requiredFacilities || [];
+                  const selected = required.includes(facility);
                   const fColor = getFacilityCategoryColor('Sports & STEM', facility);
                   return (
                     <button
@@ -398,8 +400,8 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                       type="button"
                       onClick={() => {
                         const next = selected
-                          ? filters.requiredFacilities.filter((f) => f !== facility)
-                          : [...filters.requiredFacilities, facility];
+                          ? required.filter((f) => f !== facility)
+                          : [...required, facility];
                         updateFilters({ requiredFacilities: next });
                       }}
                       className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
@@ -450,15 +452,16 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
               </span>
               <div className="grid grid-cols-2 gap-2.5">
                 {SCHOOL_TYPES.map((type) => {
-                  const selected = filters.schoolTypes.includes(type);
+                  const schoolTypes = filters?.schoolTypes || [];
+                  const selected = schoolTypes.includes(type);
                   return (
                     <button
                       key={type}
                       type="button"
                       onClick={() => {
                         const next = selected
-                          ? filters.schoolTypes.filter((t) => t !== type)
-                          : [...filters.schoolTypes, type];
+                          ? schoolTypes.filter((t) => t !== type)
+                          : [...schoolTypes, type];
                         updateFilters({ schoolTypes: next });
                       }}
                       className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${

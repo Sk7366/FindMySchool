@@ -111,7 +111,10 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
         {schools.map((school) => {
           const isSelected = selectedSchoolId === school.id;
           const isHovered = hoveredSchool?.id === school.id;
-          const bColor = getCurriculumColor(school.curriculum[0]);
+          const primaryProg = school.curriculum?.[0] || school.pedagogy?.[0] || 'Early Years';
+          const bColor = getCurriculumColor(primaryProg);
+          const mapX = school.coordinates?.mapX ?? 50;
+          const mapY = school.coordinates?.mapY ?? 50;
 
           return (
             <button
@@ -121,8 +124,8 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
               onMouseEnter={() => setHoveredSchool(school)}
               onMouseLeave={() => setHoveredSchool(null)}
               style={{
-                left: `${school.coordinates.mapX}%`,
-                top: `${school.coordinates.mapY}%`,
+                left: `${mapX}%`,
+                top: `${mapY}%`,
               }}
               className={`absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-200 cursor-pointer focus:outline-none z-10 ${
                 isSelected || isHovered ? 'scale-125 z-30' : 'hover:scale-110'
@@ -153,14 +156,16 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
                   {activeSchool.matchScore}% Match
                 </span>
                 <span className="text-[11px] text-stone-500 font-medium">
-                  {activeSchool.curriculum.join(', ')} · {activeSchool.distanceKm} km away
+                  {(activeSchool.curriculum && activeSchool.curriculum.length > 0)
+                    ? activeSchool.curriculum.join(', ')
+                    : (activeSchool.pedagogy?.join(' · ') || 'Early Years')} · {activeSchool.distanceKm} km away
                 </span>
               </div>
               <h4 className="font-editorial text-xs sm:text-sm font-bold text-stone-900 truncate">
                 {activeSchool.name}
               </h4>
               <p className="text-[11px] text-stone-600 truncate mt-0.5">
-                {activeSchool.area} · ₹{(activeSchool.annualFeeMin / 100000).toFixed(1)}L – {(activeSchool.annualFeeMax / 100000).toFixed(1)}L/yr
+                {activeSchool.area} · ₹{((activeSchool.annualFeeMin || 0) / 100000).toFixed(1)}L – {((activeSchool.annualFeeMax || 0) / 100000).toFixed(1)}L/yr
               </p>
             </div>
 

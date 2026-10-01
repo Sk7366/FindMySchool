@@ -47,7 +47,8 @@ export const ComparePage: React.FC = () => {
     (s) => !comparisonSchools.some((c) => c.id === s.id)
   );
 
-  const formatFee = (amount: number) => {
+  const formatFee = (amount?: number) => {
+    if (typeof amount !== 'number' || isNaN(amount)) return '₹—';
     return `₹${(amount / 100000).toFixed(1)}L`;
   };
 
@@ -84,8 +85,8 @@ export const ComparePage: React.FC = () => {
   }
 
   // Active pair for mobile side-by-side view
-  const schoolA = comparisonSchools[mobilePair[0]] || comparisonSchools[0];
-  const schoolB = comparisonSchools[mobilePair[1]] || comparisonSchools[Math.min(1, comparisonSchools.length - 1)];
+  const schoolA = comparisonSchools[mobilePair[0]] || comparisonSchools[0] || {} as School;
+  const schoolB = comparisonSchools[mobilePair[1]] || comparisonSchools[Math.min(1, comparisonSchools.length - 1)] || comparisonSchools[0] || {} as School;
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900">
@@ -166,7 +167,7 @@ export const ComparePage: React.FC = () => {
             const isEarly = school.institutionType === 'preschool';
             const bColor = isEarly
               ? { badge: 'bg-amber-50 text-amber-900 border-amber-300' }
-              : getCurriculumColor(school.curriculum[0]);
+              : getCurriculumColor(school.curriculum?.[0]);
 
             return (
               <div
@@ -231,7 +232,7 @@ export const ComparePage: React.FC = () => {
             <div className="p-3.5 bg-[#F5F1E8] border border-stone-200 rounded-2xl text-xs text-stone-800 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                <strong>Your Benchmark:</strong> Max ₹{(filters.budgetMax / 100000).toFixed(1)}L/yr, Commute ≤ {filters.radiusKm} km
+                <strong>Your Benchmark:</strong> Max ₹{(((filters?.budgetMax || 150000)) / 100000).toFixed(1)}L/yr, Commute ≤ {filters?.radiusKm || 12} km
               </span>
             </div>
 
@@ -242,11 +243,11 @@ export const ComparePage: React.FC = () => {
                   <IndianRupee className="w-3.5 h-3.5 text-amber-600" />
                   <span>Fees & Commute</span>
                 </span>
-                <span className="text-[11px] text-stone-500 font-medium">Budget: ₹{(filters.budgetMax / 100000).toFixed(1)}L</span>
+                <span className="text-[11px] text-stone-500 font-medium">Budget: ₹{(((filters?.budgetMax || 150000)) / 100000).toFixed(1)}L</span>
               </div>
               <div className="space-y-2.5">
                 {comparisonSchools.map((s) => {
-                  const fits = s.annualFeeMin <= filters.budgetMax;
+                  const fits = s.annualFeeMin <= (filters?.budgetMax || 150000);
                   return (
                     <div key={s.id} className="flex items-center justify-between text-xs py-1">
                       <div className="pr-2 min-w-0">
@@ -288,12 +289,12 @@ export const ComparePage: React.FC = () => {
                         {isEarly ? (
                           <>
                             <div>Pedagogy: <strong className="text-stone-900">{s.pedagogy?.join(' · ') || 'Play-way'}</strong></div>
-                            <div>Programs: <strong className="text-stone-900">{s.preschoolPrograms?.map((p) => p.toUpperCase()).join(', ')}</strong></div>
+                            <div>Programs: <strong className="text-stone-900">{s.preschoolPrograms?.map((p) => String(p).toUpperCase()).join(', ') || 'Playgroup to UKG'}</strong></div>
                             <div>Care Ratio: <strong className="text-stone-900">{s.childToCaregiverRatio || '1:8'}</strong></div>
                           </>
                         ) : (
                           <>
-                            <div>Board: <strong className="text-stone-900">{s.curriculum.join(', ')}</strong></div>
+                            <div>Board: <strong className="text-stone-900">{s.curriculum?.join(', ') || 'Independent'}</strong></div>
                             <div>Grades: <strong className="text-stone-900">{s.grades}</strong></div>
                             <div>Ratio: <strong className="text-stone-900 tabular-nums">{s.studentTeacherRatio}</strong></div>
                           </>
@@ -340,8 +341,8 @@ export const ComparePage: React.FC = () => {
               </div>
               <div className="space-y-2.5">
                 {comparisonSchools.map((s) => {
-                  const hasPool = s.facilities.some((f) => f.name.toLowerCase().includes('swimming'));
-                  const hasRobotics = s.facilities.some((f) => f.name.toLowerCase().includes('robotics'));
+                  const hasPool = (s.facilities || []).some((f) => f.name?.toLowerCase().includes('swimming'));
+                  const hasRobotics = (s.facilities || []).some((f) => f.name?.toLowerCase().includes('robotics'));
                   return (
                     <div key={s.id} className="p-2.5 rounded-xl bg-[#FAF9F6] border border-stone-200/70 text-xs space-y-1.5">
                       <span className="font-bold text-stone-900 block truncate">{s.name}</span>
@@ -434,10 +435,10 @@ export const ComparePage: React.FC = () => {
                 </span>
                 <div className="grid grid-cols-2 divide-x divide-stone-100 text-center font-semibold text-stone-800">
                   <div className="px-1 text-[11px]">
-                    {schoolA.pedagogy?.join(', ') || schoolA.curriculum.join(', ')}
+                    {schoolA.pedagogy?.join(', ') || schoolA.curriculum?.join(', ') || 'Early Years'}
                   </div>
                   <div className="px-1 text-[11px]">
-                    {schoolB.pedagogy?.join(', ') || schoolB.curriculum.join(', ')}
+                    {schoolB.pedagogy?.join(', ') || schoolB.curriculum?.join(', ') || 'Early Years'}
                   </div>
                 </div>
               </div>
@@ -484,7 +485,7 @@ export const ComparePage: React.FC = () => {
                   const isEarly = school.institutionType === 'preschool';
                   const bColor = isEarly
                     ? { badge: 'bg-amber-50 text-amber-900 border-amber-300' }
-                    : getCurriculumColor(school.curriculum[0]);
+                    : getCurriculumColor(school.curriculum?.[0]);
 
                   return (
                     <th key={school.id} className="p-5 w-64 align-top border-l border-stone-200">
@@ -560,10 +561,10 @@ export const ComparePage: React.FC = () => {
                     {s.institutionType === 'preschool' ? (
                       <div>
                         <span className="font-bold text-amber-900 block">
-                          Ages {s.ageRange?.min}–{s.ageRange?.max} yrs
+                          Ages {s.ageRange?.min ?? 2}–{s.ageRange?.max ?? 6} yrs
                         </span>
                         <span className="text-[11px] text-stone-600">
-                          {s.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ')}
+                          {s.preschoolPrograms?.map((p) => String(p).toUpperCase()).join(' · ') || 'Preschool Programs'}
                         </span>
                       </div>
                     ) : s.institutionType === 'combined' ? (
@@ -587,7 +588,7 @@ export const ComparePage: React.FC = () => {
                     {s.institutionType === 'preschool' ? (
                       <span className="text-stone-500 italic">Early Childhood Foundation (No Board Required)</span>
                     ) : (
-                      s.curriculum.join(', ')
+                      s.curriculum?.join(', ') || 'Independent'
                     )}
                   </td>
                 ))}
@@ -717,7 +718,7 @@ export const ComparePage: React.FC = () => {
                   Annual Tuition Range
                 </td>
                 {comparisonSchools.map((s) => {
-                  const fitsBudget = s.annualFeeMin <= filters.budgetMax;
+                  const fitsBudget = s.annualFeeMin <= (filters?.budgetMax || 150000);
                   return (
                     <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
                       <span className="font-bold text-stone-900 text-sm tabular-nums">
@@ -737,12 +738,13 @@ export const ComparePage: React.FC = () => {
                   Commute from Search Hub
                 </td>
                 {comparisonSchools.map((s) => {
-                  const fitsRadius = s.distanceKm <= filters.radiusKm;
+                  const targetRadius = filters?.radiusKm || 12;
+                  const fitsRadius = s.distanceKm <= targetRadius;
                   return (
                     <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
                       <span className="font-bold text-stone-900 tabular-nums">{s.distanceKm} km</span>
                       <span className={`block text-[11px] mt-0.5 font-medium ${fitsRadius ? 'text-teal-800' : 'text-stone-500'}`}>
-                        {fitsRadius ? '✓ Within target radius' : `+${(s.distanceKm - filters.radiusKm).toFixed(1)} km outside`}
+                        {fitsRadius ? '✓ Within target radius' : `+${(s.distanceKm - targetRadius).toFixed(1)} km outside`}
                       </span>
                     </td>
                   );
@@ -765,7 +767,7 @@ export const ComparePage: React.FC = () => {
                   Swimming / Water Play
                 </td>
                 {comparisonSchools.map((s) => {
-                  const hasPool = s.facilities.some((f) => f.name.toLowerCase().includes('swimming'));
+                  const hasPool = (s.facilities || []).some((f) => f.name?.toLowerCase().includes('swimming'));
                   const isEarly = s.institutionType === 'preschool';
                   return (
                     <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
@@ -790,7 +792,7 @@ export const ComparePage: React.FC = () => {
                   Robotics & Early STEM
                 </td>
                 {comparisonSchools.map((s) => {
-                  const hasRobotics = s.facilities.some((f) => f.name.toLowerCase().includes('robotics'));
+                  const hasRobotics = (s.facilities || []).some((f) => f.name?.toLowerCase().includes('robotics'));
                   const isEarly = s.institutionType === 'preschool';
                   return (
                     <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
@@ -841,9 +843,9 @@ export const ComparePage: React.FC = () => {
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
                     <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
-                      s.admissionStatus.includes('Open') ? 'bg-emerald-100 text-emerald-900' : 'bg-stone-100 text-stone-700'
+                      s.admissionStatus?.includes('Open') ? 'bg-emerald-100 text-emerald-900' : 'bg-stone-100 text-stone-700'
                     }`}>
-                      {s.admissionStatus}
+                      {s.admissionStatus || 'Admissions Enquire'}
                     </span>
                   </td>
                 ))}
@@ -916,7 +918,7 @@ export const ComparePage: React.FC = () => {
                       )}
                     </div>
                     <p className="text-[11px] text-stone-500">
-                      {s.area} · ₹{(s.annualFeeMin / 100000).toFixed(1)}L/yr
+                      {s.area} · {formatFee(s.annualFeeMin)}/yr
                     </p>
                   </div>
                   <button

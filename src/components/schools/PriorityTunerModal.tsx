@@ -13,8 +13,8 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
   const { searchState, updateFilters } = useSearch();
   const { filters } = searchState;
 
-  const isPreschool = filters.educationTarget === 'preschool' || 
-    (filters.preschool.programs && filters.preschool.programs.length > 0);
+  const isPreschool = filters?.educationTarget === 'preschool' || 
+    Boolean(filters?.preschool?.programs && filters.preschool.programs.length > 0);
 
   const defaultWeights = isPreschool ? DEFAULT_PRESCHOOL_WEIGHTS : DEFAULT_SCHOOL_WEIGHTS;
   const currentWeights: SearchPriorityWeights = filters.weights || defaultWeights;

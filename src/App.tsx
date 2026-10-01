@@ -11,6 +11,7 @@ import { SchoolProfilePage } from './pages/SchoolProfilePage';
 import { ComparePage } from './pages/ComparePage';
 import { HowItWorksPage } from './pages/HowItWorksPage';
 import { SchoolAdvisorModal } from './components/advisor/SchoolAdvisorModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 export default function App() {
   const [advisorOpen, setAdvisorOpen] = useState(false);
@@ -27,66 +28,78 @@ export default function App() {
   };
 
   return (
-    <SearchProvider>
-      <ShortlistProvider>
-        <ComparisonProvider>
-          <BrowserRouter>
-            <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-teal-100 selection:text-teal-900">
-              
-              {/* Global Navigation Header */}
-              <Navbar onOpenAdvisor={() => handleOpenAdvisor()} />
+    <ErrorBoundary>
+      <SearchProvider>
+        <ShortlistProvider>
+          <ComparisonProvider>
+            <BrowserRouter>
+              <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-stone-900 selection:bg-teal-100 selection:text-teal-900">
+                
+                {/* Global Navigation Header */}
+                <Navbar onOpenAdvisor={() => handleOpenAdvisor()} />
 
-              {/* Main Routing Content */}
-              <main className="flex-1">
-                <Routes>
-                  <Route
-                    path="/"
-                    element={<HomePage onOpenAdvisor={() => handleOpenAdvisor()} />}
-                  />
-                  <Route
-                    path="/search"
-                    element={<SearchResultsPage />}
-                  />
-                  <Route
-                    path="/results"
-                    element={<SearchResultsPage />}
-                  />
-                  <Route
-                    path="/school/:slug"
-                    element={
-                      <SchoolProfilePage
-                        onOpenAdvisorWithSchool={(name) => handleOpenAdvisor(name)}
+                {/* Main Routing Content */}
+                <main className="flex-1">
+                  <ErrorBoundary>
+                    <Routes>
+                      <Route
+                        path="/"
+                        element={<HomePage onOpenAdvisor={() => handleOpenAdvisor()} />}
                       />
-                    }
-                  />
-                  <Route
-                    path="/compare"
-                    element={<ComparePage />}
-                  />
-                  <Route
-                    path="/how-it-works"
-                    element={<HowItWorksPage />}
-                  />
-                  <Route
-                    path="*"
-                    element={<Navigate to="/" replace />}
-                  />
-                </Routes>
-              </main>
+                      <Route
+                        path="/search"
+                        element={<SearchResultsPage />}
+                      />
+                      <Route
+                        path="/results"
+                        element={<SearchResultsPage />}
+                      />
+                      <Route
+                        path="/school/:slug"
+                        element={
+                          <SchoolProfilePage
+                            onOpenAdvisorWithSchool={(name) => handleOpenAdvisor(name)}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/compare"
+                        element={<ComparePage />}
+                      />
+                      <Route
+                        path="/preschools"
+                        element={<Navigate to="/results?target=preschool" replace />}
+                      />
+                      <Route
+                        path="/shortlist"
+                        element={<Navigate to="/results?filter=saved" replace />}
+                      />
+                      <Route
+                        path="/how-it-works"
+                        element={<HowItWorksPage />}
+                      />
+                      <Route
+                        path="*"
+                        element={<Navigate to="/" replace />}
+                      />
+                    </Routes>
+                  </ErrorBoundary>
+                </main>
 
-              {/* Global Footer */}
-              <Footer />
+                {/* Global Footer */}
+                <Footer />
 
-              {/* Global Floating AI School Advisor Dialog */}
-              <SchoolAdvisorModal
-                isOpen={advisorOpen}
-                onClose={handleCloseAdvisor}
-                contextSchoolName={advisorSchoolContext}
-              />
-            </div>
-          </BrowserRouter>
-        </ComparisonProvider>
-      </ShortlistProvider>
-    </SearchProvider>
+                {/* Global Floating AI School Advisor Dialog */}
+                <SchoolAdvisorModal
+                  isOpen={advisorOpen}
+                  onClose={handleCloseAdvisor}
+                  contextSchoolName={advisorSchoolContext}
+                />
+              </div>
+            </BrowserRouter>
+          </ComparisonProvider>
+        </ShortlistProvider>
+      </SearchProvider>
+    </ErrorBoundary>
   );
 }

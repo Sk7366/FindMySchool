@@ -44,22 +44,23 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   const isCombined = school.institutionType === 'combined';
 
   // Badge and Accent calculation
-  const primaryBoard = school.curriculum[0] || (school.pedagogy?.[0] || 'Early Years');
+  const primaryBoard = school.curriculum?.[0] || (school.pedagogy?.[0] || 'Early Years');
   const boardColor = isEarlyYears && school.pedagogy?.[0]
     ? getPedagogyColor(school.pedagogy[0])
     : getCurriculumColor(primaryBoard);
   const scoreStyle = getMatchScoreStyle(school.matchScore);
 
-  const formatFee = (amount: number) => {
-    if (amount >= 100000) {
-      return `₹${(amount / 100000).toFixed(1)}L`;
+  const formatFee = (amount?: number) => {
+    const val = typeof amount === 'number' && !isNaN(amount) ? amount : 50000;
+    if (val >= 100000) {
+      return `₹${(val / 100000).toFixed(1)}L`;
     }
-    return `₹${(amount / 1000).toFixed(0)}k`;
+    return `₹${(val / 1000).toFixed(0)}k`;
   };
 
   // Helper to pick appropriate Lucide icon for facility
   const getFacilityIcon = (iconName: string, name: string) => {
-    const n = (iconName + ' ' + name).toLowerCase();
+    const n = ((iconName || '') + ' ' + (name || '')).toLowerCase();
     if (n.includes('tree') || n.includes('garden') || n.includes('sand')) return TreePine;
     if (n.includes('wave') || n.includes('swim') || n.includes('splash')) return Waves;
     if (n.includes('cpu') || n.includes('robot') || n.includes('maker') || n.includes('stem')) return Cpu;
@@ -72,13 +73,15 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   };
 
   // Split match reasons into confirmed positives and items to verify
-  const positiveReasons = school.matchReasons.filter((r) => r.type === 'positive');
-  const verifyReasons = school.matchReasons.filter((r) => r.type === 'partial' || r.type === 'unverified');
+  const allReasons = school.matchReasons || [];
+  const positiveReasons = allReasons.filter((r) => r.type === 'positive');
+  const verifyReasons = allReasons.filter((r) => r.type === 'partial' || r.type === 'unverified');
 
   // SVG ring calculations (radius 16, circumference ~ 100.53)
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (school.matchScore / 100) * circumference;
+  const safeScore = typeof school.matchScore === 'number' && !isNaN(school.matchScore) ? school.matchScore : 75;
+  const strokeDashoffset = circumference - (safeScore / 100) * circumference;
 
   return (
     <article className="group relative bg-white rounded-2xl border border-stone-200/90 hover:border-stone-300 transition-all duration-300 overflow-hidden flex flex-col md:flex-row hover:shadow-md">
@@ -142,7 +145,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs bg-teal-50/95 text-teal-950 border border-teal-200">
                 Early Years + School
               </span>
-              {school.curriculum.slice(0, 1).map((board) => (
+              {(school.curriculum || []).slice(0, 1).map((board) => (
                 <span
                   key={board}
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs ${getCurriculumColor(board).badge}`}
@@ -152,7 +155,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               ))}
             </>
           ) : (
-            school.curriculum.slice(0, 2).map((board) => {
+            (school.curriculum || []).slice(0, 2).map((board) => {
               const bColor = getCurriculumColor(board);
               return (
                 <span
@@ -289,14 +292,14 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
 
             <div className="flex items-center gap-1.5 text-stone-800 bg-[#F5F1E8]/70 px-2.5 py-1 rounded-lg border border-stone-200/70">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-              <span className="font-bold text-xs tabular-nums">{school.rating.toFixed(1)}</span>
-              <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount})</span>
+              <span className="font-bold text-xs tabular-nums">{(school.rating ?? 4.5).toFixed(1)}</span>
+              <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount ?? 0})</span>
             </div>
           </div>
 
           {/* Expressive Facility Iconography with consistent accent tokens */}
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {school.facilities.slice(0, 4).map((f) => {
+            {(school.facilities || []).slice(0, 4).map((f) => {
               const fColor = getFacilityCategoryColor(f.category, f.name);
               const IconComp = getFacilityIcon(f.iconName, f.name);
               return (

@@ -98,9 +98,12 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
         'Check child-to-washroom ratio on primary school floors',
       ];
     } else {
-      replyText = `For ${contextSchoolName || 'your Chennai search'} with a budget limit of ₹${(searchState.filters.budgetMax / 100000).toFixed(1)}L and target grade ${searchState.filters.grade}:
+      const budgetMax = searchState.filters?.budgetMax || 150000;
+      const targetGrade = searchState.filters?.grade || 'Any Grade';
+      const radiusKm = searchState.filters?.radiusKm || 12;
+      replyText = `For ${contextSchoolName || 'your Chennai search'} with a budget limit of ₹${(budgetMax / 100000).toFixed(1)}L and target grade ${targetGrade}:
 1. Curriculum alignment: Verified match with your stated preferences.
-2. Commute: Average travel radius is ${searchState.filters.radiusKm} km.
+2. Commute: Average travel radius is ${radiusKm} km.
 3. Verification advice: Request official receipts for sports and laboratory activity funds to ensure no surprise charges.`;
       checklist = [
         'Verify transport pick-up timing at your exact residential gate',
@@ -141,8 +144,8 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
     }
   };
 
-  const isPreschoolMode = searchState.filters.educationTarget === 'preschool' || 
-    (searchState.filters.preschool.programs && searchState.filters.preschool.programs.length > 0);
+  const isPreschoolMode = searchState.filters?.educationTarget === 'preschool' || 
+    Boolean(searchState.filters?.preschool?.programs && searchState.filters.preschool.programs.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">

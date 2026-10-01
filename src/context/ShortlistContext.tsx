@@ -16,7 +16,13 @@ export const ShortlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [savedIds, setSavedIds] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('fms_shortlist');
-      return stored ? JSON.parse(stored) : ['sch-001', 'sch-002'];
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((id): id is string => typeof id === 'string');
+        }
+      }
+      return ['sch-001', 'sch-002'];
     } catch {
       return ['sch-001', 'sch-002'];
     }

@@ -23,8 +23,9 @@ export const DEFAULT_SCHOOL_WEIGHTS: SearchPriorityWeights = {
  * Calculates a parent-friendly fit score (0-100) dynamically based on current user priorities
  */
 export function calculateSchoolFitScore(school: School, filters: SearchFilters): number {
+  const pFilters = filters.preschool || { programs: [], pedagogy: [] };
   const isPreschoolSearch = filters.educationTarget === 'preschool' || 
-    (filters.preschool.programs && filters.preschool.programs.length > 0) ||
+    (pFilters.programs && pFilters.programs.length > 0) ||
     Boolean(school.institutionType === 'preschool');
 
   const weights = filters.weights || (isPreschoolSearch ? DEFAULT_PRESCHOOL_WEIGHTS : DEFAULT_SCHOOL_WEIGHTS);
@@ -32,11 +33,12 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   // 1. Distance fit (0 to 1)
   let distanceScore = 1.0;
   if (filters.radiusKm > 0) {
-    if (school.distanceKm <= filters.radiusKm) {
+    const dist = school.distanceKm ?? 5;
+    if (dist <= filters.radiusKm) {
       // 1.0 down to 0.7 depending on closeness
-      distanceScore = 1.0 - (school.distanceKm / (filters.radiusKm * 1.5)) * 0.3;
+      distanceScore = 1.0 - (dist / (filters.radiusKm * 1.5)) * 0.3;
     } else {
-      const overage = school.distanceKm - filters.radiusKm;
+      const overage = dist - filters.radiusKm;
       distanceScore = Math.max(0.1, 0.7 - (overage / filters.radiusKm) * 0.6);
     }
   }
@@ -44,10 +46,11 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   // 2. Budget fit (0 to 1)
   let budgetScore = 1.0;
   if (filters.budgetMax > 0) {
-    if (school.annualFeeMin <= filters.budgetMax) {
+    const feeMin = school.annualFeeMin ?? 50000;
+    if (feeMin <= filters.budgetMax) {
       budgetScore = 1.0;
     } else {
-      const overageRatio = (school.annualFeeMin - filters.budgetMax) / filters.budgetMax;
+      const overageRatio = (feeMin - filters.budgetMax) / filters.budgetMax;
       budgetScore = Math.max(0.2, 1.0 - overageRatio * 1.5);
     }
   }
@@ -55,13 +58,13 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   // 3. Program / Age / Grade fit (0 to 1)
   let programScore = 0.85; // default reasonable base
   if (isPreschoolSearch) {
-    const requestedPrograms = filters.preschool.programs;
+    const requestedPrograms = pFilters.programs;
     if (requestedPrograms && requestedPrograms.length > 0) {
       const supportedPrograms = school.preschoolPrograms || [];
       const matchCount = requestedPrograms.filter((p) => supportedPrograms.includes(p)).length;
       programScore = matchCount > 0 ? (matchCount / requestedPrograms.length) * 0.3 + 0.7 : 0.4;
-    } else if (filters.preschool.ageYears) {
-      const age = filters.preschool.ageYears;
+    } else if (pFilters.ageYears) {
+      const age = pFilters.ageYears;
       if (school.ageRange && age >= school.ageRange.min && age <= school.ageRange.max) {
         programScore = 1.0;
       } else {
@@ -78,16 +81,18 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   // 4. Pedagogy / Curriculum fit (0 to 1)
   let pedagogyScore = 0.85;
   if (isPreschoolSearch) {
-    if (filters.preschool.pedagogy && filters.preschool.pedagogy.length > 0) {
-      const schoolPedagogy = (school.pedagogy || []).map((p) => p.toLowerCase());
-      const hasMatch = filters.preschool.pedagogy.some((req) => 
-        schoolPedagogy.some((sp) => sp.includes(req.toLowerCase()))
+    if (pFilters.pedagogy && pFilters.pedagogy.length > 0) {
+      const schoolPedagogy = (school.pedagogy || []).map((p) => (p || '').toLowerCase());
+      const hasMatch = pFilters.pedagogy.some((req) => 
+        schoolPedagogy.some((sp) => sp.includes((req || '').toLowerCase()))
       );
       pedagogyScore = hasMatch ? 1.0 : 0.4;
     }
   } else {
-    if (filters.curriculums.length > 0) {
-      const hasBoard = school.curriculum.some((c) => filters.curriculums.includes(c));
+    const curriculums = filters.curriculums || [];
+    if (curriculums.length > 0) {
+      const schoolCurrs = school.curriculum || [];
+      const hasBoard = schoolCurrs.some((c) => curriculums.includes(c));
       pedagogyScore = hasBoard ? 1.0 : 0.3;
     }
   }
@@ -97,22 +102,23 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   if (isPreschoolSearch) {
     let checks = 0;
     let passes = 0;
-    if (filters.preschool.outdoorPlay) {
+    if (pFilters.outdoorPlay) {
       checks++;
       if (school.outdoorPlay) passes++;
     }
-    if (filters.preschool.indoorPlay) {
+    if (pFilters.indoorPlay) {
       checks++;
       if (school.indoorPlay) passes++;
     }
     facilityScore = checks > 0 ? passes / checks : 0.9;
   } else {
-    if (filters.requiredFacilities.length > 0) {
-      const schoolFacNames = school.facilities.map((f) => f.name.toLowerCase());
-      const matched = filters.requiredFacilities.filter((rf) =>
-        schoolFacNames.some((sfn) => sfn.includes(rf.toLowerCase()))
+    const reqFac = filters.requiredFacilities || [];
+    if (reqFac.length > 0) {
+      const schoolFacNames = (school.facilities || []).map((f) => (f.name || '').toLowerCase());
+      const matched = reqFac.filter((rf) =>
+        schoolFacNames.some((sfn) => sfn.includes((rf || '').toLowerCase()))
       ).length;
-      facilityScore = matched / filters.requiredFacilities.length;
+      facilityScore = matched / reqFac.length;
     }
   }
 
@@ -121,19 +127,19 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   if (isPreschoolSearch) {
     let careChecks = 0;
     let carePasses = 0;
-    if (filters.preschool.daycare) {
+    if (pFilters.daycare) {
       careChecks++;
       if (school.daycare) carePasses++;
     }
-    if (filters.preschool.extendedHours) {
+    if (pFilters.extendedHours) {
       careChecks++;
       if (school.extendedHours) carePasses++;
     }
-    if (filters.preschool.meals) {
+    if (pFilters.meals) {
       careChecks++;
       if (school.meals) carePasses++;
     }
-    if (filters.preschool.transport) {
+    if (pFilters.transport) {
       careChecks++;
       if (school.hasTransport) carePasses++;
     }
@@ -154,6 +160,7 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
     careScore * weights.childcareOrCare;
 
   // Scale to 55 - 98 range for credible human realism
-  const finalScore = Math.round(Math.min(98, Math.max(55, rawScore * 100)));
+  const validScore = isNaN(rawScore) ? 0.8 : rawScore;
+  const finalScore = Math.round(Math.min(98, Math.max(55, validScore * 100)));
   return finalScore;
 }

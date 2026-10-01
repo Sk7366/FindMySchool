@@ -29,9 +29,9 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
   const [isExpanded, setIsExpanded] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  const isPreschool = filters.educationTarget === 'preschool' || 
-    (filters.preschool.programs && filters.preschool.programs.length > 0) ||
-    Boolean(filters.preschool.ageYears);
+  const isPreschool = filters?.educationTarget === 'preschool' || 
+    Boolean(filters?.preschool?.programs && filters.preschool.programs.length > 0) ||
+    Boolean(filters?.preschool?.ageYears);
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden transition-all mb-4">
@@ -90,9 +90,9 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                       <Baby className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                       <div>
                         <span className="font-bold text-stone-900">
-                          {filters.preschool.ageYears ? `Child: ${filters.preschool.ageYears} years old` : 'Child: Early Years'}
+                          {filters.preschool?.ageYears ? `Child: ${filters.preschool.ageYears} years old` : 'Child: Early Years'}
                         </span>
-                        {filters.preschool.programs && filters.preschool.programs.length > 0 && (
+                        {filters.preschool?.programs && filters.preschool.programs.length > 0 && (
                           <span className="block text-[11px] text-stone-500 uppercase">
                             Program: {filters.preschool.programs.join(', ')}
                           </span>
@@ -113,7 +113,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                     <div className="flex items-center gap-2">
                       <SchoolIcon className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                       <div>
-                        <span className="font-bold text-stone-900">Grade: {filters.grade}</span>
+                        <span className="font-bold text-stone-900">Grade: {filters.grade || 'Any Grade'}</span>
                         <span className="block text-[11px] text-stone-500">Entry cohort</span>
                       </div>
                     </div>
@@ -134,13 +134,13 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                     <span className="text-[11px] font-bold text-amber-950 block">Select Program:</span>
                     <div className="flex flex-wrap gap-1.5">
                       {(['playgroup', 'nursery', 'lkg', 'ukg'] as PreschoolProgram[]).map((p) => {
-                        const isSelected = filters.preschool.programs?.includes(p);
+                        const isSelected = filters.preschool?.programs?.includes(p);
                         return (
                           <button
                             key={p}
                             type="button"
                             onClick={() => {
-                              const current = filters.preschool.programs || [];
+                              const current = filters.preschool?.programs || [];
                               const updated = isSelected ? current.filter((x) => x !== p) : [...current, p];
                               updateFilters({ preschool: { programs: updated } });
                             }}
@@ -161,8 +161,8 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                   <div className="flex items-center gap-2">
                     <MapPin className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                     <div>
-                      <span className="font-bold text-stone-900">Area: {filters.location}</span>
-                      <span className="block text-[11px] text-stone-500">Within {filters.radiusKm} km radius</span>
+                      <span className="font-bold text-stone-900">Area: {filters.location || 'All Chennai'}</span>
+                      <span className="block text-[11px] text-stone-500">Within {filters.radiusKm || 12} km radius</span>
                     </div>
                   </div>
                   <button
@@ -205,7 +205,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                     <IndianRupee className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                     <div>
                       <span className="font-bold text-stone-900">
-                        Budget: Under ₹{(filters.budgetMax / 1000).toFixed(0)}k/year
+                        Budget: Under ₹{(((filters.budgetMax || 150000)) / 1000).toFixed(0)}k/year
                       </span>
                       <span className="block text-[11px] text-stone-500">Annual ceiling cap</span>
                     </div>
@@ -245,7 +245,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                 )}
 
                 {/* Outdoor play requirement if set as must-have */}
-                {filters.preschool.outdoorPlay && (
+                {filters.preschool?.outdoorPlay && (
                   <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/70 border border-emerald-200">
                     <div className="flex items-center gap-2">
                       <TreePine className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -282,7 +282,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                       <BookOpen className="w-3.5 h-3.5 text-blue-700 shrink-0" />
                       <div>
                         <span className="font-bold text-stone-900">
-                          Learning Approach: {filters.preschool.pedagogy && filters.preschool.pedagogy.length > 0 ? filters.preschool.pedagogy.join(', ') : 'Any Pedagogy'}
+                          Learning Approach: {filters.preschool?.pedagogy && filters.preschool.pedagogy.length > 0 ? filters.preschool.pedagogy.join(', ') : 'Any Pedagogy'}
                         </span>
                         <span className="block text-[11px] text-stone-500">Montessori, Play-way, etc.</span>
                       </div>
@@ -302,7 +302,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                       <BookOpen className="w-3.5 h-3.5 text-blue-700 shrink-0" />
                       <div>
                         <span className="font-bold text-stone-900">
-                          Curriculum: {filters.curriculums.join(', ')}
+                          Curriculum: {filters.curriculums?.join(', ') || 'Any Curriculum'}
                         </span>
                         <span className="block text-[11px] text-stone-500">Board preference</span>
                       </div>
@@ -324,13 +324,13 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                     <span className="text-[11px] font-bold text-blue-950 block">Select Pedagogy:</span>
                     <div className="flex flex-wrap gap-1.5">
                       {['Montessori', 'Play-way', 'Reggio Emilia', 'Activity-based', 'Waldorf-inspired', 'Traditional'].map((ped) => {
-                        const isSelected = filters.preschool.pedagogy?.includes(ped);
+                        const isSelected = filters.preschool?.pedagogy?.includes(ped);
                         return (
                           <button
                             key={ped}
                             type="button"
                             onClick={() => {
-                              const cur = filters.preschool.pedagogy || [];
+                              const cur = filters.preschool?.pedagogy || [];
                               const updated = isSelected ? cur.filter((x) => x !== ped) : [...cur, ped];
                               updateFilters({ preschool: { pedagogy: updated } });
                             }}
@@ -352,19 +352,19 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                     <Heart className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                     <div>
                       <span className="font-bold text-stone-900">
-                        Daycare & Extended Hours: {filters.preschool.daycare ? 'Preferred' : 'Optional'}
+                        Daycare & Extended Hours: {filters.preschool?.daycare ? 'Preferred' : 'Optional'}
                       </span>
                       <span className="block text-[11px] text-stone-500">Working parent schedule</span>
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => updateFilters({ preschool: { daycare: !filters.preschool.daycare } })}
+                    onClick={() => updateFilters({ preschool: { daycare: !filters.preschool?.daycare } })}
                     className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors cursor-pointer ${
-                      filters.preschool.daycare ? 'bg-teal-700 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                      filters.preschool?.daycare ? 'bg-teal-700 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                     }`}
                   >
-                    {filters.preschool.daycare ? '✓ Preferred' : '+ Add'}
+                    {filters.preschool?.daycare ? '✓ Preferred' : '+ Add'}
                   </button>
                 </div>
 

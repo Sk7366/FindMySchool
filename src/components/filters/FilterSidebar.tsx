@@ -62,7 +62,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
   const isAllOrCombined = filters.educationTarget === 'all' || filters.educationTarget === 'combined';
 
   const toggleCurriculum = (curriculum: Curriculum) => {
-    const current = filters.curriculums;
+    const current = filters.curriculums || [];
     const next = current.includes(curriculum)
       ? current.filter((c) => c !== curriculum)
       : [...current, curriculum];
@@ -70,7 +70,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
   };
 
   const toggleFacility = (facility: string) => {
-    const current = filters.requiredFacilities;
+    const current = filters.requiredFacilities || [];
     const next = current.includes(facility)
       ? current.filter((f) => f !== facility)
       : [...current, facility];
@@ -78,22 +78,22 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
   };
 
   const togglePreschoolProgram = (prog: PreschoolProgram) => {
-    const current = filters.preschool.programs || [];
+    const current = filters.preschool?.programs || [];
     const next = current.includes(prog)
       ? current.filter((p) => p !== prog)
       : [...current, prog];
     updateFilters({
-      preschool: { ...filters.preschool, programs: next },
+      preschool: { ...(filters.preschool || {}), programs: next },
     });
   };
 
   const togglePedagogy = (ped: string) => {
-    const current = filters.preschool.pedagogy || [];
+    const current = filters.preschool?.pedagogy || [];
     const next = current.includes(ped)
       ? current.filter((p) => p !== ped)
       : [...current, ped];
     updateFilters({
-      preschool: { ...filters.preschool, pedagogy: next },
+      preschool: { ...(filters.preschool || {}), pedagogy: next },
     });
   };
 
@@ -268,7 +268,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             <span className="text-[11px] font-bold text-stone-600 uppercase">Target Program</span>
             <div className="grid grid-cols-2 gap-1.5">
               {PRESCHOOL_PROGRAMS.map((prog) => {
-                const isChecked = filters.preschool.programs?.includes(prog.id);
+                const isChecked = filters.preschool?.programs?.includes(prog.id);
                 return (
                   <label
                     key={prog.id}
@@ -299,7 +299,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             <span className="text-[11px] font-bold text-stone-600 uppercase">Learning Approach</span>
             <div className="space-y-1">
               {PEDAGOGIES.map((ped) => {
-                const isChecked = filters.preschool.pedagogy?.includes(ped);
+                const isChecked = filters.preschool?.pedagogy?.includes(ped);
                 const pColor = getPedagogyColor(ped);
                 return (
                   <label
@@ -328,9 +328,9 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
               <input
                 type="checkbox"
-                checked={Boolean(filters.preschool.daycare)}
+                checked={Boolean(filters.preschool?.daycare)}
                 onChange={(e) => updateFilters({
-                  preschool: { ...filters.preschool, daycare: e.target.checked }
+                  preschool: { ...(filters.preschool || {}), daycare: e.target.checked }
                 })}
                 className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
               />
@@ -340,9 +340,9 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
               <input
                 type="checkbox"
-                checked={Boolean(filters.preschool.outdoorPlay)}
+                checked={Boolean(filters.preschool?.outdoorPlay)}
                 onChange={(e) => updateFilters({
-                  preschool: { ...filters.preschool, outdoorPlay: e.target.checked }
+                  preschool: { ...(filters.preschool || {}), outdoorPlay: e.target.checked }
                 })}
                 className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
               />
@@ -362,7 +362,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             </span>
             <div className="space-y-1.5">
               {CURRICULUM_OPTIONS.map((curr) => {
-                const isChecked = filters.curriculums.includes(curr);
+                const isChecked = (filters.curriculums || []).includes(curr);
                 const cColor = getCurriculumColor(curr);
                 return (
                   <label
@@ -415,7 +415,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             </span>
             <div className="space-y-1.5">
               {FACILITY_OPTIONS.map((fac) => {
-                const isChecked = filters.requiredFacilities.includes(fac);
+                const isChecked = (filters.requiredFacilities || []).includes(fac);
                 const fColor = getFacilityCategoryColor('Sports & STEM', fac);
                 return (
                   <label

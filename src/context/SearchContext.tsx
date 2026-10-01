@@ -52,13 +52,27 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.filters && !parsed.filters.preschool) {
-          parsed.filters.preschool = DEFAULT_FILTERS.preschool;
+        if (parsed && typeof parsed === 'object' && parsed.filters) {
+          const safeFilters: SearchFilters = {
+            ...DEFAULT_FILTERS,
+            ...parsed.filters,
+            preschool: {
+              ...DEFAULT_FILTERS.preschool,
+              ...(parsed.filters.preschool || {}),
+              programs: Array.isArray(parsed.filters.preschool?.programs) ? parsed.filters.preschool.programs : [],
+              pedagogy: Array.isArray(parsed.filters.preschool?.pedagogy) ? parsed.filters.preschool.pedagogy : [],
+            },
+            curriculums: Array.isArray(parsed.filters.curriculums) ? parsed.filters.curriculums : DEFAULT_FILTERS.curriculums,
+            schoolTypes: Array.isArray(parsed.filters.schoolTypes) ? parsed.filters.schoolTypes : DEFAULT_FILTERS.schoolTypes,
+            requiredFacilities: Array.isArray(parsed.filters.requiredFacilities) ? parsed.filters.requiredFacilities : DEFAULT_FILTERS.requiredFacilities,
+            requiredActivities: Array.isArray(parsed.filters.requiredActivities) ? parsed.filters.requiredActivities : [],
+          };
+          return {
+            rawQuery: typeof parsed.rawQuery === 'string' ? parsed.rawQuery : '',
+            filters: safeFilters,
+            sortBy: parsed.sortBy || 'best_match',
+          };
         }
-        if (parsed.filters && !parsed.filters.educationTarget) {
-          parsed.filters.educationTarget = 'all';
-        }
-        return parsed;
       } catch (e) {
         // fallback
       }
@@ -71,22 +85,28 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   useEffect(() => {
-    localStorage.setItem('fms_search_state', JSON.stringify(searchState));
+    try {
+      localStorage.setItem('fms_search_state', JSON.stringify(searchState));
+    } catch {
+      // ignore quota or private browsing errors
+    }
   }, [searchState]);
 
   const updateFilters = (partial: UpdateFiltersPayload) => {
-    setSearchState((prev) => ({
-      ...prev,
-      filters: {
-        ...prev.filters,
-        ...partial,
-        // merge preschool object if provided
-        preschool: {
-          ...prev.filters.preschool,
-          ...(partial.preschool || {}),
+    setSearchState((prev) => {
+      const currentPreschool = prev.filters?.preschool || DEFAULT_FILTERS.preschool;
+      return {
+        ...prev,
+        filters: {
+          ...prev.filters,
+          ...partial,
+          preschool: {
+            ...currentPreschool,
+            ...(partial.preschool || {}),
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   const setEducationTarget = (educationTarget: EducationTargetType) => {
@@ -352,42 +372,45 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       // 5. Preschool specific filters
       if (isEarlyYearsInst || (isCombined && filters.educationTarget === 'preschool')) {
+        const pFilters = filters.preschool || DEFAULT_FILTERS.preschool;
         // Program filter
-        if (filters.preschool.programs && filters.preschool.programs.length > 0) {
+        if (pFilters.programs && pFilters.programs.length > 0) {
           const supported = school.preschoolPrograms || [];
-          const hasProg = filters.preschool.programs.some((p) => supported.includes(p));
+          const hasProg = pFilters.programs.some((p) => supported.includes(p));
           if (!hasProg) return false;
         }
 
         // Pedagogy filter
-        if (filters.preschool.pedagogy && filters.preschool.pedagogy.length > 0) {
+        if (pFilters.pedagogy && pFilters.pedagogy.length > 0) {
           const supportedPedagogy = (school.pedagogy || []).map((p) => p.toLowerCase());
-          const hasPedagogy = filters.preschool.pedagogy.some((req) =>
+          const hasPedagogy = pFilters.pedagogy.some((req) =>
             supportedPedagogy.some((sp) => sp.includes(req.toLowerCase()))
           );
           if (!hasPedagogy) return false;
         }
 
         // Daycare filter
-        if (filters.preschool.daycare && !school.daycare) {
+        if (pFilters.daycare && !school.daycare) {
           return false;
         }
 
         // Outdoor play filter
-        if (filters.preschool.outdoorPlay && !school.outdoorPlay) {
+        if (pFilters.outdoorPlay && !school.outdoorPlay) {
           return false;
         }
       }
 
       // 6. Regular K-12 specific filters (only apply when not strictly filtering dedicated preschools)
       if (!isEarlyYearsInst && filters.educationTarget !== 'preschool') {
-        if (filters.curriculums.length > 0) {
-          const hasCurriculum = school.curriculum.some((c) => filters.curriculums.includes(c));
+        const currs = filters.curriculums || [];
+        if (currs.length > 0) {
+          const hasCurriculum = (school.curriculum || []).some((c) => currs.includes(c));
           if (!hasCurriculum) return false;
         }
 
-        if (filters.schoolTypes.length > 0) {
-          const hasType = school.schoolType.some((t) => filters.schoolTypes.includes(t));
+        const sTypes = filters.schoolTypes || [];
+        if (sTypes.length > 0) {
+          const hasType = (school.schoolType || []).some((t) => sTypes.includes(t));
           if (!hasType) return false;
         }
 
@@ -432,22 +455,22 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    const f = searchState.filters;
-    if (f.educationTarget !== 'all') count += 1;
-    if (f.curriculums.length > 0) count += f.curriculums.length;
-    if (f.schoolTypes.length > 0) count += f.schoolTypes.length;
-    if (f.requiredFacilities.length > 0) count += f.requiredFacilities.length;
-    if (f.budgetMax < 250000) count += 1;
-    if (f.radiusKm < 20) count += 1;
+    const f = searchState.filters || DEFAULT_FILTERS;
+    if (f.educationTarget && f.educationTarget !== 'all') count += 1;
+    if (f.curriculums?.length) count += f.curriculums.length;
+    if (f.schoolTypes?.length) count += f.schoolTypes.length;
+    if (f.requiredFacilities?.length) count += f.requiredFacilities.length;
+    if (typeof f.budgetMax === 'number' && f.budgetMax < 250000) count += 1;
+    if (typeof f.radiusKm === 'number' && f.radiusKm < 20) count += 1;
     if (f.requiresSpecialNeeds) count += 1;
     if (f.requiresHostel) count += 1;
 
     // Preschool count
-    if (f.preschool.programs && f.preschool.programs.length > 0) count += f.preschool.programs.length;
-    if (f.preschool.pedagogy && f.preschool.pedagogy.length > 0) count += f.preschool.pedagogy.length;
-    if (f.preschool.daycare) count += 1;
-    if (f.preschool.outdoorPlay) count += 1;
-    if (f.preschool.ageYears) count += 1;
+    if (f.preschool?.programs?.length) count += f.preschool.programs.length;
+    if (f.preschool?.pedagogy?.length) count += f.preschool.pedagogy.length;
+    if (f.preschool?.daycare) count += 1;
+    if (f.preschool?.outdoorPlay) count += 1;
+    if (f.preschool?.ageYears) count += 1;
 
     return count;
   }, [searchState.filters]);
