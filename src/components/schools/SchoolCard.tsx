@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Star, 
@@ -7,6 +7,8 @@ import {
   Check, 
   AlertTriangle, 
   ChevronRight, 
+  ChevronDown,
+  ChevronUp,
   School as SchoolIcon, 
   MapPin, 
   Waves, 
@@ -20,24 +22,94 @@ import {
   Sparkles,
   TreePine,
   Clock,
-  Baby
+  Baby,
+  ShieldCheck,
+  Building2,
+  Users
 } from 'lucide-react';
-import { School } from '../../types/school';
+import { School, Facility } from '../../types/school';
 import { useComparison } from '../../context/ComparisonContext';
 import { useShortlist } from '../../context/ShortlistContext';
+import { useSearch } from '../../context/SearchContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../../utils/categoryColors';
 import { VerificationBadge } from '../common/VerificationBadge';
 import { formatMatchReason } from '../../utils/matchProvenance';
+import { SearchFilters } from '../../types/search';
 
 interface SchoolCardProps {
   school: School;
   featured?: boolean;
 }
 
+/**
+ * Prioritizes facilities that directly relate to the user's search query or active filters.
+ * Returns the top 3-4 most relevant facilities.
+ */
+function getPrioritizedFacilities(
+  school: School,
+  rawQuery?: string,
+  filters?: SearchFilters
+): Facility[] {
+  const query = (rawQuery || '').toLowerCase();
+  const allFacilities = school.facilities || [];
+
+  // Keywords that map to facility interests
+  const scoringTerms: { pattern: RegExp; boost: number }[] = [];
+
+  if (query.includes('daycare') || filters?.preschool?.daycare) {
+    scoringTerms.push({ pattern: /daycare|nap|care|sleep|infant/i, boost: 50 });
+  }
+  if (query.includes('montessori') || filters?.preschool?.pedagogy?.includes('Montessori')) {
+    scoringTerms.push({ pattern: /montessori|sensory|activity lab|sensorial/i, boost: 50 });
+  }
+  if (query.includes('outdoor') || query.includes('play') || query.includes('sand') || query.includes('garden') || filters?.preschool?.outdoorPlay) {
+    scoringTerms.push({ pattern: /outdoor|garden|sand|turf|play/i, boost: 45 });
+  }
+  if (query.includes('swim') || query.includes('pool') || query.includes('aquatic') || filters?.requiredFacilities?.includes('Swimming Pool')) {
+    scoringTerms.push({ pattern: /swim|pool|splash|aquatic/i, boost: 50 });
+  }
+  if (query.includes('robot') || query.includes('stem') || query.includes('tech') || query.includes('code') || filters?.requiredFacilities?.includes('Robotics & STEM Lab')) {
+    scoringTerms.push({ pattern: /robot|stem|tech|arduino|maker|lego/i, boost: 50 });
+  }
+  if (query.includes('sport') || query.includes('turf') || query.includes('football') || query.includes('cricket') || filters?.requiredFacilities?.includes('Football Turf')) {
+    scoringTerms.push({ pattern: /turf|football|sport|cricket|athletic|badminton|court/i, boost: 45 });
+  }
+  if (query.includes('science') || query.includes('lab') || filters?.requiredFacilities?.includes('Science Laboratories')) {
+    scoringTerms.push({ pattern: /science|lab|physics|chemistry|biology/i, boost: 40 });
+  }
+  if (query.includes('art') || query.includes('music') || query.includes('drama') || query.includes('theatre') || filters?.requiredFacilities?.includes('Performing Arts Hall')) {
+    scoringTerms.push({ pattern: /art|music|drama|theatre|auditorium|performing/i, boost: 40 });
+  }
+  if (query.includes('cctv') || query.includes('safe') || query.includes('security')) {
+    scoringTerms.push({ pattern: /cctv|security|guard|stream/i, boost: 35 });
+  }
+  if (query.includes('counsel') || query.includes('wellness') || query.includes('sen') || query.includes('special needs') || filters?.requiresSpecialNeeds) {
+    scoringTerms.push({ pattern: /wellness|counselling|psycholog|special|remedial/i, boost: 40 });
+  }
+
+  // Score each facility
+  const scored = allFacilities.map((fac, originalIndex) => {
+    let score = 10 - originalIndex; // Preserve original ordering as fallback
+    const facText = `${fac.name} ${fac.highlight || ''} ${fac.category}`.toLowerCase();
+
+    for (const term of scoringTerms) {
+      if (term.pattern.test(facText)) {
+        score += term.boost;
+      }
+    }
+    return { facility: fac, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 4).map((s) => s.facility);
+}
+
 export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   const { toggleComparison, isComparing } = useComparison();
   const { toggleSave, isSaved } = useShortlist();
+  const { searchState } = useSearch();
   const [imageError, setImageError] = useState(false);
+  const [showAllReasons, setShowAllReasons] = useState(false);
 
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
@@ -74,10 +146,20 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
     return BookOpen;
   };
 
-  // Split match reasons into confirmed positives and items to verify
+  // Prioritize 3-4 facilities that directly relate to user's search
+  const prioritizedFacilities = useMemo(() => {
+    return getPrioritizedFacilities(school, searchState.rawQuery, searchState.filters);
+  }, [school, searchState.rawQuery, searchState.filters]);
+
+  // Match reasons management
   const allReasons = school.matchReasons || [];
-  const positiveReasons = allReasons.filter((r) => r.type === 'positive');
-  const verifyReasons = allReasons.filter((r) => r.type === 'partial' || r.type === 'unverified');
+  const allFormattedExplanations = useMemo(() => {
+    return allReasons.map(formatMatchReason);
+  }, [allReasons]);
+
+  const visibleExplanations = showAllReasons
+    ? allFormattedExplanations
+    : allFormattedExplanations.slice(0, 2);
 
   // SVG ring calculations (radius 16, circumference ~ 100.53)
   const radius = 16;
@@ -123,7 +205,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
         {/* Subtle photo vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-stone-900/40 via-transparent to-black/10 pointer-events-none" />
 
-        {/* Badges - semantic coloring */}
+        {/* Badges - semantic coloring without showing school-only info on preschools */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-1">
           {isEarlyYears ? (
             <>
@@ -171,39 +253,41 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
           )}
         </div>
 
-        {/* Quick action: Save bookmark with 44px tap target */}
+        {/* Discreet image bookmark shortcut (Tertiary action) */}
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
             toggleSave(school.id);
           }}
-          className={`absolute top-2.5 right-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
+          className={`absolute top-2.5 right-2.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
             saved
-              ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-md scale-105'
-              : 'bg-white/95 text-stone-700 hover:text-amber-600 hover:bg-white shadow-2xs backdrop-blur-xs'
+              ? 'bg-amber-500 text-white shadow-md scale-105'
+              : 'bg-white/80 text-stone-700 hover:text-amber-600 hover:bg-white shadow-2xs backdrop-blur-xs'
           }`}
           title={saved ? 'Remove from shortlist' : 'Save to shortlist'}
           aria-label={saved ? `Remove ${school.name} from shortlist` : `Save ${school.name} to shortlist`}
         >
-          <Bookmark className={`w-4 h-4 transition-transform active:scale-90 ${saved ? 'fill-current' : ''}`} />
+          <Bookmark className={`w-3.5 h-3.5 transition-transform active:scale-90 ${saved ? 'fill-current' : ''}`} />
         </button>
       </div>
 
       {/* Editorial Content Zone */}
       <div className="flex-1 p-4 sm:p-5 flex flex-col justify-between">
         <div>
-          {/* Header Row: Identity & Fit Ring */}
+          {/* Header Row: Primary Information Dominance (1. Name, 2. Fit, 3. Location/Distance) */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pr-2">
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium mb-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+              
+              {/* PRIMARY 3: Location / Distance + Provenance */}
+              <div className="flex items-center gap-1.5 text-xs text-stone-600 font-semibold mb-1 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-stone-800">
+                  <MapPin className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                   <span className="truncate">{school.area}</span>
-                  <span>·</span>
-                  <span className="tabular-nums">{school.distanceKm} km</span>
+                  <span className="text-stone-400">·</span>
+                  <span className="tabular-nums font-bold text-stone-900">{school.distanceKm} km commute</span>
                 </span>
-                <span>·</span>
+                <span className="text-stone-300">·</span>
                 <VerificationBadge
                   status={school.dataStatus || 'demo'}
                   lastVerifiedAt={school.lastVerifiedAt}
@@ -212,21 +296,23 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                 />
               </div>
 
-              <h2 className="font-editorial text-lg sm:text-xl font-bold text-stone-900 group-hover:text-teal-900 transition-colors leading-snug">
+              {/* PRIMARY 1: Institution Name (Dominant Heading) */}
+              <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-950 group-hover:text-teal-900 transition-colors leading-snug tracking-tight">
                 <Link to={`/school/${school.slug}`} className="focus:outline-none focus-visible:underline">
                   {school.name}
                 </Link>
               </h2>
 
+              {/* Tagline */}
               <p className="text-xs text-stone-600 mt-1 line-clamp-2 leading-relaxed font-sans">
                 {school.tagline}
               </p>
             </div>
 
-            {/* Circular Match Score Ring */}
+            {/* PRIMARY 2: Fit with Priorities (Distinctive Circular Match Score Ring) */}
             <div className="shrink-0 flex flex-col items-center">
-              <div className="relative w-12 h-12 flex items-center justify-center">
-                <svg className="w-12 h-12 -rotate-90" viewBox="0 0 40 40">
+              <div className="relative w-13 h-13 flex items-center justify-center">
+                <svg className="w-13 h-13 -rotate-90" viewBox="0 0 40 40">
                   <circle
                     cx="20"
                     cy="20"
@@ -249,104 +335,238 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[12px] font-bold font-sans text-stone-900 tabular-nums leading-none">
+                  <span className="text-[13px] font-bold font-sans text-stone-950 tabular-nums leading-none">
                     {school.matchScore}%
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-semibold text-stone-600 mt-0.5">
+              <span className="text-[10px] font-bold text-stone-700 mt-0.5 whitespace-nowrap">
                 {scoreStyle.tier}
               </span>
             </div>
           </div>
 
-          {/* Pricing & Key Metrics Bar */}
-          <div className="mt-3.5 pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          {/* PRIMARY 4 & 5: Fee & Age Range / Grades Bar (Visually dominant key metrics) */}
+          <div className="mt-3.5 p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/90 flex flex-wrap items-center justify-between gap-3 text-xs">
+            
+            {/* PRIMARY 4: Fee */}
             <div>
-              <span className="text-stone-500 text-[11px] block font-medium">
-                {isEarlyYears ? 'Annual Fee' : 'Estimated Annual Tuition'}
+              <span className="text-stone-500 text-[11px] block font-semibold uppercase tracking-wider">
+                {isEarlyYears ? 'Annual Preschool Fee' : 'Annual Tuition Fee'}
               </span>
-              <span className="font-bold text-stone-900 text-sm tabular-nums">
+              <span className="font-bold text-stone-950 text-base sm:text-lg tabular-nums">
                 {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
               </span>
-            </div>
-
-            <div>
-              <span className="text-stone-500 text-[11px] block font-medium">
-                {isEarlyYears ? 'Caregiver Ratio' : 'Teacher Ratio'}
-              </span>
-              <span className="font-semibold text-stone-800 tabular-nums">
-                {school.childToCaregiverRatio || school.studentTeacherRatio}
+              <span className="text-[10px] text-stone-500 block font-sans">
+                {isEarlyYears ? 'Program specific' : 'Grade specific'}
               </span>
             </div>
 
+            {/* PRIMARY 5: Age Range or Grades */}
             <div>
-              <span className="text-stone-500 text-[11px] block font-medium">
-                {isEarlyYears ? 'Programs' : 'Grades'}
+              <span className="text-stone-500 text-[11px] block font-semibold uppercase tracking-wider">
+                {isEarlyYears ? 'Age Range' : isCombined ? 'Age / Grades' : 'Grade Levels'}
               </span>
-              <span className="font-semibold text-stone-800">
-                {isEarlyYears 
-                  ? (school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ') || 'Toddler to UKG')
+              <span className="font-bold text-stone-950 text-base sm:text-lg">
+                {isEarlyYears && school.ageRange
+                  ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs`
+                  : isCombined
+                  ? `Ages ${school.ageRange?.min ?? 3}–18 yrs`
                   : school.grades}
               </span>
+              <span className="text-[10px] text-stone-500 block font-sans">
+                {isEarlyYears
+                  ? 'Early Childhood'
+                  : isCombined
+                  ? 'Pre-KG to Class 12'
+                  : 'Standard Grades'}
+              </span>
             </div>
 
-            {isEarlyYears && school.timings && (
-              <div className="hidden lg:block">
-                <span className="text-stone-500 text-[11px] block font-medium">Hours</span>
-                <span className="font-semibold text-stone-800 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-stone-400" />
-                  <span className="truncate max-w-[130px]">{school.timings}</span>
-                </span>
-              </div>
-            )}
+            {/* Caregiver or Teacher Ratio */}
+            <div>
+              <span className="text-stone-500 text-[11px] block font-semibold uppercase tracking-wider">
+                {isEarlyYears ? 'Caregiver Ratio' : 'Teacher Ratio'}
+              </span>
+              <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
+                {isEarlyYears ? (school.childToCaregiverRatio || '1:8') : (school.studentTeacherRatio || '1:16')}
+              </span>
+              <span className="text-[10px] text-stone-500 block font-sans">
+                {isEarlyYears ? 'Per classroom guide' : 'Average class density'}
+              </span>
+            </div>
 
-            <div className="flex items-center gap-1.5 text-stone-800 bg-[#F5F1E8]/70 px-2.5 py-1 rounded-lg border border-stone-200/70">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+            {/* Parent Rating */}
+            <div className="flex items-center gap-1.5 text-stone-800 bg-white px-2.5 py-1 rounded-lg border border-stone-200 self-center">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 shrink-0" />
               <span className="font-bold text-xs tabular-nums">{(school.rating ?? 4.5).toFixed(1)}</span>
               <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount ?? 0})</span>
             </div>
           </div>
 
-          {/* Expressive Facility Iconography with consistent accent tokens */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {(school.facilities || []).slice(0, 4).map((f) => {
-              const fColor = getFacilityCategoryColor(f.category, f.name);
-              const IconComp = getFacilityIcon(f.iconName, f.name);
-              return (
-                <div
-                  key={f.id}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${fColor.bg} ${fColor.text} ${fColor.border}`}
-                  title={f.highlight || f.name}
-                >
-                  <IconComp className="w-3 h-3 shrink-0" />
-                  <span className="truncate max-w-[130px]">{f.name}</span>
+          {/* COMBINED INSTITUTIONS: Clearly separate Early Years vs K–12 */}
+          {isCombined && (
+            <div className="mt-3 p-3 rounded-xl bg-white border border-stone-200/90 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between pb-1 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                <span>Composite Campus Structure</span>
+                <span className="text-teal-900 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                  Early Years + K–12 Academy
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                
+                {/* Early Years Wing */}
+                <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-200/80 space-y-1">
+                  <div className="flex items-center gap-1.5 text-amber-950 font-bold text-xs">
+                    <Baby className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span>Early Years Wing (Ages {school.ageRange?.min ?? 3}–{school.ageRange?.max ?? 6} yrs)</span>
+                  </div>
+                  <p className="text-[11px] text-stone-700">
+                    Programs: <strong className="text-stone-900">{school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ') || 'Pre-KG · LKG · UKG'}</strong>
+                  </p>
+                  <div className="flex items-center gap-2 text-[10px] text-stone-600 font-medium">
+                    <span>Approach: {school.pedagogy?.join(' · ') || 'Montessori & Play-way'}</span>
+                    {school.daycare && <span className="text-teal-800 font-bold">· Daycare available</span>}
+                  </div>
                 </div>
-              );
-            })}
+
+                {/* K–12 Academy */}
+                <div className="p-2.5 rounded-lg bg-teal-50/60 border border-teal-200/80 space-y-1">
+                  <div className="flex items-center gap-1.5 text-teal-950 font-bold text-xs">
+                    <SchoolIcon className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                    <span>K–12 Academy ({school.grades || 'Classes 1–12'})</span>
+                  </div>
+                  <p className="text-[11px] text-stone-700">
+                    Boards: <strong className="text-stone-900">{(school.curriculum || []).join(' · ') || 'CBSE'}</strong>
+                  </p>
+                  <div className="flex items-center gap-2 text-[10px] text-stone-600 font-medium">
+                    <span>Teacher ratio: {school.studentTeacherRatio || '1:16'}</span>
+                    <span>· Labs & Sports Turf</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* SECONDARY INFORMATION: Stage Divergence */}
+          {/* 1. PRESCHOOL SPECIFIC FIELDS (Age range, Programs, Learning approach, Hours, Daycare) */}
+          {isEarlyYears && (
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-2 rounded-lg bg-white border border-stone-200">
+                <span className="text-[10px] text-stone-500 font-semibold block uppercase">Programs</span>
+                <span className="font-bold text-stone-900 block truncate" title={school.preschoolPrograms?.map(p => p.toUpperCase()).join(', ')}>
+                  {school.preschoolPrograms?.map(p => p.toUpperCase()).join(' · ') || 'Toddler to UKG'}
+                </span>
+              </div>
+
+              <div className="p-2 rounded-lg bg-white border border-stone-200">
+                <span className="text-[10px] text-stone-500 font-semibold block uppercase">Learning Approach</span>
+                <span className="font-bold text-stone-900 block truncate" title={school.pedagogy?.join(' · ')}>
+                  {school.pedagogy?.join(' · ') || 'Montessori / Play-way'}
+                </span>
+              </div>
+
+              <div className="p-2 rounded-lg bg-white border border-stone-200">
+                <span className="text-[10px] text-stone-500 font-semibold block uppercase">Hours</span>
+                <span className="font-bold text-stone-900 block truncate flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-stone-400 shrink-0" />
+                  <span>{school.timings ? school.timings.split('(')[0].trim() : '8:30 AM – 1:30 PM'}</span>
+                </span>
+              </div>
+
+              <div className="p-2 rounded-lg bg-white border border-stone-200">
+                <span className="text-[10px] text-stone-500 font-semibold block uppercase">Daycare & Care</span>
+                <span className={`font-bold block truncate ${school.daycare ? 'text-teal-800' : 'text-stone-600'}`}>
+                  {school.daycare ? 'Daycare Available' : 'Half-day program'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 2. REGULAR SCHOOL SPECIFIC FIELDS (Board, Grades, Distance, Teacher ratio) */}
+          {!isEarlyYears && !isCombined && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-stone-200 font-medium">
+                <span className="text-[11px] text-stone-500">Board:</span>
+                <strong className="text-stone-900">{(school.curriculum || []).join(' · ')}</strong>
+              </div>
+
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-stone-200 font-medium">
+                <span className="text-[11px] text-stone-500">Grades:</span>
+                <strong className="text-stone-900">{school.grades}</strong>
+              </div>
+
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-stone-200 font-medium">
+                <span className="text-[11px] text-stone-500">Teacher Ratio:</span>
+                <strong className="text-stone-900">{school.studentTeacherRatio || '1:16'}</strong>
+              </div>
+
+              {school.hasTransport && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 font-medium text-teal-950">
+                  <span>Transport fleet ({school.transportRadiusKm} km)</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. RELEVANT FACILITIES: Prioritized based directly on search context */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                Relevant Campus Facilities
+              </span>
+              <span className="text-[10px] text-stone-400">Prioritized by search match</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {prioritizedFacilities.map((f) => {
+                const fColor = getFacilityCategoryColor(f.category, f.name);
+                const IconComp = getFacilityIcon(f.iconName, f.name);
+                return (
+                  <div
+                    key={f.id}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${fColor.bg} ${fColor.text} ${fColor.border}`}
+                    title={f.highlight || f.name}
+                  >
+                    <IconComp className="w-3 h-3 shrink-0" />
+                    <span className="truncate max-w-[150px]">{f.name}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* "WHY THIS SCHOOL" Section - Visual Signature */}
+          {/* "WHY THIS MATCHES" Section: Initial limit of 2 + "See more reasons" toggle */}
           <div className="mt-3.5 p-3 sm:p-3.5 rounded-xl bg-[#FAF9F6] border border-stone-200/90 text-xs space-y-2">
             <div className="flex items-center justify-between pb-1 border-b border-stone-200/60">
               <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px] tracking-wider uppercase">
-                <Sparkles className="w-3 h-3 text-amber-600" />
+                <Sparkles className="w-3 h-3 text-amber-600 shrink-0" />
                 <span>
-                  {isEarlyYears ? 'Why this preschool matches' : 'Why this school for your family'}
+                  {isEarlyYears ? 'Why this preschool matches' : 'Why this school matches your family'}
                 </span>
               </div>
-              <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.2 rounded border border-teal-200">
-                Fit with your priorities
+              <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                Fit with priorities
               </span>
             </div>
 
             <div className="space-y-2 pt-0.5">
-              {positiveReasons.slice(0, 2).map((reason) => {
-                const exp = formatMatchReason(reason);
+              {visibleExplanations.map((exp, idx) => {
+                const isConfirmation = exp.category === 'confirmation';
                 return (
-                  <div key={reason.id} className="flex items-start gap-2 text-stone-700 leading-snug">
-                    <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 mt-0.5">
-                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                  <div key={idx} className="flex items-start gap-2 text-stone-700 leading-snug">
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        isConfirmation
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-teal-100 text-teal-800'
+                      }`}
+                    >
+                      {isConfirmation ? (
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                      ) : (
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -357,64 +577,91 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                       </div>
                       {exp.detail && (
                         <p className="text-stone-500 text-[11px] mt-0.5 leading-tight">
-                          {exp.detail}
+                          {exp.actionAdvice || exp.detail}
                         </p>
                       )}
                     </div>
                   </div>
                 );
               })}
-
-              {verifyReasons.length > 0 && (() => {
-                const exp = formatMatchReason(verifyReasons[0]);
-                return (
-                  <div className="flex items-start gap-2 pt-1.5 border-t border-stone-200/50 text-stone-700 leading-snug">
-                    <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                      <AlertTriangle className="w-2.5 h-2.5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-1.5 flex-wrap">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border shrink-0 ${exp.tagBadgeClass}`}>
-                          {exp.tag}
-                        </span>
-                        <strong className="font-semibold text-stone-900 text-xs">{exp.title}</strong>
-                      </div>
-                      <p className="text-amber-900 font-medium text-[11px] mt-0.5 leading-tight">
-                        {exp.actionAdvice || exp.detail}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
+
+            {/* "See more reasons" button if more than 2 explanations exist */}
+            {allFormattedExplanations.length > 2 && (
+              <div className="pt-1 border-t border-stone-200/50 flex justify-end">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowAllReasons(!showAllReasons);
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 hover:text-teal-950 py-0.5 cursor-pointer focus:outline-none focus-visible:underline"
+                >
+                  <span>
+                    {showAllReasons
+                      ? 'Show fewer reasons'
+                      : `See more reasons (+${allFormattedExplanations.length - 2})`}
+                  </span>
+                  {showAllReasons ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Action Toolbar with min 40px touch targets */}
-        <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2.5">
+        {/* ACTION HIERARCHY: Primary ("View profile") > Secondary ("Compare") > Tertiary ("Save") */}
+        <div className="mt-4 pt-3.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2.5">
           
-          {/* Compare Toggle Button */}
-          <button
-            type="button"
-            onClick={() => toggleComparison(school.id)}
-            className={`min-h-[40px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
-              compared
-                ? 'bg-teal-50 text-teal-900 border border-teal-300 shadow-2xs'
-                : 'text-stone-700 hover:text-stone-950 hover:bg-stone-50 border border-stone-200 bg-white'
-            }`}
-          >
-            <Scale className={`w-3.5 h-3.5 ${compared ? 'text-teal-700' : 'text-stone-500'}`} />
-            <span>{compared ? 'In Comparison (✓)' : 'Compare'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* SECONDARY ACTION: Compare (Clean outlined card button) */}
+            <button
+              type="button"
+              onClick={() => toggleComparison(school.id)}
+              className={`min-h-[42px] px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                compared
+                  ? 'bg-teal-50 text-teal-900 border-teal-300'
+                  : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900 border-stone-200'
+              }`}
+            >
+              <Scale className={`w-3.5 h-3.5 ${compared ? 'text-teal-700' : 'text-stone-500'}`} />
+              <span>{compared ? 'In Comparison (✓)' : 'Compare'}</span>
+            </button>
 
-          {/* Primary View Profile CTA */}
+            {/* TERTIARY ACTION: Save (Quiet, understated button) */}
+            <button
+              type="button"
+              onClick={() => toggleSave(school.id)}
+              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
+                saved
+                  ? 'text-amber-800 bg-amber-50 hover:bg-amber-100/80 border border-amber-200'
+                  : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/80'
+              }`}
+              aria-label={saved ? `Remove ${school.name} from shortlist` : `Save ${school.name} to shortlist`}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-amber-600 text-amber-600' : 'text-stone-400'}`} />
+              <span>{saved ? 'Saved' : 'Save'}</span>
+            </button>
+          </div>
+
+          {/* PRIMARY ACTION: View Profile (Prominent bold teal CTA button) */}
           <Link
             to={`/school/${school.slug}`}
-            className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#0D9488] hover:bg-[#115E59] py-2 px-4 rounded-lg shadow-2xs hover:shadow-xs transition-all group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            className="min-h-[42px] px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer group/cta focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
           >
-            <span>{isEarlyYears ? 'View Preschool Profile' : 'View School Profile'}</span>
-            <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+            <span>
+              {isEarlyYears
+                ? 'View Preschool Profile'
+                : isCombined
+                ? 'View Campus Profile'
+                : 'View School Profile'}
+            </span>
+            <ChevronRight className="w-4 h-4 group-hover/cta:translate-x-0.5 transition-transform" />
           </Link>
+
         </div>
       </div>
     </article>
