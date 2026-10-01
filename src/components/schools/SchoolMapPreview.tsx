@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { School } from '../../types/school';
-import { MapPin, Navigation, Compass, Layers, Check } from 'lucide-react';
+import { MapPin, Navigation, Compass, Layers, Check, ChevronRight } from 'lucide-react';
+import { getCurriculumColor } from '../../utils/categoryColors';
 
 interface SchoolMapPreviewProps {
   schools: School[];
@@ -21,26 +22,26 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
   const activeSchool = schools.find((s) => s.id === selectedSchoolId) || hoveredSchool;
 
   return (
-    <div className="relative w-full h-[520px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-2xs flex flex-col">
+    <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-stone-200 bg-[#FAF9F6] shadow-sm flex flex-col font-sans">
       
       {/* Top Map Header Bar */}
       <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-        <div className="bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-slate-200/90 shadow-2xs pointer-events-auto flex items-center gap-2">
-          <Navigation className="w-3.5 h-3.5 text-teal-600" />
-          <span className="text-xs font-semibold text-slate-800">
+        <div className="bg-white/95 backdrop-blur-xs px-3.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs pointer-events-auto flex items-center gap-2">
+          <Navigation className="w-3.5 h-3.5 text-teal-700" />
+          <span className="text-xs font-bold text-stone-800">
             Chennai Metropolitan Map
           </span>
-          <span className="text-[11px] text-slate-600">· {schools.length} pins</span>
+          <span className="text-[11px] text-stone-500">· {schools.length} verified pins</span>
         </div>
 
-        <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-slate-200/90 shadow-2xs pointer-events-auto flex items-center gap-1.5 text-xs text-slate-600">
-          <Compass className="w-3.5 h-3.5 text-slate-500" />
+        <div className="bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-stone-200 shadow-2xs pointer-events-auto flex items-center gap-1.5 text-xs text-stone-600 font-medium">
+          <Compass className="w-3.5 h-3.5 text-stone-500" />
           <span>Bay of Bengal East Coast</span>
         </div>
       </div>
 
-      {/* SVG Canvas Map Surface */}
-      <div className="relative flex-1 w-full h-full bg-[#f1f5f9] overflow-hidden select-none">
+      {/* SVG Canvas Map Surface with warm parchment ground */}
+      <div className="relative flex-1 w-full h-full bg-[#F5F1E8]/80 overflow-hidden select-none">
         
         {/* SVG Decorative Geographic Layer */}
         <svg className="w-full h-full absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
@@ -65,7 +66,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
           <path
             d="M 20,95 Q 35,65 50,45"
             fill="none"
-            stroke="#cbd5e1"
+            stroke="#d6d3d1"
             strokeWidth="1.2"
           />
 
@@ -73,7 +74,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
           <path
             d="M 80,45 L 75,95"
             fill="none"
-            stroke="#cbd5e1"
+            stroke="#d6d3d1"
             strokeWidth="1.4"
           />
 
@@ -81,7 +82,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
           <path
             d="M 84,45 L 82,95"
             fill="none"
-            stroke="#e2e8f0"
+            stroke="#e7e5e4"
             strokeWidth="1"
           />
 
@@ -89,7 +90,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
           <path
             d="M 30,20 Q 60,25 75,45"
             fill="none"
-            stroke="#cbd5e1"
+            stroke="#d6d3d1"
             strokeWidth="1"
           />
 
@@ -98,31 +99,19 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
             cx="65"
             cy="55"
             r={Math.min(35, radiusKm * 2.5)}
-            fill="rgba(13, 148, 136, 0.05)"
-            stroke="#0d9488"
-            strokeWidth="0.75"
-            strokeDasharray="2 2"
+            fill="#0D9488"
+            fillOpacity="0.06"
+            stroke="#0D9488"
+            strokeWidth="0.8"
+            strokeDasharray="1.5 1.5"
           />
         </svg>
 
-        {/* Labels on Map */}
-        <span className="absolute top-[18%] left-[45%] text-[10px] font-semibold text-slate-600 uppercase tracking-widest pointer-events-none">
-          Central Chennai
-        </span>
-        <span className="absolute top-[48%] left-[76%] text-[10px] font-semibold text-slate-600 uppercase tracking-widest pointer-events-none">
-          Adyar / OMR Hub
-        </span>
-        <span className="absolute top-[75%] left-[25%] text-[10px] font-semibold text-slate-600 uppercase tracking-widest pointer-events-none">
-          Tambaram / GST
-        </span>
-        <span className="absolute top-[50%] right-[3%] text-[9px] font-bold text-sky-800 rotate-90 tracking-widest uppercase pointer-events-none">
-          Bay of Bengal
-        </span>
-
-        {/* School Pin Markers */}
+        {/* School Coordinate Markers */}
         {schools.map((school) => {
-          const isSelected = school.id === selectedSchoolId;
+          const isSelected = selectedSchoolId === school.id;
           const isHovered = hoveredSchool?.id === school.id;
+          const bColor = getCurriculumColor(school.curriculum[0]);
 
           return (
             <button
@@ -135,70 +124,55 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
                 left: `${school.coordinates.mapX}%`,
                 top: `${school.coordinates.mapY}%`,
               }}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 z-10 transition-transform duration-150 focus:outline-none focus:ring-2 focus:ring-teal-600 rounded-full cursor-pointer ${
+              className={`absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-200 cursor-pointer focus:outline-none z-10 ${
                 isSelected || isHovered ? 'scale-125 z-30' : 'hover:scale-110'
               }`}
-              title={`${school.name} (${school.matchScore}% Match)`}
-              aria-label={`${school.name} map pin`}
+              title={`${school.name} (${school.area})`}
             >
               <div
-                className={`relative flex items-center justify-center rounded-full text-white font-bold text-[10px] shadow-md ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md transition-all border ${
                   isSelected
-                    ? 'w-7 h-7 bg-teal-800 ring-3 ring-teal-300'
-                    : isHovered
-                    ? 'w-7 h-7 bg-teal-700 ring-2 ring-teal-200'
-                    : 'w-6 h-6 bg-teal-600'
+                    ? 'bg-[#0D9488] text-white border-white ring-2 ring-teal-600/40'
+                    : 'bg-white text-stone-900 border-stone-300'
                 }`}
               >
-                <span>{school.matchScore}</span>
-                {isSelected && (
-                  <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border border-white" />
-                )}
+                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : bColor.dot}`} />
+                <span className="truncate max-w-[80px]">{school.name.split(' ')[0]}</span>
+                <span className="opacity-90 tabular-nums">({school.matchScore}%)</span>
               </div>
             </button>
           );
         })}
 
-        {/* Active School Floating Tooltip / Card preview */}
+        {/* Selected / Hovered School Popover Detail Card */}
         {activeSchool && (
-          <div className="absolute bottom-3 left-3 right-3 z-30 bg-white/95 backdrop-blur-md p-3 rounded-xl border border-slate-200 shadow-md flex items-center justify-between gap-3 animate-in fade-in duration-150">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-xs text-teal-800 font-semibold mb-0.5">
-                <span>{activeSchool.matchScore}% Match</span>
-                <span className="text-slate-600">·</span>
-                <span className="text-slate-600">{activeSchool.distanceKm} km away</span>
+          <div className="absolute bottom-3 left-3 right-3 z-30 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-stone-200 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.2 rounded border border-teal-200">
+                  {activeSchool.matchScore}% Match
+                </span>
+                <span className="text-[11px] text-stone-500 font-medium">
+                  {activeSchool.curriculum.join(', ')} · {activeSchool.distanceKm} km away
+                </span>
               </div>
-              <h4 className="text-sm font-bold text-slate-900 truncate">
+              <h4 className="font-editorial text-xs sm:text-sm font-bold text-stone-900 truncate">
                 {activeSchool.name}
               </h4>
-              <p className="text-xs text-slate-600 truncate">
-                {activeSchool.area} · {activeSchool.curriculum.join(', ')} · ₹{(activeSchool.annualFeeMin / 100000).toFixed(1)}L/yr
+              <p className="text-[11px] text-stone-600 truncate mt-0.5">
+                {activeSchool.area} · ₹{(activeSchool.annualFeeMin / 100000).toFixed(1)}L – {(activeSchool.annualFeeMax / 100000).toFixed(1)}L/yr
               </p>
             </div>
 
             <Link
               to={`/school/${activeSchool.slug}`}
-              className="shrink-0 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold transition-colors"
+              className="px-3.5 py-2 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shrink-0 transition-colors flex items-center gap-1"
             >
-              Profile
+              <span>Profile</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         )}
-      </div>
-
-      {/* Map Bottom Legend */}
-      <div className="bg-white border-t border-slate-200 px-4 py-2 flex items-center justify-between text-[11px] text-slate-600">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-teal-600 inline-block" />
-            <span>School Match %</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full border border-teal-600 border-dashed inline-block" />
-            <span>Search Radius ({radiusKm} km)</span>
-          </span>
-        </div>
-        <span className="text-slate-600">Click pin to inspect</span>
       </div>
     </div>
   );

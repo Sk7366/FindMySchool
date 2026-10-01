@@ -1,9 +1,30 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Bookmark, Scale, Check, AlertTriangle, HelpCircle, ChevronRight, School as SchoolIcon, MapPin, Bus } from 'lucide-react';
+import { 
+  Star, 
+  Bookmark, 
+  Scale, 
+  Check, 
+  AlertTriangle, 
+  HelpCircle, 
+  ChevronRight, 
+  School as SchoolIcon, 
+  MapPin, 
+  Waves, 
+  Cpu, 
+  Trophy, 
+  BookOpen, 
+  Drama, 
+  Music, 
+  HeartHandshake, 
+  FlaskConical, 
+  Sparkles,
+  ShieldCheck
+} from 'lucide-react';
 import { School } from '../../types/school';
 import { useComparison } from '../../context/ComparisonContext';
 import { useShortlist } from '../../context/ShortlistContext';
+import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle } from '../../utils/categoryColors';
 
 interface SchoolCardProps {
   school: School;
@@ -18,6 +39,10 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
 
+  const primaryBoard = school.curriculum[0] || 'CBSE';
+  const boardColor = getCurriculumColor(primaryBoard);
+  const scoreStyle = getMatchScoreStyle(school.matchScore);
+
   const formatFee = (amount: number) => {
     if (amount >= 100000) {
       return `₹${(amount / 100000).toFixed(1)}L`;
@@ -25,32 +50,75 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
     return `₹${(amount / 1000).toFixed(0)}k`;
   };
 
+  // Helper to pick appropriate Lucide icon for facility
+  const getFacilityIcon = (iconName: string, name: string) => {
+    const n = (iconName + ' ' + name).toLowerCase();
+    if (n.includes('wave') || n.includes('swim')) return Waves;
+    if (n.includes('cpu') || n.includes('robot')) return Cpu;
+    if (n.includes('trophy') || n.includes('turf') || n.includes('sport') || n.includes('cricket')) return Trophy;
+    if (n.includes('flask') || n.includes('lab') || n.includes('science')) return FlaskConical;
+    if (n.includes('drama') || n.includes('art') || n.includes('theatre')) return Drama;
+    if (n.includes('music')) return Music;
+    if (n.includes('heart') || n.includes('wellness') || n.includes('counsell')) return HeartHandshake;
+    return BookOpen;
+  };
+
+  // Split match reasons into confirmed positives and items to verify
+  const positiveReasons = school.matchReasons.filter((r) => r.type === 'positive');
+  const verifyReasons = school.matchReasons.filter((r) => r.type === 'partial' || r.type === 'unverified');
+
+  // SVG ring calculations (radius 16, circumference ~ 100.53)
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (school.matchScore / 100) * circumference;
+
   return (
-    <article className="group bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-all duration-200 overflow-hidden flex flex-col md:flex-row hover:shadow-xs">
+    <article className="group relative bg-white rounded-2xl border border-stone-200/90 hover:border-stone-300 transition-all duration-300 overflow-hidden flex flex-col md:flex-row hover:shadow-md">
       
+      {/* Top/Side subtle accent stripe based on primary curriculum */}
+      <div 
+        className={`hidden md:block w-1.5 shrink-0 ${boardColor.accentBar} opacity-90 transition-opacity group-hover:opacity-100`} 
+        aria-hidden="true" 
+      />
+      <div 
+        className={`md:hidden h-1.5 w-full shrink-0 ${boardColor.accentBar} opacity-90`} 
+        aria-hidden="true" 
+      />
+
       {/* Visual / Media Zone */}
-      <div className="relative md:w-64 lg:w-72 shrink-0 bg-slate-100 aspect-16/10 md:aspect-auto">
+      <div className="relative md:w-68 lg:w-72 shrink-0 bg-[#F5F1E8]/70 aspect-16/10 md:aspect-auto overflow-hidden">
         {!imageError && school.photos?.[0]?.url ? (
           <img
             src={school.photos[0].url}
             alt={`${school.name} campus building`}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 p-4 text-center">
-            <SchoolIcon className="w-10 h-10 text-slate-400 mb-2" />
-            <span className="text-xs font-medium text-slate-600 line-clamp-1">{school.name}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#FAF9F6] to-[#F5F1E8] p-4 text-center">
+            <SchoolIcon className="w-10 h-10 text-stone-400 mb-2" />
+            <span className="text-xs font-editorial font-medium text-stone-600 line-clamp-1">{school.name}</span>
           </div>
         )}
 
-        {/* Calm Unboxed Match Tag */}
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md text-xs font-semibold text-slate-900 border border-slate-200/90 shadow-2xs flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-teal-600 inline-block" />
-          <span className="tabular-nums">{school.matchScore}% Match</span>
-          <span className="text-slate-500 font-normal">· {school.matchTier}</span>
+        {/* Subtle photo vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/40 via-transparent to-black/10 pointer-events-none" />
+
+        {/* Board Badges - semantic coloring */}
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+          {school.curriculum.slice(0, 2).map((board) => {
+            const bColor = getCurriculumColor(board);
+            return (
+              <span
+                key={board}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs ${bColor.badge}`}
+              >
+                {board}
+              </span>
+            );
+          })}
         </div>
 
         {/* Quick action: Save bookmark with 44px tap target */}
@@ -60,124 +128,195 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             e.preventDefault();
             toggleSave(school.id);
           }}
-          className={`absolute top-2.5 right-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
+          className={`absolute top-2.5 right-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
             saved
-              ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-2xs'
-              : 'bg-white/90 text-slate-700 hover:text-slate-900 hover:bg-white shadow-2xs backdrop-blur-xs'
+              ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-md scale-105'
+              : 'bg-white/95 text-stone-700 hover:text-amber-600 hover:bg-white shadow-2xs backdrop-blur-xs'
           }`}
           title={saved ? 'Remove from shortlist' : 'Save to shortlist'}
           aria-label={saved ? `Remove ${school.name} from shortlist` : `Save ${school.name} to shortlist`}
         >
-          <Bookmark className={`w-4 h-4 ${saved ? 'fill-current' : ''}`} />
+          <Bookmark className={`w-4 h-4 transition-transform active:scale-90 ${saved ? 'fill-current' : ''}`} />
         </button>
+
+        {/* Commute Distance Tag bottom-left overlay */}
+        <div className="absolute bottom-2.5 left-3 text-[11px] font-medium text-white/95 drop-shadow-sm flex items-center gap-1">
+          <MapPin className="w-3 h-3 text-white/80" />
+          <span>{school.distanceKm} km commute</span>
+        </div>
       </div>
 
-      {/* Main Content Zone */}
-      <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between">
+      {/* Main Editorial Content Zone */}
+      <div className="p-4 sm:p-5 lg:p-6 flex-1 flex flex-col justify-between space-y-4">
         
-        {/* Header and Unboxed Metadata */}
+        {/* Header & School Identity */}
         <div>
-          {/* Metadata strictly unboxed with · separators per design rules */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 mb-1.5 font-medium">
-            <span className="font-semibold text-teal-800">{school.curriculum.join(' & ')}</span>
-            <span aria-hidden="true">·</span>
-            <span>{school.grades}</span>
-            <span aria-hidden="true">·</span>
-            <span>{school.schoolType[0]}</span>
-            <span aria-hidden="true">·</span>
-            <span className="flex items-center gap-1 text-slate-600">
-              <MapPin className="w-3 h-3 text-slate-400" />
-              <span>{school.distanceKm} km away</span>
-            </span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <span className="text-[11px] font-medium text-stone-500 tracking-wide uppercase block mb-1">
+                {school.area} · Established {school.establishedYear}
+              </span>
+              <h3 className="font-editorial text-lg sm:text-xl font-bold text-stone-900 tracking-tight leading-snug group-hover:text-teal-900 transition-colors">
+                <Link 
+                  to={`/school/${school.slug}`} 
+                  className="focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded"
+                >
+                  {school.name}
+                </Link>
+              </h3>
+              <p className="text-xs text-stone-600 mt-1 line-clamp-1 font-sans">
+                {school.tagline}
+              </p>
+            </div>
+
+            {/* Circular Match Score Ring */}
+            <div className="shrink-0 flex flex-col items-center">
+              <div className="relative w-12 h-12 flex items-center justify-center">
+                <svg className="w-12 h-12 -rotate-90" viewBox="0 0 40 40">
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r={radius}
+                    className="stroke-stone-200"
+                    strokeWidth="3.2"
+                    fill="none"
+                  />
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r={radius}
+                    stroke={scoreStyle.strokeColor}
+                    strokeWidth="3.2"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    fill="none"
+                    className="transition-all duration-700 ease-out"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-[12px] font-bold font-sans text-stone-900 tabular-nums leading-none">
+                    {school.matchScore}%
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-semibold text-stone-600 mt-0.5">
+                {scoreStyle.tier}
+              </span>
+            </div>
           </div>
 
-          <h3 className="text-base sm:text-xl font-bold text-slate-950 tracking-tight leading-snug group-hover:text-teal-900 transition-colors">
-            <Link to={`/school/${school.slug}`} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded">
-              {school.name}
-            </Link>
-          </h3>
-          <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-            {school.area}, {school.city}
-          </p>
-
           {/* Pricing & Key Metrics Bar */}
-          <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="mt-3.5 pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2.5 text-xs">
             <div>
-              <span className="text-slate-500 text-[11px] block font-medium">Est. Annual Tuition</span>
-              <span className="font-bold text-slate-900 text-sm tabular-nums">
+              <span className="text-stone-500 text-[11px] block font-medium">Estimated Annual Tuition</span>
+              <span className="font-bold text-stone-900 text-sm tabular-nums">
                 {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
               </span>
             </div>
 
             <div className="hidden sm:block">
-              <span className="text-slate-500 text-[11px] block font-medium">Teacher Ratio</span>
-              <span className="font-semibold text-slate-800 tabular-nums">
+              <span className="text-stone-500 text-[11px] block font-medium">Teacher Ratio</span>
+              <span className="font-semibold text-stone-800 tabular-nums">
                 {school.studentTeacherRatio}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-slate-800 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60">
+            <div className="hidden lg:block">
+              <span className="text-stone-500 text-[11px] block font-medium">Grades</span>
+              <span className="font-semibold text-stone-800">
+                {school.grades}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-stone-800 bg-[#F5F1E8]/70 px-2.5 py-1 rounded-lg border border-stone-200/70">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
               <span className="font-bold text-xs tabular-nums">{school.rating.toFixed(1)}</span>
-              <span className="text-[11px] text-slate-500 font-medium">({school.reviewCount})</span>
+              <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount} parents)</span>
             </div>
           </div>
 
-          {/* "Why This School Matches" Section - Key Product Feature */}
-          <div className="mt-4 p-3.5 rounded-lg bg-slate-50/90 border border-slate-200/70">
-            <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              Why this school matches your search
-            </h4>
-            <ul className="space-y-1.5">
-              {school.matchReasons.slice(0, 3).map((reason) => (
-                <li key={reason.id} className="flex items-start gap-2 text-xs leading-relaxed">
-                  {reason.type === 'positive' && (
-                    <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 mt-0.5" title="Matches your requirement">
-                      <Check className="w-2.5 h-2.5 stroke-[3]" />
-                    </span>
-                  )}
-                  {reason.type === 'partial' && (
-                    <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5" title="Partial match / review needed">
-                      <AlertTriangle className="w-2.5 h-2.5" />
-                    </span>
-                  )}
-                  {reason.type === 'unverified' && (
-                    <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5" title="Unverified / Confirm with school">
-                      <HelpCircle className="w-2.5 h-2.5" />
-                    </span>
-                  )}
-                  <span className="text-slate-700">
-                    <strong className="font-semibold text-slate-900">{reason.title}</strong> — {reason.description}
+          {/* Expressive Facility Iconography with consistent accent tokens */}
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {school.facilities.slice(0, 4).map((f) => {
+              const fColor = getFacilityCategoryColor(f.category, f.name);
+              const IconComp = getFacilityIcon(f.iconName, f.name);
+              return (
+                <div
+                  key={f.id}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${fColor.bg} ${fColor.text} ${fColor.border}`}
+                  title={f.highlight || f.name}
+                >
+                  <IconComp className="w-3 h-3 shrink-0" />
+                  <span className="truncate max-w-[130px]">{f.name}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* "WHY THIS SCHOOL" Section - Visual Signature */}
+          <div className="mt-3.5 p-3 sm:p-3.5 rounded-xl bg-[#FAF9F6] border border-stone-200/90 text-xs space-y-2">
+            <div className="flex items-center justify-between pb-1 border-b border-stone-200/60">
+              <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px] tracking-wider uppercase">
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                <span>Why this school for your family</span>
+              </div>
+              <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.2 rounded border border-teal-200">
+                Decision Fit
+              </span>
+            </div>
+
+            <div className="space-y-1.5 pt-0.5">
+              {positiveReasons.slice(0, 2).map((reason) => (
+                <div key={reason.id} className="flex items-start gap-2 text-stone-700 leading-snug">
+                  <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </span>
-                </li>
+                  <span>
+                    <strong className="font-semibold text-stone-900">{reason.title}</strong>
+                    <span className="text-stone-500 text-[11px] hidden sm:inline"> — {reason.description}</span>
+                  </span>
+                </div>
               ))}
-            </ul>
+
+              {verifyReasons.length > 0 && (
+                <div className="flex items-start gap-2 pt-1 border-t border-stone-200/40 text-stone-700 leading-snug">
+                  <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                  </span>
+                  <span>
+                    <span className="font-bold text-amber-900 text-[11px]">One thing to verify: </span>
+                    <strong className="font-semibold text-stone-900">{verifyReasons[0].title}</strong>
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Action Toolbar with min 40px touch targets */}
-        <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2.5">
+        <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2.5">
           
-          {/* Compare Checkbox / Button */}
+          {/* Compare Toggle Button */}
           <button
             type="button"
             onClick={() => toggleComparison(school.id)}
-            className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
+            className={`min-h-[40px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
               compared
-                ? 'bg-teal-50 text-teal-800 border border-teal-300 shadow-2xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white'
+                ? 'bg-teal-50 text-teal-900 border border-teal-300 shadow-2xs'
+                : 'text-stone-700 hover:text-stone-950 hover:bg-stone-50 border border-stone-200 bg-white'
             }`}
           >
-            <Scale className="w-3.5 h-3.5" />
-            <span>{compared ? 'In Comparison' : 'Compare'}</span>
+            <Scale className={`w-3.5 h-3.5 ${compared ? 'text-teal-700' : 'text-stone-500'}`} />
+            <span>{compared ? 'In Comparison (✓)' : 'Compare'}</span>
           </button>
 
           {/* Primary View Profile CTA */}
           <Link
             to={`/school/${school.slug}`}
-            className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 py-2 px-3.5 rounded-lg shadow-2xs transition-colors group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+            className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#0D9488] hover:bg-[#115E59] py-2 px-4 rounded-lg shadow-2xs hover:shadow-xs transition-all group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
           >
-            <span>View Profile</span>
+            <span>View School Profile</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
           </Link>
         </div>

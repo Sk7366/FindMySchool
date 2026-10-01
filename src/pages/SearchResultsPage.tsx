@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, SlidersHorizontal, Map, List, ArrowUpDown, Edit3, X, Sparkles, AlertCircle, RotateCcw } from 'lucide-react';
+import { Filter, SlidersHorizontal, Map, List, ArrowUpDown, Edit3, X, Sparkles, AlertCircle, RotateCcw, Search } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 import { useShortlist } from '../context/ShortlistContext';
 import { SchoolCard } from '../components/schools/SchoolCard';
@@ -8,6 +8,7 @@ import { FilterSidebar } from '../components/filters/FilterSidebar';
 import { SchoolMapPreview } from '../components/schools/SchoolMapPreview';
 import { GuidedSearchModal } from '../components/search/GuidedSearchModal';
 import { SortField } from '../types/search';
+import { getCurriculumColor } from '../utils/categoryColors';
 
 export const SearchResultsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -47,87 +48,93 @@ export const SearchResultsPage: React.FC = () => {
 
   const { filters, sortBy } = searchState;
 
-  // Build compact active search criteria string
-  const criteriaParts: string[] = [];
-  if (filters.grade) criteriaParts.push(filters.grade);
-  if (filters.curriculums.length > 0) criteriaParts.push(filters.curriculums.join(' / '));
-  if (filters.budgetMax) criteriaParts.push(`≤ ₹${(filters.budgetMax / 100000).toFixed(1)}L/yr`);
-  if (filters.radiusKm) criteriaParts.push(`≤ ${filters.radiusKm} km`);
-  if (filters.requiredFacilities.length > 0) {
-    criteriaParts.push(filters.requiredFacilities.slice(0, 2).join(' · '));
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50/70 pb-20">
+    <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900">
       
       {/* Search Header Banner */}
-      <section className="bg-white border-b border-slate-200 py-4 sm:py-6 px-3.5 sm:px-6 lg:px-8">
+      <section className="bg-white border-b border-stone-200/90 py-5 sm:py-7 px-3.5 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           
           {/* Quick Search input form */}
-          <form onSubmit={handleQuickSearchSubmit} className="max-w-3xl mb-4 sm:mb-5">
+          <form onSubmit={handleQuickSearchSubmit} className="max-w-3xl mb-5">
             <div className="relative flex items-center">
               <input
                 type="text"
                 value={quickQuery}
                 onChange={(e) => setQuickQuery(e.target.value)}
-                placeholder="Modify search criteria in natural language..."
-                className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-xl pl-3.5 sm:pl-4 pr-20 sm:pr-24 py-2.5 text-base sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all shadow-2xs font-medium"
+                placeholder="Describe your requirements (e.g. CBSE near OMR under ₹1.5L with swimming)..."
+                className="w-full bg-[#FAF9F6] border border-stone-300 hover:border-stone-400 focus:border-[#0D9488] focus:bg-white rounded-xl pl-4 pr-24 py-2.5 text-sm sm:text-base text-stone-900 focus:outline-none focus:ring-4 focus:ring-teal-700/10 transition-all shadow-2xs font-sans"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 min-h-[36px]"
+                className="absolute right-1.5 px-4 py-1.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer min-h-[36px]"
               >
-                Update
+                Search
               </button>
             </div>
           </form>
 
           {/* Results Summary and Active Filter Summary */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pt-1">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-2xl font-bold font-display text-slate-950 tracking-tight leading-snug">
+                <h1 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900 tracking-tight leading-snug">
                   {isSavedMode
                     ? `${savedSchools.length} Shortlisted Schools`
-                    : `${displaySchools.length} schools match your requirements`}
+                    : `${displaySchools.length} Schools Matched for Your Family`}
                 </h1>
                 {isSavedMode && (
-                  <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-200">
+                  <span className="text-xs bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-full font-bold border border-amber-200">
                     Saved in browser
                   </span>
                 )}
               </div>
 
               {!isSavedMode && (
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-600 mt-1.5 font-medium">
-                  <span className="text-slate-700">
-                    {criteriaParts.join(' · ')}
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 mt-2 font-medium">
+                  {filters.grade && (
+                    <span className="bg-[#F5F1E8] px-2.5 py-0.5 rounded-md border border-stone-200 font-semibold text-stone-800">
+                      Grade: {filters.grade}
+                    </span>
+                  )}
+                  {filters.curriculums.map((c) => {
+                    const cColor = getCurriculumColor(c);
+                    return (
+                      <span key={c} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${cColor.badge}`}>
+                        {c}
+                      </span>
+                    );
+                  })}
+                  <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-semibold">
+                    ≤ ₹{(filters.budgetMax / 100000).toFixed(1)}L/yr
+                  </span>
+                  <span className="bg-teal-50 text-teal-900 px-2.5 py-0.5 rounded-md border border-teal-200 font-semibold">
+                    ≤ {filters.radiusKm} km radius
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsEditingPreferences(true)}
-                    className="inline-flex items-center gap-1 text-teal-700 hover:text-teal-800 font-semibold cursor-pointer ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded py-0.5"
+                    className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-0.5"
                   >
                     <Edit3 className="w-3 h-3" />
-                    <span>Edit preferences</span>
+                    <span>Change filters</span>
                   </button>
                 </div>
               )}
             </div>
 
             {/* View Mode & Sort Controls */}
-            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-start flex-wrap pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-start flex-wrap pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
               
               {/* Desktop View Switcher (List vs Split Map) */}
-              <div className="hidden lg:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+              <div className="hidden lg:flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs">
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
-                  className={`px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                     viewMode === 'list'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-stone-900 shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <List className="w-3.5 h-3.5" />
@@ -136,14 +143,14 @@ export const SearchResultsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setViewMode('split')}
-                  className={`px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                     viewMode === 'split'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-stone-900 shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <Map className="w-3.5 h-3.5" />
-                  <span>Map Preview</span>
+                  <span>Split Map</span>
                 </button>
               </div>
 
@@ -151,13 +158,13 @@ export const SearchResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowMobileFilters(true)}
-                className="md:hidden inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 min-h-[40px]"
+                className="md:hidden inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-800 shadow-2xs cursor-pointer hover:bg-stone-50 min-h-[40px]"
                 aria-label="Open filter options"
               >
-                <Filter className="w-3.5 h-3.5 text-teal-600" />
+                <Filter className="w-3.5 h-3.5 text-teal-700" />
                 <span>Filters</span>
                 {activeFilterCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-teal-100 text-teal-800 font-bold text-[10px]">
+                  <span className="px-1.5 py-0.2 rounded-full bg-teal-100 text-teal-900 font-bold text-[10px] border border-teal-200">
                     {activeFilterCount}
                   </span>
                 )}
@@ -167,23 +174,23 @@ export const SearchResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
-                className="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 min-h-[40px]"
+                className="lg:hidden inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-800 shadow-2xs cursor-pointer hover:bg-stone-50 min-h-[40px]"
               >
-                <Map className="w-3.5 h-3.5 text-teal-600" />
+                <Map className="w-3.5 h-3.5 text-teal-700" />
                 <span>{viewMode === 'map' ? 'List View' : 'Map View'}</span>
               </button>
 
               {/* Sort By Dropdown */}
               <div className="flex items-center gap-1.5 text-xs">
-                <label htmlFor="search-sort-select" className="text-slate-500 font-medium hidden sm:inline">Sort:</label>
+                <label htmlFor="search-sort-select" className="text-stone-500 font-bold hidden sm:inline">Sort:</label>
                 <select
                   id="search-sort-select"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortField)}
-                  className="bg-white border border-slate-200 hover:border-slate-300 rounded-lg px-2.5 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer shadow-2xs transition-colors min-h-[40px]"
+                  className="bg-white border border-stone-200 hover:border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer shadow-2xs transition-colors min-h-[40px]"
                 >
                   <option value="best_match">Best match</option>
-                  <option value="distance_asc">Nearest first</option>
+                  <option value="distance_asc">Nearest commute</option>
                   <option value="fee_asc">Fees: Low to high</option>
                   <option value="fee_desc">Fees: High to low</option>
                   <option value="rating_desc">Parent rating</option>
@@ -195,7 +202,7 @@ export const SearchResultsPage: React.FC = () => {
       </section>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 mt-5 sm:mt-6">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 mt-6">
         
         {/* Mobile Fullscreen Map view if toggled */}
         {viewMode === 'map' && (
@@ -211,12 +218,12 @@ export const SearchResultsPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
           
-          {/* Desktop Filter Sidebar (Col 3 or 4) */}
+          {/* Desktop Filter Sidebar */}
           <div className="hidden md:block md:col-span-4 lg:col-span-3 sticky top-20">
             <FilterSidebar />
           </div>
 
-          {/* Results List Area (Col 8 or 9) */}
+          {/* Results List Area */}
           <div className={`md:col-span-8 ${viewMode === 'split' ? 'lg:col-span-5' : 'lg:col-span-9'} space-y-4`}>
             
             {displaySchools.length > 0 ? (
@@ -229,30 +236,39 @@ export const SearchResultsPage: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="bg-white rounded-xl border border-slate-200 p-8 sm:p-10 text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
-                  <AlertCircle className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-stone-200 p-8 sm:p-12 text-center space-y-4 shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+                  <AlertCircle className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="font-editorial text-lg sm:text-xl font-bold text-stone-900">
                     No schools match your exact criteria
                   </h3>
-                  <p className="text-xs text-slate-600 max-w-md mx-auto mt-1">
-                    Try expanding your commute radius (e.g. from {filters.radiusKm} km to 15 km) or increasing your fee bracket to find more schools.
+                  <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto mt-1 leading-relaxed">
+                    Try expanding your commute radius (e.g. from {filters.radiusKm} km to 15 km) or broadening the fee bracket to see nearby institutions.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingPreferences(true)}
-                  className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold cursor-pointer min-h-[44px]"
-                >
-                  Adjust Search Filters
-                </button>
+                <div className="pt-2 flex justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold cursor-pointer min-h-[44px]"
+                  >
+                    Reset All Filters
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingPreferences(true)}
+                    className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold cursor-pointer min-h-[44px]"
+                  >
+                    Adjust Filter Values
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Desktop Split Map Preview (Col 4 when viewMode === 'split') */}
+          {/* Desktop Split Map Preview */}
           {viewMode === 'split' && (
             <div className="hidden lg:block lg:col-span-4 sticky top-20">
               <SchoolMapPreview
@@ -266,68 +282,34 @@ export const SearchResultsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Drawer / Bottom Sheet for Filters with Sticky Header and Footer */}
+      {/* Mobile Filters Bottom Drawer Sheet */}
       {showMobileFilters && (
-        <div className="fixed inset-0 z-50 md:hidden bg-slate-900/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-md h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
-            
-            {/* Sticky Drawer Header */}
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-200 bg-white sticky top-0 z-10 shrink-0">
+        <div className="fixed inset-0 z-50 md:hidden bg-stone-900/50 backdrop-blur-xs flex flex-col justify-end animate-in fade-in duration-200">
+          <div className="bg-[#FAF9F6] rounded-t-3xl max-h-[85vh] overflow-y-auto p-5 shadow-2xl border-t border-stone-200 animate-in slide-in-from-bottom duration-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-teal-600" />
-                <span className="font-bold text-slate-900 text-base">Filter Schools</span>
-                {activeFilterCount > 0 && (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
-                    {activeFilterCount} active
-                  </span>
-                )}
+                <SlidersHorizontal className="w-4 h-4 text-teal-700" />
+                <h3 className="font-editorial text-base font-bold text-stone-900">Refine Search Priorities</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMobileFilters(false)}
-                className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                aria-label="Close filters"
+                className="min-h-[40px] min-w-[40px] p-2 rounded-lg text-stone-500 hover:text-stone-900 flex items-center justify-center"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            {/* Scrollable Filter Body */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <FilterSidebar />
-            </div>
-
-            {/* Sticky Drawer Bottom Footer */}
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center gap-2.5 shrink-0">
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowMobileFilters(false)}
-                className="flex-1 min-h-[44px] py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center"
-              >
-                Show {displaySchools.length} Matching Schools
-              </button>
-            </div>
+            
+            <FilterSidebar onCloseMobile={() => setShowMobileFilters(false)} />
           </div>
         </div>
       )}
 
-      {/* Edit Preferences Modal */}
+      {/* Guided Search Modal Component */}
       <GuidedSearchModal
         isOpen={isEditingPreferences}
         onClose={() => setIsEditingPreferences(false)}
-        initialCategory="location"
       />
     </div>
   );
 };
-

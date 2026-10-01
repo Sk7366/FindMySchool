@@ -3,6 +3,7 @@ import { X, Check, MapPin, GraduationCap, IndianRupee, BookOpen, Building2, Trop
 import { useSearch } from '../../context/SearchContext';
 import { Curriculum, SchoolType } from '../../types/school';
 import { useNavigate } from 'react-router-dom';
+import { getCurriculumColor, getFacilityCategoryColor } from '../../utils/categoryColors';
 
 export type GuidedCategory = 'location' | 'grade' | 'budget' | 'curriculum' | 'schoolType' | 'activities' | 'special';
 
@@ -13,16 +14,17 @@ interface GuidedSearchModalProps {
 }
 
 const CATEGORIES: { id: GuidedCategory; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'location', label: 'Location', icon: MapPin },
-  { id: 'grade', label: 'Grade', icon: GraduationCap },
-  { id: 'budget', label: 'Budget', icon: IndianRupee },
-  { id: 'curriculum', label: 'Curriculum', icon: BookOpen },
-  { id: 'schoolType', label: 'School Type', icon: Building2 },
-  { id: 'activities', label: 'Facilities & Sports', icon: Trophy },
-  { id: 'special', label: 'Special Needs', icon: HeartHandshake },
+  { id: 'location', label: 'Locality & Radius', icon: MapPin },
+  { id: 'curriculum', label: 'Board / Curriculum', icon: BookOpen },
+  { id: 'budget', label: 'Annual Budget', icon: IndianRupee },
+  { id: 'activities', label: 'Sports & STEM', icon: Trophy },
+  { id: 'grade', label: 'Grade Level', icon: GraduationCap },
+  { id: 'schoolType', label: 'School Format', icon: Building2 },
+  { id: 'special', label: 'Inclusive Support', icon: HeartHandshake },
 ];
 
 const CHENNAI_AREAS = [
+  'All Chennai',
   'Tambaram & GST Corridor',
   'OMR / Sholinganallur',
   'Adyar & Besant Nagar',
@@ -31,6 +33,7 @@ const CHENNAI_AREAS = [
 ];
 
 const GRADES = [
+  'Any Grade',
   'Pre-KG', 'LKG', 'UKG',
   'Class 1', 'Class 2', 'Class 3', 'Class 4',
   'Class 5', 'Class 6', 'Class 7', 'Class 8',
@@ -83,27 +86,27 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="bg-white w-full max-w-2xl rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
+        className="bg-[#FAF9F6] w-full max-w-2xl rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="guided-search-title"
       >
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-5 sm:px-6 py-4 border-b border-stone-200 flex items-center justify-between bg-white">
           <div className="pr-2 min-w-0">
-            <h2 id="guided-search-title" className="text-sm sm:text-base font-bold text-slate-900 truncate">
+            <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider block">
+              Structured Criteria Filter
+            </span>
+            <h2 id="guided-search-title" className="font-editorial text-base sm:text-lg font-bold text-stone-900 truncate">
               Configure Search Priorities
             </h2>
-            <p className="text-[11px] sm:text-xs text-slate-600 mt-0.5 truncate">
-              Refine your criteria to narrow down best-matching schools in Chennai
-            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors shrink-0"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -111,7 +114,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
         </div>
 
         {/* Category Horizontal Tab Bar */}
-        <div className="flex border-b border-slate-100 overflow-x-auto scrollbar-none px-2 sm:px-4 bg-slate-50/70">
+        <div className="flex border-b border-stone-200 overflow-x-auto scrollbar-none px-2 sm:px-4 bg-[#F5F1E8]/70">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const isCurrent = activeTab === cat.id;
@@ -120,13 +123,13 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveTab(cat.id)}
-                className={`flex items-center gap-1.5 py-2.5 sm:py-3 px-3 sm:px-3.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer min-h-[40px] shrink-0 ${
+                className={`flex items-center gap-1.5 py-2.5 sm:py-3 px-3 sm:px-3.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors cursor-pointer min-h-[40px] shrink-0 font-sans ${
                   isCurrent
-                    ? 'border-teal-600 text-teal-800 bg-white'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                    ? 'border-[#0D9488] text-teal-900 bg-white'
+                    : 'border-transparent text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-teal-600' : 'text-slate-600'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-teal-700' : 'text-stone-500'}`} />
                 <span>{cat.label}</span>
               </button>
             );
@@ -134,11 +137,11 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
         </div>
 
         {/* Tab Content Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 font-sans">
           {activeTab === 'location' && (
             <div className="space-y-4">
-              <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Select Locality Hub
+              <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                Select Chennai Educational Corridor
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {CHENNAI_AREAS.map((area) => (
@@ -146,22 +149,22 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                     key={area}
                     type="button"
                     onClick={() => updateFilters({ location: area })}
-                    className={`p-3 rounded-lg border text-left text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                    className={`p-3 rounded-xl border text-left text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
                       filters.location === area
-                        ? 'border-teal-600 bg-teal-50/60 text-teal-900 font-semibold'
-                        : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-2xs'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50'
                     }`}
                   >
                     <span>{area}</span>
-                    {filters.location === area && <Check className="w-4 h-4 text-teal-600" />}
+                    {filters.location === area && <Check className="w-4 h-4 text-teal-600 stroke-[3]" />}
                   </button>
                 ))}
               </div>
 
-              <div className="pt-4 border-t border-slate-100">
+              <div className="pt-4 border-t border-stone-200">
                 <div className="flex justify-between text-xs mb-2">
-                  <span className="font-semibold text-slate-700">Acceptable Commute Radius</span>
-                  <span className="font-bold text-teal-700">{filters.radiusKm} km</span>
+                  <span className="font-bold text-stone-700">Acceptable Commute Radius</span>
+                  <span className="font-bold text-teal-800">{filters.radiusKm} km</span>
                 </div>
                 <input
                   type="range"
@@ -175,87 +178,15 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
-          {activeTab === 'grade' && (
-            <div className="space-y-3">
-              <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Target Admission Grade for 2026-27
-              </span>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {GRADES.map((grade) => (
-                  <button
-                    key={grade}
-                    type="button"
-                    onClick={() => updateFilters({ grade })}
-                    className={`py-2 px-3 rounded-lg border text-center text-xs font-medium transition-all cursor-pointer ${
-                      filters.grade === grade
-                        ? 'border-teal-600 bg-teal-50 text-teal-800 font-bold shadow-2xs'
-                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {grade}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'budget' && (
-            <div className="space-y-5">
-              <div>
-                <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Maximum Annual Tuition Budget
-                </span>
-                <p className="text-xs text-slate-600">
-                  Excludes optional transport and one-time admission charges
-                </p>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                <span className="text-2xl font-bold text-teal-800 tabular-nums">
-                  ₹{(filters.budgetMax / 100000).toFixed(1)} Lakh / year
-                </span>
-                <span className="block text-xs text-slate-600 mt-1">
-                  (~₹{Math.round(filters.budgetMax / 12).toLocaleString('en-IN')}/month)
-                </span>
-              </div>
-
-              <input
-                type="range"
-                min={50000}
-                max={300000}
-                step={10000}
-                value={filters.budgetMax}
-                onChange={(e) => updateFilters({ budgetMax: Number(e.target.value) })}
-                className="w-full accent-teal-600 cursor-pointer"
-              />
-
-              <div className="grid grid-cols-3 gap-2">
-                {[80000, 120000, 200000].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => updateFilters({ budgetMax: preset })}
-                    className={`py-1.5 px-2 text-xs rounded border transition-colors cursor-pointer ${
-                      filters.budgetMax === preset
-                        ? 'border-teal-600 bg-teal-50 text-teal-800 font-semibold'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    ≤ ₹{(preset / 100000).toFixed(1)} Lakh
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {activeTab === 'curriculum' && (
-            <div className="space-y-3">
-              <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Curriculum Boards
+            <div className="space-y-4">
+              <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                Select Primary Educational Boards
               </span>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {CURRICULUMS.map((curr) => {
                   const selected = filters.curriculums.includes(curr);
+                  const cColor = getCurriculumColor(curr);
                   return (
                     <button
                       key={curr}
@@ -266,14 +197,14 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                           : [...filters.curriculums, curr];
                         updateFilters({ curriculums: next });
                       }}
-                      className={`w-full p-3 rounded-lg border text-left text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                      className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
                         selected
-                          ? 'border-teal-600 bg-teal-50 text-teal-900 font-semibold'
-                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                          ? `${cColor.badge} shadow-2xs`
+                          : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
                       }`}
                     >
                       <span>{curr}</span>
-                      {selected && <Check className="w-4 h-4 text-teal-600" />}
+                      {selected && <Check className="w-4 h-4 stroke-[3]" />}
                     </button>
                   );
                 })}
@@ -281,10 +212,100 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
             </div>
           )}
 
-          {activeTab === 'schoolType' && (
+          {activeTab === 'budget' && (
+            <div className="space-y-5">
+              <div>
+                <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                  Maximum Annual Tuition Budget
+                </span>
+                <p className="text-xs text-stone-500">
+                  Excludes optional bus transport and one-time admission charges
+                </p>
+              </div>
+
+              <div className="p-5 bg-white rounded-2xl border border-stone-200 text-center shadow-xs">
+                <span className="text-2xl sm:text-3xl font-bold font-editorial text-amber-900 tabular-nums">
+                  ₹{(filters.budgetMax / 100000).toFixed(1)} Lakh / year
+                </span>
+                <span className="block text-xs text-stone-500 mt-1">
+                  (~₹{Math.round(filters.budgetMax / 12).toLocaleString('en-IN')}/month)
+                </span>
+              </div>
+
+              <input
+                type="range"
+                min={50000}
+                max={500000}
+                step={10000}
+                value={filters.budgetMax}
+                onChange={(e) => updateFilters({ budgetMax: Number(e.target.value) })}
+                className="w-full accent-amber-600 cursor-pointer"
+              />
+            </div>
+          )}
+
+          {activeTab === 'activities' && (
+            <div className="space-y-4">
+              <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                Select Campus Facilities
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {FACILITIES.map((facility) => {
+                  const selected = filters.requiredFacilities.includes(facility);
+                  const fColor = getFacilityCategoryColor('Sports & STEM', facility);
+                  return (
+                    <button
+                      key={facility}
+                      type="button"
+                      onClick={() => {
+                        const next = selected
+                          ? filters.requiredFacilities.filter((f) => f !== facility)
+                          : [...filters.requiredFacilities, facility];
+                        updateFilters({ requiredFacilities: next });
+                      }}
+                      className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                        selected
+                          ? `${fColor.badge} shadow-2xs`
+                          : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                      }`}
+                    >
+                      <span>{facility}</span>
+                      {selected && <Check className="w-4 h-4 stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'grade' && (
             <div className="space-y-3">
-              <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Type of Institution
+              <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                Target Admission Grade for 2026-27
+              </span>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {GRADES.map((grade) => (
+                  <button
+                    key={grade}
+                    type="button"
+                    onClick={() => updateFilters({ grade })}
+                    className={`py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                      filters.grade === grade
+                        ? 'border-[#0D9488] bg-teal-50 text-teal-950 font-bold shadow-2xs'
+                        : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    {grade}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'schoolType' && (
+            <div className="space-y-4">
+              <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                School Formats
               </span>
               <div className="grid grid-cols-2 gap-2.5">
                 {SCHOOL_TYPES.map((type) => {
@@ -299,47 +320,14 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                           : [...filters.schoolTypes, type];
                         updateFilters({ schoolTypes: next });
                       }}
-                      className={`p-3 rounded-lg border text-xs text-left transition-colors flex items-center justify-between cursor-pointer ${
+                      className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
                         selected
-                          ? 'border-teal-600 bg-teal-50 text-teal-900 font-semibold'
-                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                          ? 'border-[#0D9488] bg-teal-50 text-teal-950 font-bold shadow-2xs'
+                          : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
                       }`}
                     >
                       <span>{type}</span>
-                      {selected && <Check className="w-4 h-4 text-teal-600" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'activities' && (
-            <div className="space-y-3">
-              <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Priority Facilities & Athletics
-              </span>
-              <div className="space-y-2">
-                {FACILITIES.map((facility) => {
-                  const selected = filters.requiredFacilities.includes(facility);
-                  return (
-                    <button
-                      key={facility}
-                      type="button"
-                      onClick={() => {
-                        const next = selected
-                          ? filters.requiredFacilities.filter((f) => f !== facility)
-                          : [...filters.requiredFacilities, facility];
-                        updateFilters({ requiredFacilities: next });
-                      }}
-                      className={`w-full p-3 rounded-lg border text-left text-xs transition-colors flex items-center justify-between cursor-pointer ${
-                        selected
-                          ? 'border-teal-600 bg-teal-50 text-teal-900 font-semibold'
-                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>{facility}</span>
-                      {selected && <Check className="w-4 h-4 text-teal-600" />}
+                      {selected && <Check className="w-4 h-4 text-teal-700 stroke-[3]" />}
                     </button>
                   );
                 })}
@@ -349,15 +337,15 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
 
           {activeTab === 'special' && (
             <div className="space-y-4">
-              <div className="p-4 bg-teal-50/60 rounded-xl border border-teal-200/80">
-                <h4 className="text-xs font-bold text-teal-900 mb-1">
+              <div className="p-5 bg-teal-50/70 rounded-2xl border border-teal-200">
+                <h4 className="font-editorial text-sm font-bold text-teal-950 mb-1">
                   Inclusive Education & Learning Support (SEN)
                 </h4>
-                <p className="text-xs text-teal-800 leading-relaxed">
+                <p className="text-xs text-teal-900 leading-relaxed">
                   Only show schools verified to have certified remedial educators, occupational therapy partnerships, or structured Individualized Education Plans (IEPs).
                 </p>
-                <div className="mt-3">
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-900">
+                <div className="mt-4">
+                  <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-900">
                     <input
                       type="checkbox"
                       checked={filters.requiresSpecialNeeds}
@@ -373,11 +361,11 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-t border-stone-200 bg-white flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer min-h-[44px] px-3 flex items-center"
+            className="text-xs font-bold text-stone-600 hover:text-stone-900 cursor-pointer min-h-[44px] px-3 flex items-center"
           >
             Cancel
           </button>
@@ -385,7 +373,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
           <button
             type="button"
             onClick={handleApplyAndSearch}
-            className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 min-h-[44px] bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center justify-center text-center"
+            className="flex-1 sm:flex-initial px-5 sm:px-6 py-2.5 min-h-[44px] bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center text-center"
           >
             Apply & View Matches
           </button>
