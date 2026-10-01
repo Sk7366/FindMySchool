@@ -12,15 +12,47 @@ import {
   Scale,
   ArrowRight,
   Compass,
-  Check
+  Check,
+  Building2,
+  FlaskConical
 } from 'lucide-react';
 import { getCurriculumColor } from '../utils/categoryColors';
+import { VerificationBadge } from '../components/common/VerificationBadge';
+import { DataStatus } from '../types/school';
 
 export const HowItWorksPage: React.FC = () => {
   const cbseColor = getCurriculumColor('CBSE');
   const cambridgeColor = getCurriculumColor('Cambridge');
   const ibColor = getCurriculumColor('IB World');
   const icseColor = getCurriculumColor('ICSE');
+
+  const BADGE_EXAMPLES: { status: DataStatus; description: string; context: string }[] = [
+    {
+      status: 'verified',
+      description: 'Information checked against a documented source.',
+      context: 'Official government gazette circulars, board affiliation letters, or verified school fee notifications.'
+    },
+    {
+      status: 'partially_verified',
+      description: 'Some details checked against documentation; other sections awaiting confirmation.',
+      context: 'Tuition confirmed via published schedule, but transport routes or optional activities await 2026 notification.'
+    },
+    {
+      status: 'self_reported',
+      description: 'Information supplied by the institution and not independently verified.',
+      context: 'Classroom dimensions, student-teacher ratios, or pedagogy notes submitted directly by school administration.'
+    },
+    {
+      status: 'demo',
+      description: 'Fictional data used for this prototype.',
+      context: 'Illustrative mock profiles populated to demonstrate interface features prior to full production census.'
+    },
+    {
+      status: 'needs_confirmation',
+      description: 'Information requires direct verification with the institution.',
+      context: 'Specific bus pickup slots, mid-year seat vacancies, or individualized learning support availability.'
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900">
@@ -37,7 +69,7 @@ export const HowItWorksPage: React.FC = () => {
             How FindMySchool Evaluates Schools
           </h1>
           <p className="text-sm sm:text-base text-stone-600 max-w-2xl mx-auto leading-relaxed font-sans">
-            School discovery in India has long been dominated by commercial directories that sell top ranking spots to whoever bids the most. FindMySchool was built to give Chennai parents an uncompromised, explainable decision companion.
+            School discovery in India has long been dominated by commercial directories that sell top ranking spots to whoever bids the most. FindMySchool was built to give Chennai parents an uncompromised, explainable decision companion grounded in clear data provenance.
           </p>
         </div>
       </section>
@@ -77,7 +109,7 @@ export const HowItWorksPage: React.FC = () => {
                 Every Match Must Be Explainable
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
-                Rather than an opaque single number, every recommendation itemizes verified fits (✓), partial trade-offs (△), and items requiring on-site parent confirmation (ℹ).
+                Rather than an opaque single score, every recommendation clearly differentiates between items matched from user preferences (✓), verified factual details (✦), and points requiring on-site confirmation (ℹ).
               </p>
             </div>
 
@@ -86,10 +118,10 @@ export const HowItWorksPage: React.FC = () => {
                 3
               </div>
               <h3 className="font-editorial text-base font-bold text-stone-900">
-                Audited Fee Receipts, Not Guesswork
+                Clear Provenance, Not Manufactured Claims
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
-                We independently verify fee structures from parent fee receipts and officially notified circulars under the Tamil Nadu Private Schools Fee Determination Committee.
+                We never label unconfirmed or demo entries as audited. Every record explicitly displays its verification status and data source, giving parents an honest baseline.
               </p>
             </div>
 
@@ -101,8 +133,69 @@ export const HowItWorksPage: React.FC = () => {
                 Zero Commercial Placement Bias
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
-                Schools cannot buy featured badges, sponsored ranks, or higher matching percentages. We exist solely to assist parents with objective data.
+                Schools cannot buy featured badges, sponsored ranks, or higher matching percentages. We exist solely to assist parents with transparent, objective data.
               </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Data Provenance & Verification Badge System Guide */}
+        <section className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-9 shadow-xs space-y-6">
+          <div>
+            <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">
+              Data Trust & Integrity Framework
+            </span>
+            <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900 mt-1">
+              Understanding Our Data Verification Badges
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 mt-1 font-sans">
+              Every institution profile and card in FindMySchool carries an explicit badge indicating how its data was collected and verified. Hover or tap any badge to inspect its meaning.
+            </p>
+          </div>
+
+          <div className="space-y-3 font-sans">
+            {BADGE_EXAMPLES.map((item) => (
+              <div
+                key={item.status}
+                className="p-4 rounded-2xl bg-[#FAF9F6] border border-stone-200/90 flex flex-col sm:flex-row sm:items-start justify-between gap-3"
+              >
+                <div className="space-y-1 sm:max-w-xs">
+                  <div className="flex items-center gap-2">
+                    <VerificationBadge status={item.status} size="md" showTooltip={true} />
+                  </div>
+                  <p className="text-xs text-stone-800 font-semibold mt-1">
+                    {item.description}
+                  </p>
+                </div>
+                <div className="text-xs text-stone-500 sm:max-w-md sm:text-right">
+                  <span className="font-semibold text-stone-700 block text-[11px] uppercase tracking-wider">Context & Examples</span>
+                  <span>{item.context}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 rounded-xl bg-teal-50/70 border border-teal-200 text-xs text-teal-950 font-sans space-y-1.5">
+            <div className="font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+              <span>Transparent Match Explanations: How "Why this school matches" Works</span>
+            </div>
+            <p className="text-stone-700 leading-relaxed">
+              When reviewing school match reasons, we strictly separate three distinct types of feedback:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div className="p-2.5 rounded-lg bg-white border border-teal-200/80">
+                <span className="font-bold text-teal-900 block text-[11px]">1. Matched from Preferences</span>
+                <span className="text-stone-600 text-[11px]">E.g., "Matches your preference: Montessori" based directly on your search priorities.</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-stone-200">
+                <span className="font-bold text-stone-900 block text-[11px]">2. Factual Information</span>
+                <span className="text-stone-600 text-[11px]">E.g., "Listed fee: ₹80K/year" or verified lab facilities published on record.</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-amber-200/80">
+                <span className="font-bold text-amber-900 block text-[11px]">3. Requires Confirmation</span>
+                <span className="text-stone-600 text-[11px]">E.g., "Confirm current fee with the institution" or bus stop pickup timings.</span>
+              </div>
             </div>
           </div>
         </section>

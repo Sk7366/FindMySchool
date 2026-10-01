@@ -457,7 +457,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
               onChange={(e) => updateFilters({ requiresTransport: e.target.checked })}
               className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
             />
-            <span>Must have verified bus / van fleet</span>
+            <span>Transport information available (Bus / Van)</span>
           </label>
 
           <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer p-1">

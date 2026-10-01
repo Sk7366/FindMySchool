@@ -31,7 +31,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
           <span className="text-xs font-bold text-stone-800">
             Chennai Metropolitan Map
           </span>
-          <span className="text-[11px] text-stone-500">· {schools.length} verified pins</span>
+          <span className="text-[11px] text-stone-500">· {schools.length} listed campus pins</span>
         </div>
 
         <div className="bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-stone-200 shadow-2xs pointer-events-auto flex items-center gap-1.5 text-xs text-stone-600 font-medium">

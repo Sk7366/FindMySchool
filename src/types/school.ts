@@ -27,7 +27,16 @@ export interface PreschoolProgramDetail {
 
 export type SchoolType = 'Co-educational' | 'All-Girls' | 'All-Boys' | 'Day School' | 'Day Boarding' | 'Residential';
 
-export type VerificationStatus = 'Verified by School' | 'Parent Audited' | 'Awaiting 2026 Confirmation';
+export type VerificationStatus = 'Verified by School' | 'Parent Audited' | 'Awaiting 2026 Confirmation' | 'Demo Data';
+
+export type DataStatus =
+  | 'verified'
+  | 'partially_verified'
+  | 'self_reported'
+  | 'demo'
+  | 'needs_confirmation';
+
+export type MatchSourceType = 'preference' | 'verified_fact' | 'needs_confirmation';
 
 export interface FeeItem {
   title: string;
@@ -40,9 +49,11 @@ export interface FeeItem {
 export interface MatchReason {
   id: string;
   type: 'positive' | 'partial' | 'unverified';
+  sourceType?: MatchSourceType;
   title: string;
   description: string;
   matchedCriteria: 'budget' | 'distance' | 'curriculum' | 'facility' | 'activity' | 'philosophy' | 'transport';
+  confirmationAction?: string;
 }
 
 export interface Facility {
@@ -126,6 +137,9 @@ export interface School {
   admissionStatus: 'Admissions Open 2026-27' | 'Applications Closed' | 'Waitlist Only' | 'Upcoming Cycle';
   admissionDeadline: string;
   verificationStatus: VerificationStatus;
+  dataStatus?: DataStatus;
+  lastVerifiedAt?: string;
+  verificationSources?: string[];
   feeSource: string;
   lastAuditedDate: string;
   website: string;

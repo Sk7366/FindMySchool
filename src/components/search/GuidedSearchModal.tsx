@@ -487,7 +487,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                   Inclusive Education & Learning Support (SEN)
                 </h4>
                 <p className="text-xs text-teal-900 leading-relaxed">
-                  Only show schools verified to have certified remedial educators, occupational therapy partnerships, or structured Individualized Education Plans (IEPs).
+                  Only show schools documented to have certified remedial educators, occupational therapy partnerships, or structured Individualized Education Plans (IEPs).
                 </p>
                 <div className="mt-4">
                   <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-900">
@@ -497,7 +497,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
                       onChange={(e) => updateFilters({ requiresSpecialNeeds: e.target.checked })}
                       className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
                     />
-                    <span>Require verified special educational needs support</span>
+                    <span>Require special educational needs support</span>
                   </label>
                 </div>
               </div>

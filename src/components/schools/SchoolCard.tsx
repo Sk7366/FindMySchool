@@ -26,6 +26,8 @@ import { School } from '../../types/school';
 import { useComparison } from '../../context/ComparisonContext';
 import { useShortlist } from '../../context/ShortlistContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../../utils/categoryColors';
+import { VerificationBadge } from '../common/VerificationBadge';
+import { formatMatchReason } from '../../utils/matchProvenance';
 
 interface SchoolCardProps {
   school: School;
@@ -194,11 +196,20 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
           {/* Header Row: Identity & Fit Ring */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pr-2">
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium mb-1">
-                <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                <span className="truncate">{school.area}</span>
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium mb-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                  <span className="truncate">{school.area}</span>
+                  <span>·</span>
+                  <span className="tabular-nums">{school.distanceKm} km</span>
+                </span>
                 <span>·</span>
-                <span className="tabular-nums">{school.distanceKm} km</span>
+                <VerificationBadge
+                  status={school.dataStatus || 'demo'}
+                  lastVerifiedAt={school.lastVerifiedAt}
+                  verificationSources={school.verificationSources}
+                  size="sm"
+                />
               </div>
 
               <h2 className="font-editorial text-lg sm:text-xl font-bold text-stone-900 group-hover:text-teal-900 transition-colors leading-snug">
@@ -329,32 +340,52 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               </span>
             </div>
 
-            <div className="space-y-1.5 pt-0.5">
-              {positiveReasons.slice(0, 2).map((reason) => (
-                <div key={reason.id} className="flex items-start gap-2 text-stone-700 leading-snug">
-                  <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-2.5 h-2.5 stroke-[3]" />
-                  </span>
-                  <span>
-                    <strong className="font-semibold text-stone-900">{reason.title}</strong>
-                    <span className="text-stone-500 text-[11px] hidden sm:inline"> — {reason.description}</span>
-                  </span>
-                </div>
-              ))}
-
-              {verifyReasons.length > 0 && (
-                <div className="flex items-start gap-2 pt-1 border-t border-stone-200/40 text-stone-700 leading-snug">
-                  <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                    <AlertTriangle className="w-2.5 h-2.5" />
-                  </span>
-                  <span>
-                    <span className="font-bold text-amber-900 text-[11px]">
-                      {isEarlyYears ? 'One thing to check: ' : 'One thing to verify: '}
+            <div className="space-y-2 pt-0.5">
+              {positiveReasons.slice(0, 2).map((reason) => {
+                const exp = formatMatchReason(reason);
+                return (
+                  <div key={reason.id} className="flex items-start gap-2 text-stone-700 leading-snug">
+                    <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
                     </span>
-                    <strong className="font-semibold text-stone-900">{verifyReasons[0].title}</strong>
-                  </span>
-                </div>
-              )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border shrink-0 ${exp.tagBadgeClass}`}>
+                          {exp.tag}
+                        </span>
+                        <strong className="font-semibold text-stone-900 text-xs">{exp.title}</strong>
+                      </div>
+                      {exp.detail && (
+                        <p className="text-stone-500 text-[11px] mt-0.5 leading-tight">
+                          {exp.detail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {verifyReasons.length > 0 && (() => {
+                const exp = formatMatchReason(verifyReasons[0]);
+                return (
+                  <div className="flex items-start gap-2 pt-1.5 border-t border-stone-200/50 text-stone-700 leading-snug">
+                    <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border shrink-0 ${exp.tagBadgeClass}`}>
+                          {exp.tag}
+                        </span>
+                        <strong className="font-semibold text-stone-900 text-xs">{exp.title}</strong>
+                      </div>
+                      <p className="text-amber-900 font-medium text-[11px] mt-0.5 leading-tight">
+                        {exp.actionAdvice || exp.detail}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

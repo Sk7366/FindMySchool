@@ -30,6 +30,7 @@ import { useSearch } from '../context/SearchContext';
 import { CHENNAI_SCHOOLS } from '../data/schools';
 import { School } from '../types/school';
 import { getCurriculumColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
+import { VerificationBadge } from '../components/common/VerificationBadge';
 
 export const ComparePage: React.FC = () => {
   const { comparisonSchools, removeFromComparison, toggleComparison, maxComparisonLimit } = useComparison();
@@ -184,9 +185,17 @@ export const ComparePage: React.FC = () => {
                 </button>
 
                 <div className="pr-4">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block mb-1.5 ${bColor.badge}`}>
-                    {school.matchScore}% Fit
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${bColor.badge}`}>
+                      {school.matchScore}% Fit
+                    </span>
+                    <VerificationBadge
+                      status={school.dataStatus || 'demo'}
+                      lastVerifiedAt={school.lastVerifiedAt}
+                      verificationSources={school.verificationSources}
+                      size="sm"
+                    />
+                  </div>
                   <h3 className="font-editorial text-xs font-bold text-stone-900 line-clamp-2 leading-snug">
                     {school.name}
                   </h3>
@@ -501,9 +510,17 @@ export const ComparePage: React.FC = () => {
                         </button>
 
                         <div className="pr-6">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block mb-1.5 ${bColor.badge}`}>
-                            {school.matchScore}% Match
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${bColor.badge}`}>
+                              {school.matchScore}% Match
+                            </span>
+                            <VerificationBadge
+                              status={school.dataStatus || 'demo'}
+                              lastVerifiedAt={school.lastVerifiedAt}
+                              verificationSources={school.verificationSources}
+                              size="sm"
+                            />
+                          </div>
                           <h3 className="font-editorial text-sm font-bold text-stone-900 leading-snug line-clamp-2">
                             <Link to={`/school/${school.slug}`} className="hover:text-teal-800">
                               {school.name}
@@ -820,7 +837,7 @@ export const ComparePage: React.FC = () => {
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
                     <span className="font-semibold text-stone-900">Up to {s.transportRadiusKm} km</span>
                     <span className="block text-[11px] text-stone-500">
-                      {s.institutionType === 'preschool' ? 'Air-conditioned GPS Vans' : 'Verified Bus Fleet'}
+                      {s.institutionType === 'preschool' ? 'Air-conditioned GPS Vans' : 'School Bus Fleet Available'}
                     </span>
                   </td>
                 ))}
@@ -834,6 +851,25 @@ export const ComparePage: React.FC = () => {
                     <span className="uppercase tracking-wider">Admissions Status & Family Checkpoints</span>
                   </div>
                 </td>
+              </tr>
+
+              <tr>
+                <td className="p-3.5 px-5 font-bold text-stone-700 sticky left-0 bg-white z-10 border-r border-stone-200">
+                  Data Provenance
+                </td>
+                {comparisonSchools.map((s) => (
+                  <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
+                    <VerificationBadge
+                      status={s.dataStatus || 'demo'}
+                      lastVerifiedAt={s.lastVerifiedAt}
+                      verificationSources={s.verificationSources}
+                      size="sm"
+                    />
+                    <span className="block text-[10px] text-stone-500 mt-1 font-sans">
+                      {s.feeSource || 'Prototype demonstration profile'}
+                    </span>
+                  </td>
+                ))}
               </tr>
 
               <tr>

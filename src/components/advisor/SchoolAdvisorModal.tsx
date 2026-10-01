@@ -35,7 +35,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
       sender: 'advisor',
       text: contextSchoolName
         ? `Hello! I am your FindMySchool Advisor. I can analyze how ${contextSchoolName} fits your stated priorities (Class 5, CBSE/Cambridge, Tambaram/OMR commute, and ₹1.2L budget), or answer questions on admission timelines and hidden expenses.`
-        : `Welcome to the FindMySchool Decision Advisor. I help parents in Chennai evaluate schools realistically based on commute tolerances, board choices, verified fee disclosures, and curriculum philosophies. What would you like to explore today?`,
+        : `Welcome to the FindMySchool Decision Advisor. I help parents in Chennai evaluate schools realistically based on commute tolerances, board choices, transparent fee disclosures, and curriculum philosophies. What would you like to explore today?`,
       checklist: [
         'Commute reality checks (peak OMR / GST traffic buffers)',
         'Hidden school fees (transport, uniforms, admission non-refundable kit)',
@@ -80,7 +80,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
     if (presetKey && MOCK_ADVISOR_FAQ[presetKey]) {
       replyText = MOCK_ADVISOR_FAQ[presetKey];
     } else if (questionText.toLowerCase().includes('drawback') || questionText.toLowerCase().includes('risk')) {
-      replyText = `Based on parent audits and commute models:
+      replyText = `Based on curated school disclosures and commute models:
 1. Commute fatigue: For schools along OMR or Porur, afternoon return trips during monsoon can exceed 45 minutes.
 2. Incidental fee escalations: Some private institutions increase fees 8-12% annually without prior notice in the prospectus.
 3. Elective sports vs core syllabus: Ensure robotics and swimming are part of weekly timetable hours rather than expensive after-school clubs.`;
@@ -102,7 +102,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
       const targetGrade = searchState.filters?.grade || 'Any Grade';
       const radiusKm = searchState.filters?.radiusKm || 12;
       replyText = `For ${contextSchoolName || 'your Chennai search'} with a budget limit of ₹${(budgetMax / 100000).toFixed(1)}L and target grade ${targetGrade}:
-1. Curriculum alignment: Verified match with your stated preferences.
+1. Curriculum alignment: Matched with your stated preferences.
 2. Commute: Average travel radius is ${radiusKm} km.
 3. Verification advice: Request official receipts for sports and laboratory activity funds to ensure no surprise charges.`;
       checklist = [
@@ -227,7 +227,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
                 onClick={() => handleAsk('hidden-costs')}
                 className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
               >
-                Hidden fees to audit
+                Fee items to confirm
               </button>
               <button
                 type="button"
@@ -323,7 +323,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
             </button>
           </form>
           <div className="mt-1 text-[11px] text-stone-500 text-center font-sans">
-            Independent guidance based on curated school disclosures and parent audits.
+            Independent guidance based on curated school disclosures and parent priorities.
           </div>
         </div>
       </div>

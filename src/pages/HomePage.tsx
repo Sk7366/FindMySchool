@@ -149,7 +149,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
       concepts.push({ id: 'c-swim', label: 'Facility: Swimming Pool', color: 'bg-sky-50 text-sky-900 border-sky-200', icon: 'Waves' });
     }
     if (q.includes('transport') || q.includes('bus') || q.includes('van')) {
-      concepts.push({ id: 'c-trans', label: 'Verified Transport', color: 'bg-stone-100 text-stone-800 border-stone-200', icon: 'Bus' });
+      concepts.push({ id: 'c-trans', label: 'Transport Available', color: 'bg-stone-100 text-stone-800 border-stone-200', icon: 'Bus' });
     }
 
     return concepts;
@@ -222,7 +222,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
               <span>Independent School & Early Years Discovery for Chennai Families</span>
               <span className="text-stone-400">·</span>
-              <span className="text-teal-800 font-bold">100% Unsponsored</span>
+              <span className="text-teal-800 font-bold">Designed for transparent discovery</span>
             </div>
 
             {/* Display Heading: Fraunces / Editorial Serif */}
@@ -232,7 +232,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
 
             {/* Supporting Copy */}
             <p className="mt-4 text-base sm:text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed font-sans">
-              From toddler playschools and Montessori environments to premier K–12 academies, compare verified learning approaches, realistic commute buffers, and transparent fees across Chennai.
+              From toddler playschools and Montessori environments to premier K–12 academies, compare learning approaches, realistic commute buffers, and transparent fee disclosures across Chennai.
             </p>
           </div>
 
@@ -350,7 +350,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               <div className="pt-2.5 border-t border-stone-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="text-xs text-stone-500 flex items-center gap-1.5 font-medium">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Verified pedagogy, parent audits & transparent disclosures</span>
+                  <span>Pedagogy listed in demo data & transparent disclosures</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -471,7 +471,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                   <span>Grounded in Chennai Realities</span>
                 </span>
                 <h3 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900 leading-snug">
-                  Audited campus disclosures, verified early childhood ratios, and zero marketing hype.
+                  Curated campus disclosures, listed early childhood ratios, and zero marketing hype.
                 </h3>
                 <p className="text-xs text-stone-600 leading-relaxed font-sans">
                   From Montessori sensory gardens in Velachery to high-performing CBSE and Cambridge institutions across Chennai.
@@ -479,7 +479,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                 <div className="pt-1 flex items-center gap-4 text-xs font-semibold text-stone-700">
                   <span className="flex items-center gap-1 text-teal-800">
                     <Check className="w-3.5 h-3.5 text-teal-600 stroke-[3]" />
-                    <span>Real parent fee receipts</span>
+                    <span>Listed fee benchmarks</span>
                   </span>
                   <span className="flex items-center gap-1 text-teal-800">
                     <Check className="w-3.5 h-3.5 text-teal-600 stroke-[3]" />
@@ -544,7 +544,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
             </h2>
             <p className="text-xs sm:text-sm text-stone-600 mt-1 font-sans">
               {selectedTarget === 'preschool'
-                ? 'Nursery, Playgroup and Kindergarten programs with verified caregiver ratios and safe play environments.'
+                ? 'Nursery, Playgroup and Kindergarten programs with listed caregiver ratios and safe play environments.'
                 : 'Places matching common family priorities across Chennai corridors.'}
             </p>
           </div>
@@ -552,7 +552,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
             to={`/results${selectedTarget !== 'all' ? `?target=${selectedTarget}` : ''}`}
             className="text-xs sm:text-sm font-bold text-teal-800 hover:text-teal-900 flex items-center gap-1 group py-1"
           >
-            <span>Browse all verified places</span>
+            <span>Browse all listed places</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -575,7 +575,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               Explore Chennai Corridors: Schools + Preschools
             </h2>
             <p className="text-xs sm:text-sm text-stone-600 mt-1 max-w-2xl font-sans">
-              Commute reality defines family peace. Discover verified playschools and K–12 academies across Chennai's premier residential sectors.
+              Commute reality defines family peace. Discover playschools and K–12 academies across Chennai's premier residential sectors.
             </p>
           </div>
           <Link
@@ -598,7 +598,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${hub.color.badge}`}>
-                    {hub.schoolCount} Audited Campuses & Playschools
+                    {hub.schoolCount} listed institutions
                   </span>
                   <span className="text-[11px] font-medium text-stone-500 tabular-nums">
                     Avg ~ {hub.avgFee}

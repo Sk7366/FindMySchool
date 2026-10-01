@@ -103,7 +103,7 @@ export const Footer: React.FC = () => {
               <span>Parent Commitment</span>
             </h4>
             <p className="text-xs text-stone-400 leading-relaxed">
-              FindMySchool never accepts promotional payments to manipulate match scores. All fee structures specify audit dates and receipts source.
+              FindMySchool is designed for transparent discovery without paid placement bias. All institution records clearly disclose their data provenance and verification status.
             </p>
             <div className="pt-2">
               <Link
@@ -120,7 +120,7 @@ export const Footer: React.FC = () => {
         <div className="border-t border-stone-800 pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-stone-500 gap-4 font-sans">
           <p>© 2026 FindMySchool. Built for parents across Tamil Nadu & India.</p>
           <p className="text-stone-500 text-center md:text-right max-w-xl leading-relaxed">
-            Disclaimer: Fee structures and admissions timelines are compiled from parent fee receipts and official circulars. Always verify specific transport and fee schedules directly with school administrations prior to application submission.
+            Disclaimer: Profile entries indicate whether information is verified, partially verified, self-reported, or demonstration prototype data. Always confirm current fee schedules, seats, and bus routes directly with the institution prior to application.
           </p>
         </div>
       </div>
