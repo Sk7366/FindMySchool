@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Search, 
@@ -27,24 +27,31 @@ import { CHENNAI_HUBS } from '../utils/categoryColors';
 import { EducationTargetType } from '../types/search';
 
 const PRESCHOOL_PROMPTS = [
-  "Montessori preschool near Velachery for 3-year-old with daycare",
-  "Preschool with daycare near Anna Nagar",
-  "LKG programs under ₹80,000 per year with transport",
-  "Preschool for 4-year-old with outdoor play and transport",
-  "Safe preschool near Adyar with extended hours",
+  "Find a Montessori preschool for my 3-year-old near Velachery with daycare.",
+  "Looking for a safe nursery near Anna Nagar with outdoor play.",
+  "Toddler playschool with low ratio and extended hours near Porur.",
+  "Preschool with certified early years educators and sand pit in Adyar.",
 ];
 
 const SCHOOL_PROMPTS = [
-  "CBSE schools near Tambaram under ₹1.2 lakh",
-  "Schools with robotics lab and swimming near OMR",
-  "Cambridge IGCSE schools near Adyar with sports",
-  "ICSE schools near Porur for Class 6",
+  "Find a CBSE school for my 8-year-old near Anna Nagar under ₹1.5 lakh.",
+  "Looking for a school with strong sports facilities near OMR.",
+  "Cambridge IGCSE school with robotics lab near Velachery under ₹2L.",
+  "ICSE day school with swimming pool and low student-teacher ratio near Tambaram.",
 ];
 
 const COMBINED_PROMPTS = [
-  "School with preschool and Grade 1 onwards",
-  "CBSE school with Nursery and robotics near OMR",
-  "Cambridge campus with early years through Grade 12",
+  "Find a school that offers preschool through Grade 12 near OMR.",
+  "Early years through Class 12 campus with CBSE and daycare near Porur.",
+  "Nursery to Grade 12 school with green campus and swimming near Adyar.",
+  "Preschool through Grade 12 Cambridge academy with sports turf near Tambaram.",
+];
+
+const ALL_PROMPTS = [
+  "Find a Montessori preschool for my 3-year-old near Velachery with daycare.",
+  "Find a CBSE school for my 8-year-old near Anna Nagar under ₹1.5 lakh.",
+  "Looking for a safe nursery near Anna Nagar with outdoor play.",
+  "Find a school that offers preschool through Grade 12 near OMR.",
 ];
 
 interface HomePageProps {
@@ -60,11 +67,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
   const [guidedModalOpen, setGuidedModalOpen] = useState(false);
   const [selectedGuidedCategory, setSelectedGuidedCategory] = useState<GuidedCategory>('location');
   const [isListening, setIsListening] = useState(false);
+  const [promptIndex, setPromptIndex] = useState(0);
 
   // Sync selected target with SearchContext
   const handleTargetChange = (target: EducationTargetType) => {
     setSelectedTarget(target);
     setEducationTarget(target);
+    setPromptIndex(0);
   };
 
   // Dynamic Concept Detection preview
@@ -160,13 +169,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
     if (localQuery.trim()) {
       applyNaturalLanguageQuery(localQuery);
     }
-    navigate('/results');
+    navigate('/results', { state: { fromSearch: true } });
   };
 
   const handleExampleClick = (example: string) => {
     setLocalQuery(example);
     applyNaturalLanguageQuery(example);
-    navigate('/results');
+    navigate('/results', { state: { fromSearch: true } });
   };
 
   const handleOpenGuidedCategory = (category: GuidedCategory) => {
@@ -199,9 +208,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
 
   const currentPrompts = selectedTarget === 'preschool'
     ? PRESCHOOL_PROMPTS
+    : selectedTarget === 'school'
+    ? SCHOOL_PROMPTS
     : selectedTarget === 'combined'
     ? COMBINED_PROMPTS
-    : SCHOOL_PROMPTS;
+    : ALL_PROMPTS;
+
+  // Rotate placeholder every 4.2 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPromptIndex((prev) => (prev + 1) % currentPrompts.length);
+    }, 4200);
+    return () => clearInterval(timer);
+  }, [currentPrompts.length]);
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900">
@@ -238,9 +257,12 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
 
           {/* EDUCATION STAGE SELECTOR (What are you looking for?) */}
           <div className="mt-8 max-w-2xl mx-auto text-center">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider block mb-2.5">
+            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider block mb-1">
               What are you looking for?
             </span>
+            <p className="text-xs sm:text-sm text-stone-600 mb-3 font-sans max-w-lg mx-auto leading-relaxed">
+              You can describe what you're looking for in your own words. No need to understand filters or school terminology before searching.
+            </p>
             <div className="grid grid-cols-3 gap-2 p-1.5 bg-white/90 rounded-2xl border border-stone-200/90 shadow-2xs">
               <button
                 type="button"
@@ -301,13 +323,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                     value={localQuery}
                     onChange={(e) => setLocalQuery(e.target.value)}
                     rows={2}
-                    placeholder={
-                      selectedTarget === 'preschool'
-                        ? "e.g. Find a Montessori preschool for my 3-year-old near Velachery with daycare and outdoor play..."
-                        : selectedTarget === 'combined'
-                        ? "e.g. School with preschool and Grade 1 onwards near OMR under ₹1.5 lakh..."
-                        : "e.g. CBSE schools within 8 km of Tambaram under ₹1.2 lakh with swimming and robotics..."
-                    }
+                    placeholder={`e.g. "${currentPrompts[promptIndex] || currentPrompts[0]}"`}
                     className="w-full text-sm sm:text-base text-stone-900 placeholder:text-stone-400 focus:outline-none resize-none bg-transparent leading-relaxed font-sans"
                   />
                 </div>
@@ -376,18 +392,31 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
             </div>
 
             {/* Quick Prompts adapted to selected education stage */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs">
-              <span className="font-semibold text-stone-500 mr-1">Try asking:</span>
-              {currentPrompts.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => handleExampleClick(example)}
-                  className="px-2.5 py-1 rounded-md bg-[#F5F1E8] hover:bg-stone-200/70 text-stone-700 text-[11px] font-medium transition-colors cursor-pointer border border-stone-200/80"
-                >
-                  "{example}"
-                </button>
-              ))}
+            <div className="mt-4 max-w-3xl mx-auto space-y-2">
+              <div className="flex items-center justify-between px-1 text-xs text-stone-500 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Search examples in everyday words:</span>
+                </span>
+                <span className="text-[11px] text-stone-400 hidden sm:inline">Click any example to search</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {currentPrompts.slice(0, 4).map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => handleExampleClick(example)}
+                    className="p-2.5 sm:p-3 rounded-xl bg-white/90 hover:bg-white text-stone-700 hover:text-teal-950 text-xs text-left font-medium transition-all cursor-pointer border border-stone-200/90 shadow-2xs hover:shadow-xs hover:border-teal-300 flex items-start gap-2 group"
+                  >
+                    <span className="text-teal-600 font-bold text-sm leading-none shrink-0 group-hover:translate-x-0.5 transition-transform">
+                      “
+                    </span>
+                    <span className="flex-1 leading-snug font-sans">
+                      {example}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

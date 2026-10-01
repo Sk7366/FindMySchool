@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Filter, Map, List, Edit3, X, AlertCircle, RotateCcw, Search, Sliders, Baby, School as SchoolIcon, Layers } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 import { useShortlist } from '../context/ShortlistContext';
@@ -8,11 +8,13 @@ import { FilterSidebar } from '../components/filters/FilterSidebar';
 import { SchoolMapPreview } from '../components/schools/SchoolMapPreview';
 import { PriorityTunerModal } from '../components/schools/PriorityTunerModal';
 import { WhatWeUnderstoodPanel } from '../components/search/WhatWeUnderstoodPanel';
+import { SearchTransitionPipeline } from '../components/search/SearchTransitionPipeline';
 import { SortField, EducationTargetType } from '../types/search';
 import { getCurriculumColor, getPedagogyColor } from '../utils/categoryColors';
 
 export const SearchResultsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const {
     searchState,
     filteredSchools,
@@ -34,6 +36,7 @@ export const SearchResultsPage: React.FC = () => {
   const [quickQuery, setQuickQuery] = useState(rawQuery);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   const [priorityTunerOpen, setPriorityTunerOpen] = useState(false);
+  const [isFreshSearch, setIsFreshSearch] = useState<boolean>(() => Boolean(location.state?.fromSearch));
 
   // Sync query params if passed in URL
   useEffect(() => {
@@ -72,6 +75,7 @@ export const SearchResultsPage: React.FC = () => {
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (quickQuery.trim()) {
+      setIsFreshSearch(true);
       setRawQuery(quickQuery);
       applyNaturalLanguageQuery(quickQuery);
     }
@@ -79,6 +83,30 @@ export const SearchResultsPage: React.FC = () => {
 
   const isPreschoolSearch = filters?.educationTarget === 'preschool' || 
     Boolean(filters?.preschool?.programs && filters.preschool.programs.length > 0);
+
+  const stageName = filters.educationTarget === 'preschool'
+    ? 'Preschool & Early Years'
+    : filters.educationTarget === 'school'
+    ? 'Regular School'
+    : filters.educationTarget === 'combined'
+    ? 'Preschool + School'
+    : 'All Stages';
+
+  const extractedCriteriaCount = useMemo(() => {
+    let count = 0;
+    if (filters.location) count++;
+    if (filters.budgetMax && filters.budgetMax < 250000) count++;
+    if (filters.radiusKm && filters.radiusKm < 20) count++;
+    if (filters.grade) count++;
+    if (filters.curriculums && filters.curriculums.length > 0) count += filters.curriculums.length;
+    if (filters.preschool?.programs && filters.preschool.programs.length > 0) count += filters.preschool.programs.length;
+    if (filters.preschool?.pedagogy && filters.preschool.pedagogy.length > 0) count += filters.preschool.pedagogy.length;
+    if (filters.preschool?.daycare) count++;
+    if (filters.preschool?.outdoorPlay) count++;
+    if (filters.requiresTransport) count++;
+    if (filters.requiresSpecialNeeds) count++;
+    return Math.max(count, 1);
+  }, [filters]);
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900">
@@ -94,7 +122,13 @@ export const SearchResultsPage: React.FC = () => {
                 type="text"
                 value={quickQuery}
                 onChange={(e) => setQuickQuery(e.target.value)}
-                placeholder="Describe your requirements (e.g. Montessori preschool for 3-year-old in Velachery, or CBSE under ₹1.5L)..."
+                placeholder={
+                  filters.educationTarget === 'preschool'
+                    ? "Describe in your own words (e.g. Find a Montessori preschool for my 3-year-old near Velachery with daycare)..."
+                    : filters.educationTarget === 'combined'
+                    ? "Describe in your own words (e.g. Find a school that offers preschool through Grade 12 near OMR)..."
+                    : "Describe in your own words (e.g. Find a CBSE school for my 8-year-old near Anna Nagar under ₹1.5 lakh)..."
+                }
                 className="w-full bg-[#FAF9F6] border border-stone-300 hover:border-stone-400 focus:border-[#0D9488] focus:bg-white rounded-xl pl-4 pr-24 py-2.5 text-sm sm:text-base text-stone-900 focus:outline-none focus:ring-4 focus:ring-teal-700/10 transition-all shadow-2xs font-sans"
               />
               <button
@@ -347,20 +381,41 @@ export const SearchResultsPage: React.FC = () => {
           {/* Results List Area */}
           <div className={`md:col-span-8 ${viewMode === 'split' ? 'lg:col-span-5' : 'lg:col-span-9'} space-y-4`}>
             
+            {/* Intentional Discovery Pipeline (Search → Understanding → Matching → Results) */}
+            {!isSavedMode && (
+              <SearchTransitionPipeline
+                query={rawQuery}
+                stageName={stageName}
+                extractedCriteriaCount={extractedCriteriaCount}
+                evaluatedCount={42}
+                resultsCount={displaySchools.length}
+                isInitialSearch={isFreshSearch}
+                onJumpToUnderstanding={() => {
+                  const el = document.getElementById('what-we-understood-section');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                onOpenPriorityTuner={() => setPriorityTunerOpen(true)}
+              />
+            )}
+
             {/* Interactive "What We Understood" Preferences Breakdown */}
             {!isSavedMode && (
-              <WhatWeUnderstoodPanel onOpenPriorityTuner={() => setPriorityTunerOpen(true)} />
+              <div id="what-we-understood-section" className="transition-all duration-300">
+                <WhatWeUnderstoodPanel onOpenPriorityTuner={() => setPriorityTunerOpen(true)} />
+              </div>
             )}
 
             {displaySchools.length > 0 ? (
-              displaySchools.map((school) => (
-                <div
-                  key={school.id}
-                  onMouseEnter={() => setSelectedSchoolId(school.id)}
-                >
-                  <SchoolCard school={school} />
-                </div>
-              ))
+              <div className="space-y-4 animate-in fade-in duration-300">
+                {displaySchools.map((school) => (
+                  <div
+                    key={school.id}
+                    onMouseEnter={() => setSelectedSchoolId(school.id)}
+                  >
+                    <SchoolCard school={school} />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="bg-white rounded-2xl border border-stone-200 p-8 sm:p-12 text-center space-y-4 shadow-xs">
                 <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
