@@ -1,6 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useLocation, Link } from 'react-router-dom';
-import { Filter, Map, List, Edit3, X, AlertCircle, RotateCcw, Search, Sliders, Baby, School as SchoolIcon, Layers, Bookmark, Sparkles, ArrowRight } from 'lucide-react';
+import {
+  Filter,
+  Map,
+  List,
+  Edit3,
+  X,
+  AlertCircle,
+  RotateCcw,
+  Search,
+  Sliders,
+  Baby,
+  School as SchoolIcon,
+  Layers,
+  Bookmark,
+  Sparkles,
+  ArrowRight,
+  MinusCircle,
+  IndianRupee,
+  Compass,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 import { useShortlist } from '../context/ShortlistContext';
 import { SchoolCard } from '../components/schools/SchoolCard';
@@ -13,7 +33,7 @@ import { SortField, EducationTargetType } from '../types/search';
 import { getCurriculumColor, getPedagogyColor } from '../utils/categoryColors';
 
 export const SearchResultsPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const {
     searchState,
@@ -24,6 +44,11 @@ export const SearchResultsPage: React.FC = () => {
     setRawQuery,
     applyNaturalLanguageQuery,
     resetFilters,
+    clearAllFilters,
+    removeFilter,
+    removeOneFilter,
+    relaxBudget,
+    increaseDistance,
     activeFilterCount,
   } = useSearch();
 
@@ -34,7 +59,6 @@ export const SearchResultsPage: React.FC = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'split' | 'map'>('list');
   const [quickQuery, setQuickQuery] = useState(rawQuery);
-  const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   const [priorityTunerOpen, setPriorityTunerOpen] = useState(false);
   const [isFreshSearch, setIsFreshSearch] = useState<boolean>(() => Boolean(location.state?.fromSearch));
 
@@ -50,7 +74,7 @@ export const SearchResultsPage: React.FC = () => {
       setRawQuery(qParam);
       applyNaturalLanguageQuery(qParam);
     }
-    
+
     const filterUpdates: any = {};
     if (locParam) filterUpdates.location = locParam;
     if (currParam) filterUpdates.curriculums = [currParam as any];
@@ -78,7 +102,22 @@ export const SearchResultsPage: React.FC = () => {
       setIsFreshSearch(true);
       setRawQuery(quickQuery);
       applyNaturalLanguageQuery(quickQuery);
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('q', quickQuery.trim());
+      setSearchParams(nextParams, { replace: true });
     }
+  };
+
+  const handleStageChange = (target: EducationTargetType) => {
+    setEducationTarget(target);
+    const nextParams = new URLSearchParams(searchParams);
+    if (target === 'all') {
+      nextParams.delete('target');
+    } else {
+      nextParams.set('target', target);
+    }
+    setSearchParams(nextParams, { replace: true });
   };
 
   const isPreschoolSearch = filters?.educationTarget === 'preschool' || 
@@ -90,14 +129,14 @@ export const SearchResultsPage: React.FC = () => {
     ? 'Regular School'
     : filters.educationTarget === 'combined'
     ? 'Preschool + School'
-    : 'All Stages';
+    : 'Preschool + School';
 
   const extractedCriteriaCount = useMemo(() => {
     let count = 0;
-    if (filters.location) count++;
+    if (filters.location && filters.location !== 'All Chennai') count++;
     if (filters.budgetMax && filters.budgetMax < 250000) count++;
     if (filters.radiusKm && filters.radiusKm < 20) count++;
-    if (filters.grade) count++;
+    if (filters.grade && filters.grade !== 'Any Grade') count++;
     if (filters.curriculums && filters.curriculums.length > 0) count += filters.curriculums.length;
     if (filters.preschool?.programs && filters.preschool.programs.length > 0) count += filters.preschool.programs.length;
     if (filters.preschool?.pedagogy && filters.preschool.pedagogy.length > 0) count += filters.preschool.pedagogy.length;
@@ -108,8 +147,80 @@ export const SearchResultsPage: React.FC = () => {
     return Math.max(count, 1);
   }, [filters]);
 
+  // Construct individual removable active filter pills
+  const activeFilterList = useMemo(() => {
+    const items: { id: string; label: string; onRemove: () => void }[] = [];
+
+    if (filters.location && filters.location !== 'All Chennai') {
+      items.push({ id: 'loc', label: `Area: ${filters.location}`, onRemove: () => removeFilter('location') });
+    }
+    if (typeof filters.radiusKm === 'number' && filters.radiusKm < 20) {
+      items.push({ id: 'rad', label: `≤ ${filters.radiusKm} km radius`, onRemove: () => removeFilter('radiusKm') });
+    }
+    if (typeof filters.budgetMax === 'number' && filters.budgetMax < 250000) {
+      items.push({ id: 'bMax', label: `Tuition ≤ ₹${(filters.budgetMax / 100000).toFixed(1)}L`, onRemove: () => removeFilter('budgetMax') });
+    }
+
+    // School filters
+    (filters.curriculums || []).forEach((c) => {
+      items.push({ id: `curr-${c}`, label: `Board: ${c}`, onRemove: () => removeFilter('curriculum', c) });
+    });
+    if (filters.grade && filters.grade !== 'Any Grade') {
+      items.push({ id: 'grd', label: `Grade: ${filters.grade}`, onRemove: () => removeFilter('grade') });
+    }
+    (filters.schoolTypes || []).forEach((st) => {
+      items.push({ id: `st-${st}`, label: st, onRemove: () => removeFilter('schoolType', st) });
+    });
+    (filters.requiredFacilities || []).forEach((f) => {
+      items.push({ id: `fac-${f}`, label: f, onRemove: () => removeFilter('facility', f) });
+    });
+    (filters.requiredActivities || []).forEach((a) => {
+      items.push({ id: `act-${a}`, label: a, onRemove: () => removeFilter('activity', a) });
+    });
+    if (filters.requiresTransport) {
+      items.push({ id: 'trans', label: 'Transport Available', onRemove: () => removeFilter('transport') });
+    }
+    if (filters.requiresSpecialNeeds) {
+      items.push({ id: 'sn', label: 'Special Needs (IEP)', onRemove: () => removeFilter('specialNeeds') });
+    }
+    (filters.languages || []).forEach((l) => {
+      items.push({ id: `lang-${l}`, label: `Lang: ${l}`, onRemove: () => removeFilter('language', l) });
+    });
+
+    // Preschool filters
+    if (filters.preschool?.ageYears) {
+      items.push({ id: 'pre-age', label: `Age: ${filters.preschool.ageYears} yrs`, onRemove: () => removeFilter('preschool_age') });
+    }
+    (filters.preschool?.programs || []).forEach((p) => {
+      items.push({ id: `pre-prog-${p}`, label: `Program: ${p.toUpperCase()}`, onRemove: () => removeFilter('preschool_program', p) });
+    });
+    (filters.preschool?.pedagogy || []).forEach((ped) => {
+      items.push({ id: `pre-ped-${ped}`, label: ped, onRemove: () => removeFilter('preschool_pedagogy', ped) });
+    });
+    if (filters.preschool?.daycare) {
+      items.push({ id: 'pre-daycare', label: 'Daycare Preferred', onRemove: () => removeFilter('preschool_daycare') });
+    }
+    if (filters.preschool?.extendedHours || filters.preschool?.timing === 'extended') {
+      items.push({ id: 'pre-ext', label: 'Extended Hours', onRemove: () => removeFilter('preschool_timing') });
+    }
+    if (filters.preschool?.outdoorPlay) {
+      items.push({ id: 'pre-outdoor', label: 'Outdoor Play', onRemove: () => removeFilter('preschool_outdoorPlay') });
+    }
+    if (filters.preschool?.meals) {
+      items.push({ id: 'pre-meals', label: 'Meals Provided', onRemove: () => removeFilter('preschool_meals') });
+    }
+    if (filters.preschool?.cctvSecurity) {
+      items.push({ id: 'pre-cctv', label: 'CCTV Security', onRemove: () => removeFilter('preschool_cctv') });
+    }
+    (filters.preschool?.languages || []).forEach((l) => {
+      items.push({ id: `pre-lang-${l}`, label: `Lang: ${l}`, onRemove: () => removeFilter('language', l) });
+    });
+
+    return items;
+  }, [filters, removeFilter]);
+
   return (
-    <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900">
+    <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900 font-sans">
       
       {/* Top Search & Active Filters Header */}
       <section className="bg-white border-b border-stone-200/90 py-5 sm:py-6 px-3.5 sm:px-6 lg:px-8">
@@ -125,7 +236,7 @@ export const SearchResultsPage: React.FC = () => {
                 placeholder={
                   filters.educationTarget === 'preschool'
                     ? "Describe in your own words (e.g. Find a Montessori preschool for my 3-year-old near Velachery with daycare)..."
-                    : filters.educationTarget === 'combined'
+                    : filters.educationTarget === 'combined' || filters.educationTarget === 'all'
                     ? "Describe in your own words (e.g. Find a school that offers preschool through Grade 12 near OMR)..."
                     : "Describe in your own words (e.g. Find a CBSE school for my 8-year-old near Anna Nagar under ₹1.5 lakh)..."
                 }
@@ -150,9 +261,11 @@ export const SearchResultsPage: React.FC = () => {
                 <h1 className="font-editorial text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900 tracking-tight leading-snug">
                   {isSavedMode
                     ? `${savedSchools.length} Shortlisted Institutions`
-                    : isPreschoolSearch
+                    : filters.educationTarget === 'preschool'
                     ? "Preschools that fit what you're looking for"
-                    : "Schools that fit what you're looking for"}
+                    : filters.educationTarget === 'school'
+                    ? "Schools that fit what you're looking for"
+                    : "Institutions that fit what you're looking for"}
                 </h1>
                 <p className="text-xs sm:text-sm text-stone-600 font-sans">
                   {isSavedMode
@@ -161,115 +274,83 @@ export const SearchResultsPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* EDUCATION TARGET TABS: [All] [Preschools] [Schools] */}
+              {/* 3 Supported Modes: [Preschool & Early Years] [School] [Preschool + School] */}
               {!isSavedMode && (
                 <div className="flex items-center gap-1.5 pt-1">
-                  <span className="text-xs font-semibold text-stone-500 mr-1 hidden sm:inline">Stage:</span>
+                  <span className="text-xs font-semibold text-stone-500 mr-1 hidden sm:inline">Education Type:</span>
                   <div className="inline-flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs">
                     <button
                       type="button"
-                      onClick={() => setEducationTarget('all')}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        filters.educationTarget === 'all'
-                          ? 'bg-white text-stone-900 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5 text-stone-500" />
-                      <span>All Places</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEducationTarget('preschool')}
+                      onClick={() => handleStageChange('preschool')}
                       className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                         filters.educationTarget === 'preschool'
-                          ? 'bg-white text-amber-950 shadow-2xs border border-amber-200/80 font-bold'
+                          ? 'bg-white text-amber-950 shadow-2xs border border-amber-300 font-bold'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      <Baby className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Preschools & Early Years</span>
+                      <Baby className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Preschool & Early Years</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEducationTarget('school')}
+                      onClick={() => handleStageChange('school')}
                       className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                         filters.educationTarget === 'school'
-                          ? 'bg-white text-teal-950 shadow-2xs border border-teal-200/80 font-bold'
+                          ? 'bg-white text-teal-950 shadow-2xs border border-teal-300 font-bold'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
                       <SchoolIcon className="w-3.5 h-3.5 text-teal-700" />
-                      <span>Regular Schools</span>
+                      <span>School</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStageChange('all')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        filters.educationTarget === 'all' || filters.educationTarget === 'combined'
+                          ? 'bg-white text-stone-900 shadow-2xs border border-stone-300 font-bold'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5 text-stone-600" />
+                      <span>Preschool + School</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* What We Understood Criteria Chips */}
-              {!isSavedMode && (
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 pt-1 font-medium">
-                  <span className="text-stone-500 font-semibold mr-0.5">Looking for:</span>
-
-                  {filters.preschool?.ageYears && (
-                    <span className="bg-amber-100 text-amber-950 px-2.5 py-0.5 rounded-md border border-amber-300 font-bold text-[11px]">
-                      Child: {filters.preschool.ageYears} yrs old
-                    </span>
-                  )}
-
-                  {filters.preschool?.programs && filters.preschool.programs.map((prog) => (
-                    <span key={prog} className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-bold text-[11px] uppercase">
-                      {prog}
+              {/* Removable Active Filter Pills & Clear All */}
+              {!isSavedMode && activeFilterList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 text-xs">
+                  <span className="text-stone-500 font-semibold mr-0.5">Applied:</span>
+                  {activeFilterList.map((item) => (
+                    <span
+                      key={item.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-stone-300 text-stone-800 shadow-2xs hover:border-stone-400 transition-colors"
+                    >
+                      <span>{item.label}</span>
+                      <button
+                        type="button"
+                        onClick={item.onRemove}
+                        className="text-stone-400 hover:text-rose-600 cursor-pointer p-0.5 rounded transition-colors"
+                        title={`Remove ${item.label}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </span>
                   ))}
-
-                  {filters.preschool?.pedagogy && filters.preschool.pedagogy.map((ped) => {
-                    const pColor = getPedagogyColor(ped);
-                    return (
-                      <span key={ped} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${pColor.badge}`}>
-                        {ped}
-                      </span>
-                    );
-                  })}
-
-                  {!isPreschoolSearch && filters.grade && (
-                    <span className="bg-[#F5F1E8] px-2.5 py-0.5 rounded-md border border-stone-200 font-semibold text-stone-800">
-                      {filters.grade}
-                    </span>
-                  )}
-
-                  {!isPreschoolSearch && (filters.curriculums || []).map((c) => {
-                    const cColor = getCurriculumColor(c);
-                    return (
-                      <span key={c} className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${cColor.badge}`}>
-                        {c}
-                      </span>
-                    );
-                  })}
-
-                  <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200 font-semibold">
-                    ≤ ₹{((filters.budgetMax || 150000) / 100000).toFixed(1)}L/yr
-                  </span>
-                  <span className="bg-teal-50 text-teal-900 px-2.5 py-0.5 rounded-md border border-teal-200 font-semibold">
-                    ≤ {filters.radiusKm || 12} km radius
-                  </span>
-
-                  {filters.preschool?.daycare && (
-                    <span className="bg-teal-50 text-teal-900 px-2 py-0.5 rounded-md border border-teal-200 font-semibold text-[11px]">
-                      Daycare Preferred
-                    </span>
-                  )}
-
-                  {filters.preschool?.outdoorPlay && (
-                    <span className="bg-emerald-50 text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold text-[11px]">
-                      Outdoor Play
-                    </span>
-                  )}
-
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="text-xs text-teal-800 hover:text-teal-950 font-bold ml-1 cursor-pointer flex items-center gap-1 py-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Clear all</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setPriorityTunerOpen(true)}
-                    className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-0.5"
+                    className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-1"
                   >
                     <Sliders className="w-3 h-3 text-teal-700" />
                     <span>Tune priorities</span>
@@ -467,26 +548,86 @@ export const SearchResultsPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-stone-200 p-8 sm:p-12 text-center space-y-4 shadow-xs">
+              /* EMPTY STATE WHEN FILTERS PRODUCE NO RESULTS */
+              <div className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-12 text-center space-y-6 shadow-xs max-w-2xl mx-auto">
                 <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
-                  <AlertCircle className="w-7 h-7" />
+                  <SlidersHorizontal className="w-7 h-7 text-amber-700" />
                 </div>
-                <div className="max-w-md mx-auto space-y-2">
-                  <h3 className="font-editorial text-xl font-bold text-stone-900">
-                    No places currently match all selected filters
+
+                <div className="space-y-2">
+                  <h3 className="font-editorial text-2xl font-bold text-stone-900 tracking-tight">
+                    No institutions match all of these preferences.
                   </h3>
-                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
-                    Try broadening your commute radius, expanding your fee ceiling, or switching between Preschools and Schools.
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans max-w-md mx-auto">
+                    Your current combination of location, fees, and specific preferences didn't return any matches. Try one of the options below to discover relevant institutions:
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px]"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Reset All Filters</span>
-                </button>
+
+                {/* Currently active filters so the user sees what's constraining the results */}
+                {activeFilterList.length > 0 && (
+                  <div className="p-3.5 bg-[#FAF9F6] border border-stone-200 rounded-xl space-y-2 text-left">
+                    <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                      Active Preferences ({activeFilterList.length}):
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeFilterList.map((item) => (
+                        <span
+                          key={item.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-stone-300 text-stone-800 shadow-2xs"
+                        >
+                          <span>{item.label}</span>
+                          <button
+                            type="button"
+                            onClick={item.onRemove}
+                            className="text-stone-400 hover:text-rose-600 cursor-pointer p-0.5 rounded transition-colors"
+                            title={`Remove ${item.label}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4 Required Actions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={removeOneFilter}
+                    className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                  >
+                    <MinusCircle className="w-4 h-4 text-teal-700" />
+                    <span>Remove one filter</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={relaxBudget}
+                    className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                  >
+                    <IndianRupee className="w-4 h-4 text-amber-700" />
+                    <span>Relax budget</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={increaseDistance}
+                    className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                  >
+                    <Compass className="w-4 h-4 text-blue-700" />
+                    <span>Increase distance</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="px-4 py-3 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                  >
+                    <Sparkles className="w-4 h-4 text-white" />
+                    <span>View all results</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

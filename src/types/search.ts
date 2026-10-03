@@ -45,6 +45,7 @@ export interface SearchFilters {
   requiresTransport: boolean;
   requiresHostel: boolean;
   requiresSpecialNeeds: boolean;
+  languages?: string[];
 
   // Preschool specific
   preschool: PreschoolFilters;

@@ -38,6 +38,11 @@ interface SearchContextType {
   setRawQuery: (query: string) => void;
   setSortBy: (sortBy: SortField) => void;
   resetFilters: () => void;
+  clearAllFilters: () => void;
+  removeFilter: (filterKey: string, value?: any) => void;
+  removeOneFilter: () => void;
+  relaxBudget: () => void;
+  increaseDistance: () => void;
   applyNaturalLanguageQuery: (query: string) => void;
   filteredSchools: School[];
   totalMatches: number;
@@ -254,29 +259,174 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const resetFilters = () => {
     setSearchState({
       rawQuery: '',
-      filters: {
-        location: 'All Chennai',
-        radiusKm: 25,
-        budgetMin: 30000,
-        budgetMax: 350000,
-        educationTarget: 'all',
-        grade: 'Any Grade',
-        curriculums: [],
-        schoolTypes: [],
-        requiredFacilities: [],
-        requiredActivities: [],
-        requiresTransport: false,
-        requiresHostel: false,
-        requiresSpecialNeeds: false,
-        preschool: {
-          programs: [],
-          pedagogy: [],
-          daycare: false,
-          outdoorPlay: false,
-        },
-      },
+      filters: DEFAULT_FILTERS,
       sortBy: 'best_match',
     });
+  };
+
+  const clearAllFilters = () => {
+    setSearchState((prev) => ({
+      ...prev,
+      filters: {
+        ...DEFAULT_FILTERS,
+        educationTarget: prev.filters.educationTarget, // preserve chosen stage
+      },
+    }));
+  };
+
+  const removeFilter = (filterKey: string, value?: any) => {
+    setSearchState((prev) => {
+      const prevF = prev.filters;
+      const nextP = { ...(prevF.preschool || DEFAULT_FILTERS.preschool) };
+      const nextF: SearchFilters = {
+        ...prevF,
+        preschool: nextP,
+      };
+
+      switch (filterKey) {
+        case 'location':
+          nextF.location = 'All Chennai';
+          break;
+        case 'radiusKm':
+          nextF.radiusKm = 25;
+          break;
+        case 'budgetMax':
+          nextF.budgetMax = 350000;
+          break;
+        case 'educationTarget':
+          nextF.educationTarget = 'all';
+          break;
+        case 'curriculum':
+          nextF.curriculums = (nextF.curriculums || []).filter((c) => c !== value);
+          break;
+        case 'grade':
+          nextF.grade = 'Any Grade';
+          break;
+        case 'facility':
+          nextF.requiredFacilities = (nextF.requiredFacilities || []).filter((f) => f !== value);
+          break;
+        case 'activity':
+          nextF.requiredActivities = (nextF.requiredActivities || []).filter((a) => a !== value);
+          break;
+        case 'schoolType':
+          nextF.schoolTypes = (nextF.schoolTypes || []).filter((t) => t !== value);
+          break;
+        case 'transport':
+          nextF.requiresTransport = false;
+          nextP.transport = false;
+          break;
+        case 'specialNeeds':
+          nextF.requiresSpecialNeeds = false;
+          break;
+        case 'hostel':
+          nextF.requiresHostel = false;
+          break;
+        case 'language':
+          nextF.languages = (nextF.languages || []).filter((l) => l !== value);
+          nextP.languages = (nextP.languages || []).filter((l) => l !== value);
+          break;
+        case 'preschool_program':
+          nextP.programs = (nextP.programs || []).filter((p) => p !== value);
+          break;
+        case 'preschool_pedagogy':
+          nextP.pedagogy = (nextP.pedagogy || []).filter((p) => p !== value);
+          break;
+        case 'preschool_age':
+          nextP.ageYears = undefined;
+          break;
+        case 'preschool_daycare':
+          nextP.daycare = false;
+          break;
+        case 'preschool_timing':
+          nextP.timing = undefined;
+          nextP.extendedHours = false;
+          break;
+        case 'preschool_outdoorPlay':
+          nextP.outdoorPlay = false;
+          break;
+        case 'preschool_meals':
+          nextP.meals = false;
+          break;
+        case 'preschool_cctv':
+          nextP.cctvSecurity = false;
+          break;
+      }
+
+      return {
+        ...prev,
+        filters: nextF,
+      };
+    });
+  };
+
+  const removeOneFilter = () => {
+    setSearchState((prev) => {
+      const f = prev.filters;
+      const p = { ...(f.preschool || DEFAULT_FILTERS.preschool) };
+      const nextF = { ...f, preschool: p };
+
+      // Progressively eliminate the most restrictive specific filter
+      if (nextF.requiredFacilities?.length) {
+        nextF.requiredFacilities = nextF.requiredFacilities.slice(0, -1);
+      } else if (nextF.requiredActivities?.length) {
+        nextF.requiredActivities = nextF.requiredActivities.slice(0, -1);
+      } else if (p.programs?.length) {
+        p.programs = p.programs.slice(0, -1);
+      } else if (p.pedagogy?.length) {
+        p.pedagogy = p.pedagogy.slice(0, -1);
+      } else if (nextF.curriculums?.length) {
+        nextF.curriculums = nextF.curriculums.slice(0, -1);
+      } else if (p.daycare) {
+        p.daycare = false;
+      } else if (p.outdoorPlay) {
+        p.outdoorPlay = false;
+      } else if (p.extendedHours || p.timing) {
+        p.extendedHours = false;
+        p.timing = undefined;
+      } else if (p.meals) {
+        p.meals = false;
+      } else if (p.transport || nextF.requiresTransport) {
+        p.transport = false;
+        nextF.requiresTransport = false;
+      } else if (p.cctvSecurity) {
+        p.cctvSecurity = false;
+      } else if (p.ageYears) {
+        p.ageYears = undefined;
+      } else if (nextF.grade && nextF.grade !== 'Any Grade') {
+        nextF.grade = 'Any Grade';
+      } else if (nextF.schoolTypes?.length) {
+        nextF.schoolTypes = nextF.schoolTypes.slice(0, -1);
+      } else if (nextF.requiresSpecialNeeds) {
+        nextF.requiresSpecialNeeds = false;
+      } else if (nextF.location !== 'All Chennai') {
+        nextF.location = 'All Chennai';
+      } else if (nextF.budgetMax < 250000) {
+        nextF.budgetMax = 350000;
+      } else if (nextF.radiusKm < 20) {
+        nextF.radiusKm = 25;
+      } else {
+        return {
+          ...prev,
+          filters: {
+            ...DEFAULT_FILTERS,
+            educationTarget: f.educationTarget,
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        filters: nextF,
+      };
+    });
+  };
+
+  const relaxBudget = () => {
+    updateFilters({ budgetMax: 450000 });
+  };
+
+  const increaseDistance = () => {
+    updateFilters({ radiusKm: 25 });
   };
 
   // Natural language query processor that updates structured filters
@@ -505,8 +655,16 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       // 5. Preschool specific filters
-      if (isEarlyYearsInst || (isCombined && filters.educationTarget === 'preschool')) {
+      if (isEarlyYearsInst || (isCombined && (filters.educationTarget === 'preschool' || filters.educationTarget === 'all' || filters.educationTarget === 'combined'))) {
         const pFilters = filters.preschool || DEFAULT_FILTERS.preschool;
+
+        // Age filter
+        if (pFilters.ageYears && school.ageRange) {
+          if (pFilters.ageYears < school.ageRange.min || pFilters.ageYears > school.ageRange.max) {
+            return false;
+          }
+        }
+
         // Program filter
         if (pFilters.programs && pFilters.programs.length > 0) {
           const supported = school.preschoolPrograms || [];
@@ -532,6 +690,33 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (pFilters.outdoorPlay && !school.outdoorPlay) {
           return false;
         }
+
+        // Timings / Extended hours
+        if ((pFilters.extendedHours || pFilters.timing === 'extended') && !school.extendedHours) {
+          return false;
+        }
+
+        // Meals
+        if (pFilters.meals && !school.meals) {
+          return false;
+        }
+
+        // Transport
+        if (pFilters.transport && !school.hasTransport) {
+          return false;
+        }
+
+        // Safety / CCTV
+        if (pFilters.cctvSecurity && !school.cctvSecurity) {
+          return false;
+        }
+
+        // Language
+        if (pFilters.languages && pFilters.languages.length > 0) {
+          const sLangs = (school.languages || ['English', 'Tamil']).map((l) => l.toLowerCase());
+          const hasLang = pFilters.languages.some((l) => sLangs.some((sl) => sl.includes(l.toLowerCase())));
+          if (!hasLang) return false;
+        }
       }
 
       // 6. Regular K-12 specific filters (only apply when not strictly filtering dedicated preschools)
@@ -548,12 +733,50 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (!hasType) return false;
         }
 
+        if (filters.grade && filters.grade !== 'Any Grade') {
+          const g = filters.grade.toLowerCase();
+          const sg = (school.grades || '').toLowerCase();
+          const classNum = g.match(/\d+/)?.[0];
+          if (classNum) {
+            const hasNum = sg.includes(classNum) || sg.includes('class 12') || sg.includes('grade 12') || sg.includes('senior');
+            if (!hasNum && !sg.includes(g)) return false;
+          }
+        }
+
+        const reqFacs = filters.requiredFacilities || [];
+        if (reqFacs.length > 0) {
+          const schoolFacNames = (school.facilities || []).map((f) => f.name.toLowerCase());
+          const hasAllFacs = reqFacs.every((rf) =>
+            schoolFacNames.some((sfn) => sfn.includes(rf.toLowerCase()))
+          );
+          if (!hasAllFacs) return false;
+        }
+
+        const reqActs = filters.requiredActivities || [];
+        if (reqActs.length > 0) {
+          const schoolActs = (school.extracurriculars || []).map((a) => a.toLowerCase());
+          const hasAllActs = reqActs.every((ra) =>
+            schoolActs.some((sa) => sa.includes(ra.toLowerCase()))
+          );
+          if (!hasAllActs) return false;
+        }
+
+        if (filters.requiresTransport && !school.hasTransport) {
+          return false;
+        }
+
         if (filters.requiresSpecialNeeds && !school.hasSpecialNeedsSupport) {
           return false;
         }
 
         if (filters.requiresHostel && !school.hasHostel) {
           return false;
+        }
+
+        if (filters.languages && filters.languages.length > 0) {
+          const sLangs = (school.languages || ['English', 'Tamil']).map((l) => l.toLowerCase());
+          const hasLang = filters.languages.some((l) => sLangs.some((sl) => sl.includes(l.toLowerCase())));
+          if (!hasLang) return false;
         }
       }
 
@@ -590,21 +813,33 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const activeFilterCount = useMemo(() => {
     let count = 0;
     const f = searchState.filters || DEFAULT_FILTERS;
-    if (f.educationTarget && f.educationTarget !== 'all') count += 1;
+    if (f.location && f.location !== 'All Chennai') count += 1;
+    if (typeof f.radiusKm === 'number' && f.radiusKm < 20) count += 1;
+    if (typeof f.budgetMax === 'number' && f.budgetMax < 250000) count += 1;
+
+    // School filters
     if (f.curriculums?.length) count += f.curriculums.length;
+    if (f.grade && f.grade !== 'Any Grade') count += 1;
     if (f.schoolTypes?.length) count += f.schoolTypes.length;
     if (f.requiredFacilities?.length) count += f.requiredFacilities.length;
-    if (typeof f.budgetMax === 'number' && f.budgetMax < 250000) count += 1;
-    if (typeof f.radiusKm === 'number' && f.radiusKm < 20) count += 1;
+    if (f.requiredActivities?.length) count += f.requiredActivities.length;
+    if (f.requiresTransport) count += 1;
     if (f.requiresSpecialNeeds) count += 1;
     if (f.requiresHostel) count += 1;
+    if (f.languages?.length) count += f.languages.length;
 
-    // Preschool count
+    // Preschool filters
     if (f.preschool?.programs?.length) count += f.preschool.programs.length;
     if (f.preschool?.pedagogy?.length) count += f.preschool.pedagogy.length;
-    if (f.preschool?.daycare) count += 1;
-    if (f.preschool?.outdoorPlay) count += 1;
     if (f.preschool?.ageYears) count += 1;
+    if (f.preschool?.daycare) count += 1;
+    if (f.preschool?.timing && f.preschool.timing !== 'morning') count += 1;
+    if (f.preschool?.extendedHours) count += 1;
+    if (f.preschool?.outdoorPlay) count += 1;
+    if (f.preschool?.meals) count += 1;
+    if (f.preschool?.transport) count += 1;
+    if (f.preschool?.cctvSecurity) count += 1;
+    if (f.preschool?.languages?.length) count += f.preschool.languages.length;
 
     return count;
   }, [searchState.filters]);
@@ -619,6 +854,11 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setRawQuery,
         setSortBy,
         resetFilters,
+        clearAllFilters,
+        removeFilter,
+        removeOneFilter,
+        relaxBudget,
+        increaseDistance,
         applyNaturalLanguageQuery,
         filteredSchools,
         totalMatches: filteredSchools.length,

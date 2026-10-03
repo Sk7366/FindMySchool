@@ -1,11 +1,32 @@
 import React from 'react';
-import { RotateCcw, SlidersHorizontal, Check, MapPin, IndianRupee, BookOpen, Trophy, Baby, Building2, Sliders } from 'lucide-react';
+import {
+  RotateCcw,
+  SlidersHorizontal,
+  Check,
+  MapPin,
+  IndianRupee,
+  BookOpen,
+  Trophy,
+  Baby,
+  Building2,
+  Sliders,
+  ShieldCheck,
+  Bus,
+  Utensils,
+  Clock,
+  Languages,
+  HeartHandshake,
+  Sparkles,
+  TreePine,
+  School as SchoolIcon,
+  Layers,
+} from 'lucide-react';
 import { useSearch } from '../../context/SearchContext';
 import { Curriculum, SchoolType, PreschoolProgram } from '../../types/school';
 import { getCurriculumColor, getFacilityCategoryColor, getPedagogyColor } from '../../utils/categoryColors';
 import { PriorityTunerModal } from '../schools/PriorityTunerModal';
 
-const CURRICULUM_OPTIONS: Curriculum[] = ['CBSE', 'ICSE', 'Cambridge (IGCSE)', 'IB World'];
+const CURRICULUM_OPTIONS: Curriculum[] = ['CBSE', 'ICSE', 'Cambridge (IGCSE)', 'IB World', 'State Board'];
 const SCHOOL_TYPE_OPTIONS: SchoolType[] = ['Co-educational', 'Day School', 'Day Boarding', 'Residential'];
 const FACILITY_OPTIONS = [
   'Robotics & STEM Lab',
@@ -13,6 +34,13 @@ const FACILITY_OPTIONS = [
   'Football Turf',
   'Cricket Academy & Nets',
   'Science Laboratories',
+];
+const ACTIVITY_OPTIONS = [
+  'Debate & MUN',
+  'Robotics Club',
+  'Performing Arts & Music',
+  'Competitive Swimming',
+  'Chess Academy',
 ];
 const CHENNAI_AREAS = [
   'All Chennai',
@@ -26,11 +54,17 @@ const CHENNAI_AREAS = [
 const GRADES = [
   'Any Grade',
   'Class 1',
+  'Class 2',
   'Class 3',
+  'Class 4',
   'Class 5',
+  'Class 6',
+  'Class 7',
   'Class 8',
   'Class 9',
+  'Class 10',
   'Class 11',
+  'Class 12',
 ];
 
 const PRESCHOOL_PROGRAMS: { id: PreschoolProgram; label: string; ageRange: string }[] = [
@@ -48,18 +82,35 @@ const PEDAGOGIES = [
   'Activity-based',
 ];
 
+const PRESCHOOL_AGES = [
+  { value: undefined, label: 'All' },
+  { value: 2, label: '2 yrs' },
+  { value: 3, label: '3 yrs' },
+  { value: 4, label: '4 yrs' },
+  { value: 5, label: '5 yrs' },
+];
+
+const PRESCHOOL_LANGUAGES = ['English', 'Tamil', 'Hindi'];
+const SCHOOL_LANGUAGES = ['Tamil', 'Hindi', 'French', 'Sanskrit'];
+
 interface FilterSidebarProps {
   onCloseMobile?: () => void;
 }
 
 export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) => {
-  const { searchState, updateFilters, setEducationTarget, resetFilters, activeFilterCount } = useSearch();
+  const {
+    searchState,
+    updateFilters,
+    setEducationTarget,
+    clearAllFilters,
+    activeFilterCount,
+  } = useSearch();
   const { filters } = searchState;
   const [priorityTunerOpen, setPriorityTunerOpen] = React.useState(false);
 
   const isPreschoolMode = filters.educationTarget === 'preschool';
   const isSchoolMode = filters.educationTarget === 'school';
-  const isAllOrCombined = filters.educationTarget === 'all' || filters.educationTarget === 'combined';
+  const isCombinedOrAll = filters.educationTarget === 'all' || filters.educationTarget === 'combined';
 
   const toggleCurriculum = (curriculum: Curriculum) => {
     const current = filters.curriculums || [];
@@ -69,12 +120,28 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
     updateFilters({ curriculums: next });
   };
 
+  const toggleSchoolType = (type: SchoolType) => {
+    const current = filters.schoolTypes || [];
+    const next = current.includes(type)
+      ? current.filter((t) => t !== type)
+      : [...current, type];
+    updateFilters({ schoolTypes: next });
+  };
+
   const toggleFacility = (facility: string) => {
     const current = filters.requiredFacilities || [];
     const next = current.includes(facility)
       ? current.filter((f) => f !== facility)
       : [...current, facility];
     updateFilters({ requiredFacilities: next });
+  };
+
+  const toggleActivity = (activity: string) => {
+    const current = filters.requiredActivities || [];
+    const next = current.includes(activity)
+      ? current.filter((a) => a !== activity)
+      : [...current, activity];
+    updateFilters({ requiredActivities: next });
   };
 
   const togglePreschoolProgram = (prog: PreschoolProgram) => {
@@ -97,14 +164,32 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
     });
   };
 
+  const togglePreschoolLanguage = (lang: string) => {
+    const current = filters.preschool?.languages || [];
+    const next = current.includes(lang)
+      ? current.filter((l) => l !== lang)
+      : [...current, lang];
+    updateFilters({
+      preschool: { ...(filters.preschool || {}), languages: next },
+    });
+  };
+
+  const toggleSchoolLanguage = (lang: string) => {
+    const current = filters.languages || [];
+    const next = current.includes(lang)
+      ? current.filter((l) => l !== lang)
+      : [...current, lang];
+    updateFilters({ languages: next });
+  };
+
   const formatLakhs = (val: number) => {
     return `₹${(val / 100000).toFixed(1)}L`;
   };
 
   return (
-    <aside className="bg-white rounded-2xl border border-stone-200/90 p-5 space-y-6 text-sm shadow-xs">
+    <aside className="bg-white rounded-2xl border border-stone-200/90 p-5 space-y-6 text-sm shadow-xs font-sans">
       
-      {/* Header */}
+      {/* Header with Title and Reset */}
       <div className="flex items-center justify-between pb-3 border-b border-stone-100">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-teal-700" />
@@ -119,11 +204,11 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
         {activeFilterCount > 0 && (
           <button
             type="button"
-            onClick={resetFilters}
+            onClick={clearAllFilters}
             className="text-xs text-stone-500 hover:text-teal-800 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Reset</span>
+            <span>Clear all</span>
           </button>
         )}
       </div>
@@ -144,49 +229,52 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
         </button>
       </div>
 
-      {/* Education Stage Target Segmented Control */}
+      {/* 1. Education Stage Target Segmented Control */}
       <div className="space-y-2">
         <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
-          Education Stage
+          Education Type
         </label>
         <div className="grid grid-cols-3 gap-1 bg-[#FAF9F6] p-1 rounded-xl border border-stone-200 text-xs">
           <button
             type="button"
-            onClick={() => setEducationTarget('all')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer ${
-              filters.educationTarget === 'all'
-                ? 'bg-white text-stone-900 shadow-2xs border border-stone-200'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            All
-          </button>
-          <button
-            type="button"
             onClick={() => setEducationTarget('preschool')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer ${
+            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
               filters.educationTarget === 'preschool'
-                ? 'bg-white text-amber-950 shadow-2xs border border-amber-200 font-bold'
+                ? 'bg-white text-amber-950 shadow-2xs border border-amber-300 font-bold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            Preschool
+            <Baby className="w-3.5 h-3.5 text-amber-700" />
+            <span>Preschool</span>
           </button>
           <button
             type="button"
             onClick={() => setEducationTarget('school')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer ${
+            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
               filters.educationTarget === 'school'
-                ? 'bg-white text-teal-950 shadow-2xs border border-teal-200 font-bold'
+                ? 'bg-white text-teal-950 shadow-2xs border border-teal-300 font-bold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            School
+            <SchoolIcon className="w-3.5 h-3.5 text-teal-700" />
+            <span>School</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setEducationTarget('all')}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+              filters.educationTarget === 'all' || filters.educationTarget === 'combined'
+                ? 'bg-white text-stone-900 shadow-2xs border border-stone-300 font-bold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-stone-600" />
+            <span>Both</span>
           </button>
         </div>
       </div>
 
-      {/* Location Area */}
+      {/* 2. Common Location Area */}
       <div className="space-y-2">
         <label htmlFor="filter-location-select" className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
           Area / Corridor
@@ -205,7 +293,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
         </select>
       </div>
 
-      {/* Radius Slider */}
+      {/* 3. Distance Radius Slider */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <label htmlFor="filter-radius-slider" className="font-bold text-stone-700 uppercase tracking-wider">
@@ -230,7 +318,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
         </div>
       </div>
 
-      {/* Budget Slider */}
+      {/* 4. Budget Slider */}
       <div className="space-y-2 pt-2 border-t border-stone-100">
         <div className="flex items-center justify-between text-xs">
           <label htmlFor="filter-budget-slider" className="font-bold text-stone-700 uppercase tracking-wider">
@@ -255,26 +343,55 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
         </div>
       </div>
 
-      {/* PRESCHOOL-SPECIFIC FILTERS (Shown in Preschool or All mode) */}
-      {(isPreschoolMode || isAllOrCombined) && (
-        <div className="space-y-4 pt-3 border-t border-stone-100 bg-[#FAF9F6]/80 p-3 rounded-xl border border-amber-200/70">
+      {/* ========================================================
+          MODE 1: PRESCHOOL & EARLY YEARS FILTERS
+          Shown when educationTarget is 'preschool' or 'all'/'combined'
+          ======================================================== */}
+      {(isPreschoolMode || isCombinedOrAll) && (
+        <div className={`space-y-4 pt-3 ${isCombinedOrAll ? 'p-3.5 bg-amber-50/50 rounded-2xl border border-amber-200/70' : 'pt-3 border-t border-stone-100'}`}>
           <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950 uppercase tracking-wider">
             <Baby className="w-3.5 h-3.5 text-amber-700" />
-            <span>Early Years / Preschool Criteria</span>
+            <span>{isCombinedOrAll ? 'Early Years & Daycare Criteria' : 'Preschool Criteria'}</span>
           </div>
 
-          {/* Program Checkboxes */}
+          {/* Child Age Selector */}
           <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-stone-600 uppercase">Target Program</span>
+            <span className="text-[11px] font-bold text-stone-600 uppercase">Child Age</span>
+            <div className="grid grid-cols-5 gap-1 bg-[#FAF9F6] p-1 rounded-xl border border-stone-200 text-xs">
+              {PRESCHOOL_AGES.map((ageOpt) => {
+                const isSelected = filters.preschool?.ageYears === ageOpt.value;
+                return (
+                  <button
+                    key={ageOpt.label}
+                    type="button"
+                    onClick={() => updateFilters({
+                      preschool: { ...(filters.preschool || {}), ageYears: ageOpt.value }
+                    })}
+                    className={`py-1.5 rounded-lg font-bold text-center transition-all cursor-pointer text-xs ${
+                      isSelected
+                        ? 'bg-amber-500 text-white shadow-2xs font-bold'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    {ageOpt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Target Program Checkboxes */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-stone-600 uppercase">Early Years Program</span>
             <div className="grid grid-cols-2 gap-1.5">
               {PRESCHOOL_PROGRAMS.map((prog) => {
                 const isChecked = filters.preschool?.programs?.includes(prog.id);
                 return (
                   <label
                     key={prog.id}
-                    className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all ${
+                    className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold cursor-pointer border transition-all ${
                       isChecked
-                        ? 'bg-amber-100/80 border-amber-300 text-amber-950 shadow-2xs'
+                        ? 'bg-amber-100/90 border-amber-300 text-amber-950 shadow-2xs'
                         : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
                     }`}
                   >
@@ -286,7 +403,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                       type="checkbox"
                       checked={Boolean(isChecked)}
                       onChange={() => togglePreschoolProgram(prog.id)}
-                      className="w-3.5 h-3.5 text-amber-600 accent-amber-600 rounded"
+                      className="w-3.5 h-3.5 text-amber-600 accent-amber-600 rounded cursor-pointer"
                     />
                   </label>
                 );
@@ -304,7 +421,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                 return (
                   <label
                     key={ped}
-                    className={`flex items-center justify-between p-1.5 px-2.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all ${
+                    className={`flex items-center justify-between p-1.5 px-2.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all ${
                       isChecked
                         ? `${pColor.badge} shadow-2xs`
                         : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
@@ -315,7 +432,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                       type="checkbox"
                       checked={Boolean(isChecked)}
                       onChange={() => togglePedagogy(ped)}
-                      className="w-3.5 h-3.5 text-teal-600 accent-teal-600 rounded"
+                      className="w-3.5 h-3.5 text-amber-600 accent-amber-600 rounded cursor-pointer"
                     />
                   </label>
                 );
@@ -323,8 +440,9 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             </div>
           </div>
 
-          {/* Daycare & Outdoor Play */}
-          <div className="space-y-1.5 pt-1">
+          {/* Daycare & Timings */}
+          <div className="space-y-2 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">Daycare & Hours</span>
             <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
               <input
                 type="checkbox"
@@ -332,7 +450,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                 onChange={(e) => updateFilters({
                   preschool: { ...(filters.preschool || {}), daycare: e.target.checked }
                 })}
-                className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded cursor-pointer"
               />
               <span>Afternoon Daycare Available</span>
             </label>
@@ -340,24 +458,126 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
               <input
                 type="checkbox"
+                checked={Boolean(filters.preschool?.extendedHours || filters.preschool?.timing === 'extended')}
+                onChange={(e) => updateFilters({
+                  preschool: {
+                    ...(filters.preschool || {}),
+                    extendedHours: e.target.checked,
+                    timing: e.target.checked ? 'extended' : undefined,
+                  }
+                })}
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded cursor-pointer"
+              />
+              <span>Extended Hours (till 6:30 PM)</span>
+            </label>
+          </div>
+
+          {/* Early Years Facilities: Outdoor play, Meals, Safety, Transport */}
+          <div className="space-y-2 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">Care, Play & Safety</span>
+            
+            <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
+              <input
+                type="checkbox"
                 checked={Boolean(filters.preschool?.outdoorPlay)}
                 onChange={(e) => updateFilters({
                   preschool: { ...(filters.preschool || {}), outdoorPlay: e.target.checked }
                 })}
-                className="w-4 h-4 text-teal-600 accent-teal-600 rounded"
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded cursor-pointer"
               />
-              <span>Outdoor Sand & Nature Play</span>
+              <span className="flex items-center gap-1.5">
+                <TreePine className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Outdoor Sand & Nature Play</span>
+              </span>
             </label>
+
+            <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(filters.preschool?.meals)}
+                onChange={(e) => updateFilters({
+                  preschool: { ...(filters.preschool || {}), meals: e.target.checked }
+                })}
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Utensils className="w-3.5 h-3.5 text-amber-600" />
+                <span>Nutritious Meals & Snacks</span>
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(filters.preschool?.transport)}
+                onChange={(e) => updateFilters({
+                  preschool: { ...(filters.preschool || {}), transport: e.target.checked },
+                  requiresTransport: e.target.checked,
+                })}
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Bus className="w-3.5 h-3.5 text-blue-600" />
+                <span>School Van / Pickup Route</span>
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(filters.preschool?.cctvSecurity)}
+                onChange={(e) => updateFilters({
+                  preschool: { ...(filters.preschool || {}), cctvSecurity: e.target.checked }
+                })}
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                <span>CCTV Live Streaming & Security</span>
+              </span>
+            </label>
+          </div>
+
+          {/* Preschool Language Medium */}
+          <div className="space-y-1.5 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">Language / Medium</span>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESCHOOL_LANGUAGES.map((lang) => {
+                const isSelected = filters.preschool?.languages?.includes(lang);
+                return (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => togglePreschoolLanguage(lang)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-100 border-amber-300 text-amber-950 font-bold'
+                        : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* K-12 SPECIFIC FILTERS (Shown in School or All mode) */}
-      {(!isPreschoolMode || isAllOrCombined) && (
-        <>
-          {/* Curriculum Checkboxes with Semantic Colors */}
-          <div className="space-y-2.5 pt-2 border-t border-stone-100">
-            <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+      {/* ========================================================
+          MODE 2: REGULAR SCHOOL FILTERS
+          Shown when educationTarget is 'school' or 'all'/'combined'
+          ======================================================== */}
+      {(isSchoolMode || isCombinedOrAll) && (
+        <div className={`space-y-4 pt-3 ${isCombinedOrAll ? 'p-3.5 bg-teal-50/40 rounded-2xl border border-teal-200/70' : 'pt-3 border-t border-stone-100'}`}>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-teal-950 uppercase tracking-wider">
+            <SchoolIcon className="w-3.5 h-3.5 text-teal-700" />
+            <span>{isCombinedOrAll ? 'School & Board Criteria' : 'School Criteria'}</span>
+          </div>
+
+          {/* Curriculum Board Checkboxes */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">
               Curriculum Board (Grades 1–12)
             </span>
             <div className="space-y-1.5">
@@ -369,7 +589,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                     key={curr}
                     className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold cursor-pointer transition-all border ${
                       isChecked
-                        ? `${cColor.badge} shadow-2xs`
+                        ? `${cColor.badge} shadow-2xs font-bold`
                         : 'border-stone-200 bg-[#FAF9F6] text-stone-700 hover:border-stone-300'
                     }`}
                   >
@@ -389,9 +609,9 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             </div>
           </div>
 
-          {/* Target Grade Selector */}
-          <div className="space-y-2 pt-2 border-t border-stone-100">
-            <label htmlFor="filter-grade-select" className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+          {/* School Grade Level */}
+          <div className="space-y-1.5">
+            <label htmlFor="filter-grade-select" className="text-[11px] font-bold text-stone-600 uppercase block">
               School Grade Level
             </label>
             <select
@@ -408,9 +628,33 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
             </select>
           </div>
 
-          {/* Facilities & Sports with Semantic Color Indicators */}
-          <div className="space-y-2 pt-2 border-t border-stone-100">
-            <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+          {/* School Type */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">School Type</span>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SCHOOL_TYPE_OPTIONS.map((st) => {
+                const isSelected = (filters.schoolTypes || []).includes(st);
+                return (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => toggleSchoolType(st)}
+                    className={`p-2 rounded-xl text-xs font-semibold border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-teal-100/90 border-teal-300 text-teal-950 font-bold shadow-2xs'
+                        : 'bg-[#FAF9F6] border-stone-200 text-stone-700 hover:border-stone-300'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Essential Campus Facilities */}
+          <div className="space-y-1.5 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">
               Essential Facilities
             </span>
             <div className="space-y-1.5">
@@ -422,7 +666,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                     key={fac}
                     className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold cursor-pointer transition-all border ${
                       isChecked
-                        ? `${fColor.badge} shadow-2xs`
+                        ? `${fColor.badge} shadow-2xs font-bold`
                         : 'border-stone-200 bg-[#FAF9F6] text-stone-700 hover:border-stone-300'
                     }`}
                   >
@@ -441,36 +685,99 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
               })}
             </div>
           </div>
-        </>
-      )}
 
-      {/* Care & Logistics */}
-      <div className="space-y-2 pt-2 border-t border-stone-100">
-        <span className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
-          Logistics & Special Support
-        </span>
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer p-1">
-            <input
-              type="checkbox"
-              checked={filters.requiresTransport}
-              onChange={(e) => updateFilters({ requiresTransport: e.target.checked })}
-              className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
-            />
-            <span>Transport information available (Bus / Van)</span>
-          </label>
+          {/* Extracurricular Activities */}
+          <div className="space-y-1.5 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">
+              Extracurricular Activities
+            </span>
+            <div className="space-y-1.5">
+              {ACTIVITY_OPTIONS.map((act) => {
+                const isChecked = (filters.requiredActivities || []).includes(act);
+                return (
+                  <label
+                    key={act}
+                    className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold cursor-pointer transition-all border ${
+                      isChecked
+                        ? 'bg-blue-50 border-blue-300 text-blue-950 font-bold shadow-2xs'
+                        : 'border-stone-200 bg-[#FAF9F6] text-stone-700 hover:border-stone-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleActivity(act)}
+                        className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
+                      />
+                      <span>{act}</span>
+                    </div>
+                    {isChecked && <Check className="w-3.5 h-3.5" />}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
 
-          <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer p-1">
-            <input
-              type="checkbox"
-              checked={filters.requiresSpecialNeeds}
-              onChange={(e) => updateFilters({ requiresSpecialNeeds: e.target.checked })}
-              className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
-            />
-            <span>Special Educational Needs (IEP / Remedial)</span>
-          </label>
+          {/* Logistics & Special Support */}
+          <div className="space-y-2 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">
+              Logistics & Special Support
+            </span>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.requiresTransport}
+                  onChange={(e) => updateFilters({ requiresTransport: e.target.checked })}
+                  className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
+                />
+                <span className="flex items-center gap-1.5">
+                  <Bus className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Transport Available (Bus / Doorstep)</span>
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.requiresSpecialNeeds}
+                  onChange={(e) => updateFilters({ requiresSpecialNeeds: e.target.checked })}
+                  className="w-4 h-4 text-teal-600 accent-teal-600 rounded cursor-pointer"
+                />
+                <span className="flex items-center gap-1.5">
+                  <HeartHandshake className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Special Educational Needs (IEP / Remedial)</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* School Second Languages */}
+          <div className="space-y-1.5 pt-1 border-t border-stone-100">
+            <span className="text-[11px] font-bold text-stone-600 uppercase block">Second Language</span>
+            <div className="flex flex-wrap gap-1.5">
+              {SCHOOL_LANGUAGES.map((lang) => {
+                const isSelected = (filters.languages || []).includes(lang);
+                return (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => toggleSchoolLanguage(lang)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-teal-100 border-teal-300 text-teal-950 font-bold'
+                        : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Done button on mobile drawer view */}
       {onCloseMobile && (

@@ -14,7 +14,8 @@ import {
   Compass,
   Check,
   Building2,
-  FlaskConical
+  FlaskConical,
+  SlidersHorizontal
 } from 'lucide-react';
 import { getCurriculumColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
@@ -136,6 +137,135 @@ export const HowItWorksPage: React.FC = () => {
                 Schools cannot buy featured badges, sponsored ranks, or higher matching percentages. We exist solely to assist parents with transparent, objective data.
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* How a Match Score is Constructed Visual Example */}
+        <section className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-9 shadow-xs space-y-6">
+          <div>
+            <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">
+              Transparent Scoring Architecture
+            </span>
+            <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900 mt-1">
+              How a Match Score is Constructed
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 mt-1 font-sans">
+              FindMySchool does not rank institutions in a static, one-size-fits-all league table. Instead, every score is calculated dynamically against the specific priorities you provide.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            
+            {/* Visual Example Card */}
+            <div className="md:col-span-6 lg:col-span-5">
+              <div className="bg-[#FAF9F6] border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
+                
+                {/* Score Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-stone-200/70">
+                  <div>
+                    <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">
+                      YOUR FIT
+                    </span>
+                    <span className="text-xs text-teal-800 font-semibold">
+                      Sample Institution
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-editorial font-bold text-3xl sm:text-4xl text-stone-950 tabular-nums">
+                      94%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score Breakdown Rows */}
+                <div className="space-y-2.5 font-sans text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                      <span className="text-stone-700 font-medium">Location fit</span>
+                    </div>
+                    <span className="font-bold text-stone-900 tabular-nums">24 / 25</span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                      <span className="text-stone-700 font-medium">Budget fit</span>
+                    </div>
+                    <span className="font-bold text-stone-900 tabular-nums">19 / 20</span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                      <span className="text-stone-700 font-medium">Learning approach</span>
+                    </div>
+                    <span className="font-bold text-stone-900 tabular-nums">20 / 20</span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                      <span className="text-stone-700 font-medium">Facilities</span>
+                    </div>
+                    <span className="font-bold text-stone-900 tabular-nums">16 / 20</span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                      <span className="text-stone-700 font-medium">Other preferences</span>
+                    </div>
+                    <span className="font-bold text-stone-900 tabular-nums">15 / 15</span>
+                  </div>
+                </div>
+
+                {/* Score Total Footer */}
+                <div className="pt-2.5 border-t border-stone-200/70 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+                    Total Weighted Fit
+                  </span>
+                  <span className="font-bold text-teal-900 tabular-nums">
+                    94 / 100
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation & Principles */}
+            <div className="md:col-span-6 lg:col-span-7 space-y-4 text-xs sm:text-sm text-stone-700 font-sans leading-relaxed">
+              
+              <div className="p-4 rounded-xl bg-teal-50/70 border border-teal-200/80 space-y-1.5">
+                <div className="flex items-center gap-2 text-teal-950 font-bold text-xs uppercase tracking-wider">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                  <span>Driven by Your Choices</span>
+                </div>
+                <p className="text-stone-900 font-medium text-xs sm:text-sm leading-snug">
+                  "Your fit is based on the priorities you choose. Changing those priorities can change the order of results."
+                </p>
+                <p className="text-stone-600 text-xs">
+                  If you adjust your commute radius from 6 km to 15 km or switch your target board from CBSE to Cambridge, the scores recalculate instantly to reflect that new reality.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-1.5">
+                <div className="flex items-center gap-2 text-amber-950 font-bold text-xs uppercase tracking-wider">
+                  <Scale className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span>An Important Distinction</span>
+                </div>
+                <p className="text-stone-900 font-semibold text-xs sm:text-sm leading-snug">
+                  "Fit is not a quality rating. It reflects how closely an institution matches the preferences you provided."
+                </p>
+                <p className="text-stone-600 text-xs leading-relaxed">
+                  This distinction is important. A score of 94% does not mean an institution is objectively the best school in Chennai or universally superior to a school with 78%. It simply means it aligns closely with the specific parameters you entered.
+                </p>
+              </div>
+
+              <p className="text-stone-500 text-xs">
+                Every family prioritizes differently—some need doorstep transit and full-day daycare, while others prioritize competitive exam preparation or expansive sports grounds. FindMySchool helps you find what fits <em>your</em> child, not someone else's definition of prestige.
+              </p>
+            </div>
+
           </div>
         </section>
 
