@@ -56,14 +56,21 @@ function getPrioritizedFacilities(
   // Keywords that map to facility interests
   const scoringTerms: { pattern: RegExp; boost: number }[] = [];
 
+  // When query or preschool filters mention daycare, prioritize Daycare & Extended hours
   if (query.includes('daycare') || filters?.preschool?.daycare) {
-    scoringTerms.push({ pattern: /daycare|nap|care|sleep|infant/i, boost: 50 });
+    scoringTerms.push({ pattern: /daycare|nap|sleep|infant|creche/i, boost: 60 });
+    scoringTerms.push({ pattern: /extended|hours|timing/i, boost: 45 });
   }
+  if (query.includes('extended') || filters?.preschool?.extendedHours) {
+    scoringTerms.push({ pattern: /extended|hours|timing|evening/i, boost: 55 });
+  }
+  // Montessori / Reggio / Playway pedagogy facilities
   if (query.includes('montessori') || filters?.preschool?.pedagogy?.includes('Montessori')) {
-    scoringTerms.push({ pattern: /montessori|sensory|activity lab|sensorial/i, boost: 50 });
+    scoringTerms.push({ pattern: /montessori|sensory|activity lab|sensorial/i, boost: 65 });
   }
+  // Outdoor play / sensory garden
   if (query.includes('outdoor') || query.includes('play') || query.includes('sand') || query.includes('garden') || filters?.preschool?.outdoorPlay) {
-    scoringTerms.push({ pattern: /outdoor|garden|sand|turf|play/i, boost: 45 });
+    scoringTerms.push({ pattern: /outdoor|garden|sand|turf|play/i, boost: 50 });
   }
   if (query.includes('swim') || query.includes('pool') || query.includes('aquatic') || filters?.requiredFacilities?.includes('Swimming Pool')) {
     scoringTerms.push({ pattern: /swim|pool|splash|aquatic/i, boost: 50 });
@@ -87,8 +94,62 @@ function getPrioritizedFacilities(
     scoringTerms.push({ pattern: /wellness|counselling|psycholog|special|remedial/i, boost: 40 });
   }
 
+  // Pool of candidate facilities
+  const candidates: Facility[] = [...allFacilities];
+
+  // If this is a preschool with extended hours or daycare and the query touches it, ensure synthetic items exist if not already present
+  if (school.institutionType === 'preschool' || school.institutionType === 'combined') {
+    const hasExtHoursInFac = candidates.some((f) => /extended|hours|timing/i.test(f.name));
+    if (!hasExtHoursInFac && (school.extendedHours || query.includes('daycare') || query.includes('extended'))) {
+      candidates.push({
+        id: 'synth-ext-hours',
+        name: 'Extended Hours',
+        category: 'Wellness & Care',
+        available: true,
+        highlight: 'Full-day care with flexible evening pickups',
+        iconName: 'Clock',
+      });
+    }
+
+    const hasDaycareInFac = candidates.some((f) => /daycare|care|nap/i.test(f.name));
+    if (!hasDaycareInFac && (school.daycare || query.includes('daycare'))) {
+      candidates.push({
+        id: 'synth-daycare',
+        name: 'Daycare & Care Wing',
+        category: 'Wellness & Care',
+        available: true,
+        highlight: 'Nurturing daycare with supervised rest pods',
+        iconName: 'HeartHandshake',
+      });
+    }
+
+    const hasMontessoriInFac = candidates.some((f) => /montessori/i.test(f.name));
+    if (!hasMontessoriInFac && (school.pedagogy?.includes('Montessori') || query.includes('montessori'))) {
+      candidates.push({
+        id: 'synth-montessori',
+        name: 'Montessori Activity Lab',
+        category: 'STEM & Tech',
+        available: true,
+        highlight: 'Authentic child-paced sensory apparatus',
+        iconName: 'Cpu',
+      });
+    }
+
+    const hasOutdoorInFac = candidates.some((f) => /outdoor|garden|play/i.test(f.name));
+    if (!hasOutdoorInFac && (school.outdoorPlay || query.includes('outdoor') || query.includes('play'))) {
+      candidates.push({
+        id: 'synth-outdoor',
+        name: 'Outdoor Play Garden',
+        category: 'Infrastructure',
+        available: true,
+        highlight: 'Shaded sand pit and gross motor play equipment',
+        iconName: 'TreePine',
+      });
+    }
+  }
+
   // Score each facility
-  const scored = allFacilities.map((fac, originalIndex) => {
+  const scored = candidates.map((fac, originalIndex) => {
     let score = 10 - originalIndex; // Preserve original ordering as fallback
     const facText = `${fac.name} ${fac.highlight || ''} ${fac.category}`.toLowerCase();
 
@@ -600,7 +661,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                   <span>
                     {showAllReasons
                       ? 'Show fewer reasons'
-                      : `See more reasons (+${allFormattedExplanations.length - 2})`}
+                      : 'See more reasons'}
                   </span>
                   {showAllReasons ? (
                     <ChevronUp className="w-3.5 h-3.5" />
@@ -652,13 +713,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             to={`/school/${school.slug}`}
             className="min-h-[42px] px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer group/cta focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
           >
-            <span>
-              {isEarlyYears
-                ? 'View Preschool Profile'
-                : isCombined
-                ? 'View Campus Profile'
-                : 'View School Profile'}
-            </span>
+            <span>View profile</span>
             <ChevronRight className="w-4 h-4 group-hover/cta:translate-x-0.5 transition-transform" />
           </Link>
 

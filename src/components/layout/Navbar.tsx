@@ -57,10 +57,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
         </div>
 
         {/* Zone 2: Navigation Links (Desktop) */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium text-stone-600">
+        <nav className="hidden lg:flex items-center gap-3.5 xl:gap-6 text-sm font-medium text-stone-600 shrink-0">
           <Link
             to="/results?target=preschool"
-            className={`relative py-1 transition-colors hover:text-stone-900 ${
+            className={`relative py-1 whitespace-nowrap transition-colors hover:text-stone-900 ${
               location.search.includes('target=preschool') ? 'text-amber-950 font-bold' : ''
             }`}
           >
@@ -72,7 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
 
           <Link
             to="/results?target=school"
-            className={`relative py-1 transition-colors hover:text-stone-900 ${
+            className={`relative py-1 whitespace-nowrap transition-colors hover:text-stone-900 ${
               location.search.includes('target=school') ? 'text-teal-950 font-bold' : ''
             }`}
           >
@@ -84,11 +84,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
 
           <Link
             to="/results"
-            className={`relative py-1 transition-colors hover:text-stone-900 ${
+            className={`relative py-1 whitespace-nowrap transition-colors hover:text-stone-900 ${
               (isActive('/results') || isActive('/search')) && !location.search.includes('target=') ? 'text-teal-900 font-semibold' : ''
             }`}
           >
-            <span>Explore All</span>
+            <span>Explore</span>
             {(isActive('/results') || isActive('/search')) && !location.search.includes('target=') && (
               <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#0D9488] rounded-full"></span>
             )}
@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
 
           <Link
             to="/how-it-works"
-            className={`relative py-1 transition-colors hover:text-stone-900 ${
+            className={`relative py-1 whitespace-nowrap transition-colors hover:text-stone-900 ${
               isActive('/how-it-works') ? 'text-teal-900 font-semibold' : ''
             }`}
           >
@@ -108,14 +108,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
 
           <Link
             to="/compare"
-            className={`relative py-1 inline-flex items-center gap-1.5 transition-colors hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded px-1 ${
+            className={`relative py-1 inline-flex items-center gap-1.5 whitespace-nowrap transition-colors hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded px-1 ${
               isActive('/compare') ? 'text-teal-900 font-semibold' : ''
             }`}
           >
-            <Scale className="w-4 h-4 text-stone-500" />
+            <Scale className="w-4 h-4 text-stone-500 shrink-0" />
             <span>Compare</span>
             {comparisonIds.length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-100 text-teal-800 border border-teal-200/80">
+              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-100 text-teal-800 border border-teal-200/80 shrink-0">
                 {comparisonIds.length}
               </span>
             )}
@@ -126,12 +126,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
 
           <Link
             to="/results?filter=saved"
-            className="relative py-1 inline-flex items-center gap-1.5 transition-colors hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded px-1"
+            className="relative py-1 inline-flex items-center gap-1.5 whitespace-nowrap transition-colors hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded px-1"
           >
-            <Bookmark className="w-4 h-4 text-stone-500" />
+            <Bookmark className="w-4 h-4 text-stone-500 shrink-0" />
             <span>Shortlist</span>
             {savedIds.length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-200/80">
+              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-200/80 shrink-0">
                 {savedIds.length}
               </span>
             )}
@@ -143,20 +143,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
           <button
             type="button"
             onClick={onOpenAdvisor}
-            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold text-teal-950 bg-[#F5F1E8] border border-teal-200/70 rounded-lg hover:bg-teal-50 hover:border-teal-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer shadow-2xs min-h-[40px] sm:min-h-[42px] group"
+            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold text-teal-950 bg-[#F5F1E8] border border-teal-200/80 rounded-lg hover:bg-teal-50 hover:border-teal-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer shadow-2xs min-h-[40px] sm:min-h-[42px] group whitespace-nowrap"
             aria-label="Open School Advisor"
           >
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 group-hover:scale-110 transition-transform shrink-0" />
             <span className="whitespace-nowrap">
-              <span className="hidden min-[380px]:inline">School </span>Advisor
+              <span className="hidden min-[420px]:inline">School </span>Advisor
             </span>
           </button>
 
           <Link
             to="/results"
-            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-[#0D9488] hover:bg-[#115E59] rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer min-h-[40px] sm:min-h-[42px]"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 lg:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-[#0D9488] hover:bg-[#115E59] rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer min-h-[40px] sm:min-h-[42px] whitespace-nowrap shrink-0"
           >
-            <Search className="w-3.5 h-3.5" />
+            <Search className="w-3.5 h-3.5 shrink-0" />
             <span>Search</span>
           </Link>
 
@@ -164,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-stone-700 hover:text-stone-950 rounded-lg hover:bg-stone-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            className="lg:hidden min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-stone-700 hover:text-stone-950 rounded-lg hover:bg-stone-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
             aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileMenuOpen}
           >
@@ -175,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
 
       {/* Mobile Drawer with Backdrop */}
       {mobileMenuOpen && (
-        <div className="fixed inset-x-0 top-16 bottom-0 z-50 md:hidden bg-stone-900/40 backdrop-blur-xs flex flex-col justify-start animate-in fade-in duration-150">
+        <div className="fixed inset-x-0 top-16 bottom-0 z-50 lg:hidden bg-stone-900/40 backdrop-blur-xs flex flex-col justify-start animate-in fade-in duration-150">
           <div className="bg-[#FAF9F6] border-b border-stone-200 px-4 pt-3 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-2 duration-150 max-h-[85vh] overflow-y-auto">
             
             {/* Quick Action Buttons */}
