@@ -8,6 +8,8 @@ interface ShortlistContextType {
   toggleSave: (schoolId: string) => void;
   isSaved: (schoolId: string) => boolean;
   clearShortlist: () => void;
+  isDemoMode: boolean;
+  loadDemoShortlist: () => void;
 }
 
 const ShortlistContext = createContext<ShortlistContextType | undefined>(undefined);
@@ -22,25 +24,62 @@ export const ShortlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return parsed.filter((id): id is string => typeof id === 'string');
         }
       }
-      return ['sch-001', 'sch-002'];
+      return [];
     } catch {
-      return ['sch-001', 'sch-002'];
+      return [];
+    }
+  });
+
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('fms_shortlist_is_demo') === 'true';
+    } catch {
+      return false;
     }
   });
 
   useEffect(() => {
-    localStorage.setItem('fms_shortlist', JSON.stringify(savedIds));
-  }, [savedIds]);
+    try {
+      localStorage.setItem('fms_shortlist', JSON.stringify(savedIds));
+      if (savedIds.length === 0 && isDemoMode) {
+        setIsDemoMode(false);
+        localStorage.removeItem('fms_shortlist_is_demo');
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [savedIds, isDemoMode]);
+
+  const loadDemoShortlist = () => {
+    setSavedIds(['sch-001', 'sch-002']);
+    setIsDemoMode(true);
+    try {
+      localStorage.setItem('fms_shortlist_is_demo', 'true');
+    } catch {}
+  };
 
   const toggleSave = (schoolId: string) => {
-    setSavedIds((prev) =>
-      prev.includes(schoolId) ? prev.filter((id) => id !== schoolId) : [...prev, schoolId]
-    );
+    setSavedIds((prev) => {
+      const next = prev.includes(schoolId) ? prev.filter((id) => id !== schoolId) : [...prev, schoolId];
+      if (isDemoMode) {
+        setIsDemoMode(false);
+        try {
+          localStorage.removeItem('fms_shortlist_is_demo');
+        } catch {}
+      }
+      return next;
+    });
   };
 
   const isSaved = (schoolId: string) => savedIds.includes(schoolId);
 
-  const clearShortlist = () => setSavedIds([]);
+  const clearShortlist = () => {
+    setSavedIds([]);
+    setIsDemoMode(false);
+    try {
+      localStorage.removeItem('fms_shortlist_is_demo');
+    } catch {}
+  };
 
   const savedSchools = CHENNAI_SCHOOLS.filter((s) => savedIds.includes(s.id));
 
@@ -52,6 +91,8 @@ export const ShortlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         toggleSave,
         isSaved,
         clearShortlist,
+        isDemoMode,
+        loadDemoShortlist,
       }}
     >
       {children}

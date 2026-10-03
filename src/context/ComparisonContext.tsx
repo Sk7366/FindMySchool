@@ -10,6 +10,8 @@ interface ComparisonContextType {
   removeFromComparison: (schoolId: string) => void;
   clearComparison: () => void;
   maxComparisonLimit: number;
+  isDemoMode: boolean;
+  loadDemoComparison: () => void;
 }
 
 const ComparisonContext = createContext<ComparisonContextType | undefined>(undefined);
@@ -24,17 +26,41 @@ export const ComparisonProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           return parsed.filter((id): id is string => typeof id === 'string');
         }
       }
-      return ['sch-001', 'sch-002'];
+      return [];
     } catch {
-      return ['sch-001', 'sch-002'];
+      return [];
+    }
+  });
+
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('fms_comparison_is_demo') === 'true';
+    } catch {
+      return false;
     }
   });
 
   const maxComparisonLimit = 4;
 
   useEffect(() => {
-    localStorage.setItem('fms_comparison', JSON.stringify(comparisonIds));
-  }, [comparisonIds]);
+    try {
+      localStorage.setItem('fms_comparison', JSON.stringify(comparisonIds));
+      if (comparisonIds.length === 0 && isDemoMode) {
+        setIsDemoMode(false);
+        localStorage.removeItem('fms_comparison_is_demo');
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [comparisonIds, isDemoMode]);
+
+  const loadDemoComparison = () => {
+    setComparisonIds(['sch-001', 'sch-002']);
+    setIsDemoMode(true);
+    try {
+      localStorage.setItem('fms_comparison_is_demo', 'true');
+    } catch {}
+  };
 
   const toggleComparison = (schoolId: string): boolean => {
     if (comparisonIds.includes(schoolId)) {
@@ -43,6 +69,13 @@ export const ComparisonProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     if (comparisonIds.length >= maxComparisonLimit) {
       return false;
+    }
+    // If user adds manually, clear demo flag
+    if (isDemoMode) {
+      setIsDemoMode(false);
+      try {
+        localStorage.removeItem('fms_comparison_is_demo');
+      } catch {}
     }
     setComparisonIds((prev) => [...prev, schoolId]);
     return true;
@@ -54,7 +87,13 @@ export const ComparisonProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setComparisonIds((prev) => prev.filter((id) => id !== schoolId));
   };
 
-  const clearComparison = () => setComparisonIds([]);
+  const clearComparison = () => {
+    setComparisonIds([]);
+    setIsDemoMode(false);
+    try {
+      localStorage.removeItem('fms_comparison_is_demo');
+    } catch {}
+  };
 
   const comparisonSchools = CHENNAI_SCHOOLS.filter((s) => comparisonIds.includes(s.id));
 
@@ -68,6 +107,8 @@ export const ComparisonProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         removeFromComparison,
         clearComparison,
         maxComparisonLimit,
+        isDemoMode,
+        loadDemoComparison,
       }}
     >
       {children}

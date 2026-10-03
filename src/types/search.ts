@@ -64,3 +64,19 @@ export interface SearchState {
   filters: SearchFilters;
   sortBy: SortField;
 }
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  query: string;
+  filters: SearchFilters;
+  createdAt: string;
+  isDemo?: boolean;
+}
+
+export interface RecentSearch {
+  id: string;
+  query: string;
+  timestamp: string;
+  isDemo?: boolean;
+}

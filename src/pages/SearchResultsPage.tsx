@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
-import { Filter, Map, List, Edit3, X, AlertCircle, RotateCcw, Search, Sliders, Baby, School as SchoolIcon, Layers } from 'lucide-react';
+import { useSearchParams, useLocation, Link } from 'react-router-dom';
+import { Filter, Map, List, Edit3, X, AlertCircle, RotateCcw, Search, Sliders, Baby, School as SchoolIcon, Layers, Bookmark, Sparkles, ArrowRight } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 import { useShortlist } from '../context/ShortlistContext';
 import { SchoolCard } from '../components/schools/SchoolCard';
@@ -27,7 +27,7 @@ export const SearchResultsPage: React.FC = () => {
     activeFilterCount,
   } = useSearch();
 
-  const { savedSchools } = useShortlist();
+  const { savedSchools, isDemoMode, loadDemoShortlist, clearShortlist } = useShortlist();
   const { filters, sortBy, rawQuery } = searchState;
 
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
@@ -381,6 +381,25 @@ export const SearchResultsPage: React.FC = () => {
           {/* Results List Area */}
           <div className={`md:col-span-8 ${viewMode === 'split' ? 'lg:col-span-5' : 'lg:col-span-9'} space-y-4`}>
             
+            {/* Shortlist Demo State Banner */}
+            {isSavedMode && isDemoMode && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-amber-950 font-sans shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    <strong>Demo State:</strong> Showing sample shortlisted institutions for demonstration. These are not your saved items.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearShortlist}
+                  className="font-bold underline hover:no-underline text-amber-900 cursor-pointer shrink-0"
+                >
+                  Clear Demo Data
+                </button>
+              </div>
+            )}
+
             {/* Intentional Discovery Pipeline (Search → Understanding → Matching → Results) */}
             {!isSavedMode && (
               <SearchTransitionPipeline
@@ -415,6 +434,37 @@ export const SearchResultsPage: React.FC = () => {
                     <SchoolCard school={school} />
                   </div>
                 ))}
+              </div>
+            ) : isSavedMode ? (
+              <div className="bg-white rounded-2xl border border-stone-200 p-8 sm:p-12 text-center space-y-4 shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center mx-auto border border-amber-200">
+                  <Bookmark className="w-7 h-7 text-amber-600" />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                  <h3 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900">
+                    No Shortlisted Institutions
+                  </h3>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
+                    You haven't bookmarked any institutions yet. Click the "Save" action on any school or preschool card to keep track of your favorites here.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  <Link
+                    to="/results"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px]"
+                  >
+                    <span>Explore All Institutions</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={loadDemoShortlist}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer min-h-[44px]"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Try Sample Shortlist (Demo)</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-stone-200 p-8 sm:p-12 text-center space-y-4 shadow-xs">

@@ -89,10 +89,13 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
         'Request the previous 3 years fee revision history.',
       ];
     } else if (questionText.toLowerCase().includes('compare') || questionText.toLowerCase().includes('shortlist')) {
-      replyText = `Comparing your current shortlisted options:
-• The Shriram Millennium School (OMR): Best balance for modern robotics, semi-covered swimming, and progressive CBSE/Cambridge inquiry.
-• The PSBB Millennium School (Gerugambakkam): Superior traditional academic rigor and competitive exam foundation, but swimming is off-site.
-• Bala Vidya Mandir (Adyar): Most budget-friendly (~₹82,000/yr) with exceptional academic reputation, but at the maximum edge of your commute radius.`;
+      const activeSchools = comparisonSchools.length > 0 ? comparisonSchools : savedSchools;
+      if (activeSchools.length > 0) {
+        replyText = `Comparing your current selected options (${activeSchools.length} institution${activeSchools.length > 1 ? 's' : ''}):\n` +
+          activeSchools.slice(0, 3).map((s) => `• ${s.name} (${s.area}): Fit ${s.matchScore}% · Fee ${s.annualFeeMin ? `₹${(s.annualFeeMin / 100000).toFixed(1)}L` : 'Disclosed'} · ${s.curriculum?.join('/') || s.pedagogy?.join('/') || 'Disclosed approach'}`).join('\n');
+      } else {
+        replyText = `You currently have 0 institutions in your comparison or shortlist.\n\nTo compare schools side-by-side:\n1. Click "Compare" on any 2 to 4 school or preschool cards\n2. Click "Save" to bookmark institutions to your shortlist\n3. Open the Compare tab to evaluate commute buffers, fee structures, and facilities together.`;
+      }
       checklist = [
         'Visit campuses during morning drop-off hours (8:00 AM)',
         'Check child-to-washroom ratio on primary school floors',

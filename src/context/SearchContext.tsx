@@ -1,21 +1,21 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { SearchState, SearchFilters, SortField, EducationTargetType, UpdateFiltersPayload } from '../types/search';
+import { SearchState, SearchFilters, SortField, EducationTargetType, UpdateFiltersPayload, SavedSearch, RecentSearch } from '../types/search';
 import { School, Curriculum, SchoolType, PreschoolProgram } from '../types/school';
 import { CHENNAI_SCHOOLS } from '../data/schools';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 
-const DEFAULT_FILTERS: SearchFilters = {
+export const DEFAULT_FILTERS: SearchFilters = {
   location: 'All Chennai',
-  radiusKm: 12,
+  radiusKm: 25,
   budgetMin: 30000,
-  budgetMax: 150000,
+  budgetMax: 350000,
   educationTarget: 'all',
 
-  // K-12 defaults
-  grade: 'Class 5',
-  curriculums: ['CBSE'],
-  schoolTypes: ['Co-educational'],
-  requiredFacilities: ['Robotics & STEM Lab', 'Swimming Pool'],
+  // K-12 defaults (clean initial state without pre-populated criteria)
+  grade: 'Any Grade',
+  curriculums: [],
+  schoolTypes: [],
+  requiredFacilities: [],
   requiredActivities: [],
   requiresTransport: false,
   requiresHostel: false,
@@ -42,6 +42,17 @@ interface SearchContextType {
   filteredSchools: School[];
   totalMatches: number;
   activeFilterCount: number;
+
+  // Saved & Recent Searches
+  recentSearches: RecentSearch[];
+  savedSearches: SavedSearch[];
+  addRecentSearch: (query: string) => void;
+  clearRecentSearches: () => void;
+  saveCurrentSearch: (name?: string) => void;
+  removeSavedSearch: (id: string) => void;
+  clearSavedSearches: () => void;
+  isDemoSearches: boolean;
+  loadDemoSearches: () => void;
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
@@ -77,11 +88,52 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // fallback
       }
     }
+    // Clean initial first visit state: empty raw query and unconstrained defaults
     return {
-      rawQuery: "CBSE school near Tambaram / OMR under ₹1.2 lakh/year with robotics and swimming",
+      rawQuery: '',
       filters: DEFAULT_FILTERS,
       sortBy: 'best_match',
     };
+  });
+
+  // Recent searches: strictly empty on fresh first visit
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => {
+    try {
+      const stored = localStorage.getItem('fms_recent_searches');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Saved searches: strictly empty on fresh first visit
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => {
+    try {
+      const stored = localStorage.getItem('fms_saved_searches');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isDemoSearches, setIsDemoSearches] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('fms_searches_is_demo') === 'true';
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
@@ -91,6 +143,84 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // ignore quota or private browsing errors
     }
   }, [searchState]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fms_recent_searches', JSON.stringify(recentSearches));
+      if (recentSearches.length === 0 && isDemoSearches) {
+        setIsDemoSearches(false);
+        localStorage.removeItem('fms_searches_is_demo');
+      }
+    } catch {}
+  }, [recentSearches, isDemoSearches]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fms_saved_searches', JSON.stringify(savedSearches));
+    } catch {}
+  }, [savedSearches]);
+
+  const addRecentSearch = (query: string) => {
+    if (!query || !query.trim()) return;
+    const clean = query.trim();
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((r) => r.query.toLowerCase() !== clean.toLowerCase());
+      return [
+        { id: `rs-${Date.now()}`, query: clean, timestamp: new Date().toISOString() },
+        ...filtered,
+      ].slice(0, 10);
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    setIsDemoSearches(false);
+    try {
+      localStorage.removeItem('fms_searches_is_demo');
+    } catch {}
+  };
+
+  const saveCurrentSearch = (name?: string) => {
+    const query = searchState.rawQuery || 'All Chennai Institutions';
+    const label = name || (searchState.rawQuery ? `"${searchState.rawQuery.slice(0, 32)}"` : 'Custom Search');
+    const newSaved: SavedSearch = {
+      id: `ss-${Date.now()}`,
+      name: label,
+      query: searchState.rawQuery,
+      filters: { ...searchState.filters },
+      createdAt: new Date().toISOString(),
+    };
+    setSavedSearches((prev) => [newSaved, ...prev]);
+  };
+
+  const removeSavedSearch = (id: string) => {
+    setSavedSearches((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const clearSavedSearches = () => {
+    setSavedSearches([]);
+  };
+
+  const loadDemoSearches = () => {
+    setIsDemoSearches(true);
+    setRecentSearches([
+      { id: 'demo-rs-1', query: 'Montessori preschool near Velachery with daycare', timestamp: new Date().toISOString(), isDemo: true },
+      { id: 'demo-rs-2', query: 'CBSE school near Anna Nagar under ₹1.5L with sports', timestamp: new Date().toISOString(), isDemo: true },
+    ]);
+    setSavedSearches([
+      {
+        id: 'demo-ss-1',
+        name: 'Velachery Montessori + Daycare (Demo)',
+        query: 'Montessori preschool near Velachery with daycare',
+        filters: { ...DEFAULT_FILTERS, location: 'Velachery & Guindy', preschool: { programs: ['nursery'], pedagogy: ['Montessori'], daycare: true, outdoorPlay: true } },
+        createdAt: new Date().toISOString(),
+        isDemo: true,
+      },
+    ]);
+    try {
+      localStorage.setItem('fms_searches_is_demo', 'true');
+    } catch {}
+  };
 
   const updateFilters = (partial: UpdateFiltersPayload) => {
     setSearchState((prev) => {
@@ -315,6 +445,10 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       newFilters.grade = `Class ${gradeMatch[1]}`;
     }
 
+    if (query.trim()) {
+      addRecentSearch(query.trim());
+    }
+
     setSearchState({
       rawQuery: query,
       filters: newFilters,
@@ -489,6 +623,15 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         filteredSchools,
         totalMatches: filteredSchools.length,
         activeFilterCount,
+        recentSearches,
+        savedSearches,
+        addRecentSearch,
+        clearRecentSearches,
+        saveCurrentSearch,
+        removeSavedSearch,
+        clearSavedSearches,
+        isDemoSearches,
+        loadDemoSearches,
       }}
     >
       {children}
