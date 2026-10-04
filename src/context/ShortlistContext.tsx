@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CHENNAI_SCHOOLS } from '../data/schools';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { schoolService } from '../services/schoolService';
 import { School } from '../types/school';
 
 interface ShortlistContextType {
@@ -81,20 +81,23 @@ export const ShortlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch {}
   };
 
-  const savedSchools = CHENNAI_SCHOOLS.filter((s) => savedIds.includes(s.id));
+  const savedSchools = useMemo(() => schoolService.compareSync(savedIds), [savedIds]);
+
+  const contextValue = useMemo(
+    () => ({
+      savedIds,
+      savedSchools,
+      toggleSave,
+      isSaved,
+      clearShortlist,
+      isDemoMode,
+      loadDemoShortlist,
+    }),
+    [savedIds, savedSchools, isDemoMode]
+  );
 
   return (
-    <ShortlistContext.Provider
-      value={{
-        savedIds,
-        savedSchools,
-        toggleSave,
-        isSaved,
-        clearShortlist,
-        isDemoMode,
-        loadDemoShortlist,
-      }}
-    >
+    <ShortlistContext.Provider value={contextValue}>
       {children}
     </ShortlistContext.Provider>
   );

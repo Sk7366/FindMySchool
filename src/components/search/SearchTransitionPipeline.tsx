@@ -103,9 +103,11 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 sm:gap-2.5 mt-3">
           
           {/* STEP 1: Understanding your preferences */}
-          <div
+          <button
+            type="button"
             onClick={onJumpToUnderstanding}
-            className={`flex-1 p-2.5 sm:p-3 rounded-xl border transition-all duration-200 flex items-center gap-2.5 cursor-pointer ${
+            aria-label={`Step 1: Understanding your preferences. ${extractedCriteriaCount} priority criteria identified. Click to review extracted preferences.`}
+            className={`flex-1 p-2.5 sm:p-3 rounded-xl border transition-all duration-200 flex items-center gap-2.5 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
               activeStep >= 1
                 ? 'bg-sky-50/70 border-sky-300 text-sky-950 shadow-2xs'
                 : 'bg-stone-50/50 border-stone-200 text-stone-400'
@@ -119,6 +121,7 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
                   ? 'bg-sky-600 text-white ring-2 ring-sky-300 ring-offset-1 animate-pulse'
                   : 'bg-stone-200 text-stone-500'
               }`}
+              aria-hidden="true"
             >
               {activeStep > 1 ? (
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -137,18 +140,20 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
                 {extractedCriteriaCount} priority criteria identified
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Visual Sequence Separator (↓ on mobile, → on desktop) */}
-          <div className="flex items-center justify-center py-0.5 md:py-0 text-stone-400 shrink-0">
+          <div className="flex items-center justify-center py-0.5 md:py-0 text-stone-400 shrink-0" aria-hidden="true">
             <ArrowDown className="w-3.5 h-3.5 md:hidden text-stone-400" />
             <ArrowRight className="w-3.5 h-3.5 hidden md:block text-stone-400" />
           </div>
 
           {/* STEP 2: Finding matching institutions */}
-          <div
+          <button
+            type="button"
             onClick={onOpenPriorityTuner}
-            className={`flex-1 p-2.5 sm:p-3 rounded-xl border transition-all duration-200 flex items-center gap-2.5 cursor-pointer ${
+            aria-label={`Step 2: Finding matching institutions. ${evaluatedCount} places evaluated in Chennai. Click to tune priorities.`}
+            className={`flex-1 p-2.5 sm:p-3 rounded-xl border transition-all duration-200 flex items-center gap-2.5 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
               activeStep >= 2
                 ? 'bg-amber-50/70 border-amber-300 text-amber-950 shadow-2xs'
                 : 'bg-stone-50/50 border-stone-200 text-stone-400'
@@ -162,6 +167,7 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
                   ? 'bg-amber-600 text-white ring-2 ring-amber-300 ring-offset-1 animate-pulse'
                   : 'bg-stone-200 text-stone-500'
               }`}
+              aria-hidden="true"
             >
               {activeStep > 2 ? (
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -180,7 +186,7 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
                 {evaluatedCount} places evaluated in Chennai
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Visual Sequence Separator (↓ on mobile, → on desktop) */}
           <div className="flex items-center justify-center py-0.5 md:py-0 text-stone-400 shrink-0">

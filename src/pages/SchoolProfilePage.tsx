@@ -32,7 +32,6 @@ import {
   Trophy,
   RotateCcw,
 } from 'lucide-react';
-import { CHENNAI_SCHOOLS } from '../data/schools';
 import { useComparison } from '../context/ComparisonContext';
 import { useShortlist } from '../context/ShortlistContext';
 import { useSearch } from '../context/SearchContext';
@@ -40,6 +39,9 @@ import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPe
 import { VerificationBadge } from '../components/common/VerificationBadge';
 import { formatMatchReason } from '../utils/matchProvenance';
 import { ProfileSkeleton } from '../components/schools/ProfileSkeleton';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useSchool, useSimilarSchools } from '../hooks/useSchoolData';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 type ProfileTab = 'overview' | 'programs' | 'academics' | 'fees' | 'facilities' | 'admissions' | 'neighbourhood';
 
@@ -54,32 +56,23 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
   const { toggleSave, isSaved } = useShortlist();
   const { searchState } = useSearch();
 
-  const [isLoading, setIsLoading] = useState<boolean>(() => searchParams.get('state') === 'loading');
   const [profileError, setProfileError] = useState<string | null>(() =>
     searchParams.get('state') === 'error' || searchParams.get('error') === 'true'
       ? 'Something went wrong while loading these results.'
       : null
   );
 
-  // Fast simulated network load sequence (~260ms) on route change
+  const { school, loading: isServiceLoading, error: serviceError, retry: retryLoadSchool } = useSchool(slug);
+  const similarInstitutions = useSimilarSchools(school, 3);
+
+  // Fast network sequence on route change or query flag
   useEffect(() => {
-    if (searchParams.get('state') === 'loading') {
-      setIsLoading(true);
-      return;
-    }
     if (searchParams.get('state') === 'error' || searchParams.get('error') === 'true') {
       setProfileError('Something went wrong while loading these results.');
-      return;
+    } else {
+      setProfileError(null);
     }
-    setProfileError(null);
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 260);
-    return () => clearTimeout(timer);
   }, [slug, searchParams]);
-
-  const school = CHENNAI_SCHOOLS.find((s) => s.slug === slug);
 
   const isEarlyYears = school?.institutionType === 'preschool';
   const isCombined = school?.institutionType === 'combined';
@@ -96,42 +89,62 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
     setMainImageError(false);
   }, [selectedPhotoIndex]);
 
-  // Handle Escape key and body lock for Plan Visit modal
-  useEffect(() => {
-    if (!isPlanVisitOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+  // Focus trap and escape handling for Plan Visit modal
+  const planVisitTrapRef = useFocusTrap({
+    isOpen: isPlanVisitOpen,
+    onClose: () => setIsPlanVisitOpen(false),
+  });
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsPlanVisitOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isPlanVisitOpen]);
+  const profileMeta = useMemo(() => {
+    if (!school) {
+      return {
+        title: 'Institution Profile | FindMySchool',
+        description: 'Explore comprehensive institution profiles with verified fee disclosures, student-teacher ratios, and commute logistics in Chennai.',
+        canonicalPath: slug ? `/school/${slug}` : undefined,
+      };
+    }
 
-  // Similar institutions: "Other places you may want to compare"
-  const similarInstitutions = useMemo(() => {
-    if (!school) return [];
-    const isEarly = school.institutionType === 'preschool';
-    return CHENNAI_SCHOOLS.filter((s) => {
-      if (s.id === school.id) return false;
-      if (isEarly) {
-        return s.institutionType === 'preschool' || s.institutionType === 'combined';
-      }
-      return !s.institutionType || s.institutionType === 'school' || s.institutionType === 'combined';
-    })
-      .sort((a, b) => {
-        const aSameArea = a.area === school.area ? 1 : 0;
-        const bSameArea = b.area === school.area ? 1 : 0;
-        return bSameArea - aSameArea || Math.abs(a.distanceKm - school.distanceKm) - Math.abs(b.distanceKm - school.distanceKm);
-      })
-      .slice(0, 3);
-  }, [school]);
+    const typeStr = school.institutionType === 'preschool'
+      ? school.pedagogy?.join(' / ') || 'Early Years Preschool'
+      : school.curriculum?.join(' / ') || 'K-12 School';
+    const feeStr = school.annualFeeMin
+      ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L–₹${(school.annualFeeMax / 100000).toFixed(1)}L/yr`
+      : 'fees disclosed in prospectus';
+
+    return {
+      title: `${school.name} (${school.area}, Chennai) | FindMySchool`,
+      description: `${school.name} in ${school.area}, Chennai. View verified fee ranges (${feeStr}), ${typeStr}, student-teacher ratio, and parent visit checklists.`,
+      canonicalPath: `/school/${school.slug || slug}`,
+      ogImage: school.photos?.[0]?.url,
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'School',
+        name: school.name,
+        description: school.description,
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: school.area,
+          addressRegion: 'Tamil Nadu',
+          addressCountry: 'IN',
+        },
+        url: school.website || undefined,
+        telephone: school.phone || undefined,
+      },
+    };
+  }, [school, slug]);
+
+  useDocumentMeta({
+    title: profileMeta.title,
+    description: profileMeta.description,
+    canonicalPath: profileMeta.canonicalPath,
+    ogType: 'article',
+    ogImage: profileMeta.ogImage,
+    structuredData: profileMeta.structuredData,
+  });
+
+  // Effective loading and error states
+  const isLoading = isServiceLoading || searchParams.get('state') === 'loading';
+  const hasError = Boolean(profileError || serviceError || (!isLoading && !school));
 
   // SKELETON PROFILE LOADING STATE
   if (isLoading) {
@@ -139,7 +152,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
   }
 
   // FRIENDLY ERROR STATE
-  if (profileError) {
+  if (hasError) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] flex items-center justify-center p-4 font-sans text-stone-900">
         <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200 p-8 shadow-xs text-center space-y-5">
@@ -159,17 +172,16 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               type="button"
               onClick={() => {
                 setProfileError(null);
-                setIsLoading(true);
-                setTimeout(() => setIsLoading(false), 260);
+                retryLoadSchool();
               }}
-              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5"
+              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Try again</span>
             </button>
             <Link
               to="/results"
-              className="px-5 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
+              className="px-5 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
             >
               Return to search
             </Link>
@@ -179,31 +191,8 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
     );
   }
 
-  if (!school) {
-    return (
-      <div className="min-h-screen bg-[#FAF9F6] py-24 px-4 text-center font-sans">
-        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-stone-200 shadow-xs space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
-            <AlertTriangle className="w-7 h-7 text-amber-600" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="font-editorial text-2xl font-bold text-stone-900">Institution Not Listed</h2>
-            <p className="text-xs text-stone-600 font-sans">
-              The school or preschool you are looking for is either unlisted or may have been updated in our directory.
-            </p>
-          </div>
-          <div className="pt-2">
-            <Link
-              to="/results"
-              className="inline-flex px-5 py-2.5 bg-[#0D9488] text-white rounded-xl text-xs font-bold hover:bg-[#115E59] transition-colors min-h-[44px] items-center"
-            >
-              Return to search
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Guard for TypeScript (at this point school is guaranteed to exist)
+  if (!school) return null;
 
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
@@ -392,7 +381,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
                 <span className="text-[11px] text-stone-500 font-medium block">Fit with Priorities</span>
                 <span className={`font-bold text-sm sm:text-base tabular-nums ${scoreStyle.textColor}`}>
-                  {school.matchScore}% Fit
+                  {school.matchScore}% Fit · {scoreStyle.tier}
                 </span>
                 <span className="text-[10px] text-teal-800 font-semibold block">Matches your priorities</span>
               </div>
@@ -583,9 +572,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <button
                 type="button"
                 onClick={() => setIsPlanVisitOpen(true)}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-lg ring-2 ring-teal-600/25 min-h-[42px]"
+                aria-haspopup="dialog"
+                aria-expanded={isPlanVisitOpen}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-lg ring-2 ring-teal-600/25 min-h-[42px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
               >
-                <Calendar className="w-4 h-4 text-white" />
+                <Calendar className="w-4 h-4 text-white" aria-hidden="true" />
                 <span>Plan a visit</span>
               </button>
 
@@ -593,13 +584,15 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <button
                 type="button"
                 onClick={() => toggleComparison(school.id)}
-                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[42px] border ${
+                aria-pressed={compared}
+                aria-label={compared ? `Remove ${school.name} from comparison` : `Add ${school.name} to comparison`}
+                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[42px] border focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                   compared
                     ? 'bg-teal-50 text-teal-900 border-teal-300'
                     : 'bg-white border-stone-200 text-stone-800 hover:bg-stone-50'
                 }`}
               >
-                <Scale className="w-3.5 h-3.5 text-stone-600" />
+                <Scale className="w-3.5 h-3.5 text-stone-600" aria-hidden="true" />
                 <span>{compared ? 'In Comparison Matrix (✓)' : 'Compare'}</span>
               </button>
 
@@ -607,13 +600,15 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <button
                 type="button"
                 onClick={() => toggleSave(school.id)}
-                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[42px] border ${
+                aria-pressed={saved}
+                aria-label={saved ? `Remove ${school.name} from shortlist` : `Save ${school.name} to shortlist`}
+                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[42px] border focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                   saved
                     ? 'bg-amber-50 text-amber-950 border-amber-300'
                     : 'bg-white border-stone-200 text-stone-800 hover:bg-stone-50'
                 }`}
               >
-                <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-amber-600 text-amber-600' : 'text-stone-600'}`} />
+                <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-amber-600 text-amber-600' : 'text-stone-600'}`} aria-hidden="true" />
                 <span>{saved ? 'Saved in Shortlist' : 'Save'}</span>
               </button>
 
@@ -621,9 +616,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <button
                 type="button"
                 onClick={() => onOpenAdvisorWithSchool?.(school.name)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-[#F5F1E8] text-teal-950 border border-teal-200/80 hover:bg-teal-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs min-h-[42px]"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-[#F5F1E8] text-teal-950 border border-teal-200/80 hover:bg-teal-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs min-h-[42px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
                 <span>Ask Advisor</span>
               </button>
 
@@ -632,10 +627,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 href={school.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center gap-1.5 transition-colors min-h-[42px]"
+                aria-label={`Official website of ${school.name} (opens in new tab)`}
+                className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center gap-1.5 transition-colors min-h-[42px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
               >
                 <span>Website</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -648,6 +644,10 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   src={school.photos?.[selectedPhotoIndex]?.url || school.photos?.[0]?.url || ''}
                   alt={school.photos?.[selectedPhotoIndex]?.caption || school.name}
                   referrerPolicy="no-referrer"
+                  fetchPriority="high"
+                  decoding="async"
+                  width="640"
+                  height="400"
                   onError={() => setMainImageError(true)}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
                 />
@@ -679,7 +679,8 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   key={idx}
                   type="button"
                   onClick={() => setSelectedPhotoIndex(idx)}
-                  className={`aspect-16/10 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                  aria-label={`View photo ${idx + 1} of ${school.photos?.length || 1}: ${photo.caption || school.name}`}
+                  className={`aspect-16/10 rounded-lg overflow-hidden border-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                     selectedPhotoIndex === idx
                       ? 'border-[#0D9488] ring-2 ring-teal-600/30'
                       : 'border-transparent opacity-75 hover:opacity-100'
@@ -690,6 +691,10 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       src={photo.url}
                       alt={photo.caption}
                       referrerPolicy="no-referrer"
+                      loading="lazy"
+                      decoding="async"
+                      width="140"
+                      height="88"
                       onError={() => setFailedThumbnails((prev) => ({ ...prev, [idx]: true }))}
                       className="w-full h-full object-cover"
                     />
@@ -863,7 +868,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   </h3>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border self-start sm:self-auto ${scoreStyle.badge}`}>
-                  {school.matchScore}% Match Fit
+                  {school.matchScore}% Match Fit · {scoreStyle.tier}
                 </span>
               </div>
 
@@ -1625,7 +1630,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <button
                     type="button"
                     onClick={() => toggleComparison(item.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                    aria-pressed={isComparing(item.id)}
+                    aria-label={isComparing(item.id) ? `Remove ${item.name} from comparison` : `Add ${item.name} to comparison`}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                       isComparing(item.id)
                         ? 'bg-teal-50 text-teal-900 border-teal-300'
                         : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
@@ -1646,8 +1653,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           PLAN A VISIT INTERACTIVE MODAL
           ======================================================== */}
       {isPlanVisitOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
+            ref={planVisitTrapRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="plan-visit-title"

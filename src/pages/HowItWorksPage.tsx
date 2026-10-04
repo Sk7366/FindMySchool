@@ -20,8 +20,43 @@ import {
 import { getCurriculumColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
 import { DataStatus } from '../types/school';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 export const HowItWorksPage: React.FC = () => {
+  useDocumentMeta({
+    title: 'How FindMySchool Works | Objective School Matching',
+    description: 'Learn how FindMySchool calculates transparent fit scores, evaluates parent commute realities, and verifies school data without commercial bias.',
+    canonicalPath: '/how-it-works',
+    ogType: 'article',
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: 'How FindMySchool Evaluates and Matches Schools in Chennai',
+      description: 'Step-by-step parent methodology for finding schools based on genuine family fit, commute reality, and fee transparency.',
+      step: [
+        {
+          '@type': 'HowToStep',
+          name: 'Intentional Discovery',
+          text: 'State your criteria, child stage, or natural language query without commercial ads.',
+        },
+        {
+          '@type': 'HowToStep',
+          name: 'Context Understanding',
+          text: 'Translate criteria into commute corridors, fee brackets, and pedagogical needs.',
+        },
+        {
+          '@type': 'HowToStep',
+          name: 'Transparent Fit Scoring',
+          text: 'Weighted multi-factor score explainable down to each individual metric.',
+        },
+        {
+          '@type': 'HowToStep',
+          name: 'Parent Due Diligence',
+          text: 'Verified data badges, campus visit checklists, and objective comparisons.',
+        },
+      ],
+    },
+  });
   const cbseColor = getCurriculumColor('CBSE');
   const cambridgeColor = getCurriculumColor('Cambridge');
   const ibColor = getCurriculumColor('IB World');
@@ -170,9 +205,12 @@ export const HowItWorksPage: React.FC = () => {
                       Sample Institution
                     </span>
                   </div>
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex flex-col items-end">
                     <span className="font-editorial font-bold text-3xl sm:text-4xl text-stone-950 tabular-nums">
-                      94%
+                      94% fit
+                    </span>
+                    <span className="text-[11px] font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 mt-0.5">
+                      Strong fit
                     </span>
                   </div>
                 </div>

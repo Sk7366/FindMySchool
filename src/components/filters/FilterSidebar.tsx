@@ -238,37 +238,40 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
           <button
             type="button"
             onClick={() => setEducationTarget('preschool')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            aria-pressed={filters.educationTarget === 'preschool'}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
               filters.educationTarget === 'preschool'
                 ? 'bg-white text-amber-950 shadow-2xs border border-amber-300 font-bold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Baby className="w-3.5 h-3.5 text-amber-700" />
+            <Baby className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
             <span>Preschool</span>
           </button>
           <button
             type="button"
             onClick={() => setEducationTarget('school')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            aria-pressed={filters.educationTarget === 'school'}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
               filters.educationTarget === 'school'
                 ? 'bg-white text-teal-950 shadow-2xs border border-teal-300 font-bold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <SchoolIcon className="w-3.5 h-3.5 text-teal-700" />
+            <SchoolIcon className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
             <span>School</span>
           </button>
           <button
             type="button"
             onClick={() => setEducationTarget('all')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            aria-pressed={filters.educationTarget === 'all' || filters.educationTarget === 'combined'}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
               filters.educationTarget === 'all' || filters.educationTarget === 'combined'
                 ? 'bg-white text-stone-900 shadow-2xs border border-stone-300 font-bold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-stone-600" />
+            <Layers className="w-3.5 h-3.5 text-stone-600" aria-hidden="true" />
             <span>Both</span>
           </button>
         </div>
@@ -308,8 +311,12 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
           max={25}
           step={1}
           value={filters.radiusKm}
+          aria-valuemin={2}
+          aria-valuemax={25}
+          aria-valuenow={filters.radiusKm}
+          aria-valuetext={`${filters.radiusKm} kilometers commute radius`}
           onChange={(e) => updateFilters({ radiusKm: Number(e.target.value) })}
-          className="w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer"
+          className="w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
         />
         <div className="flex justify-between text-[11px] text-stone-500">
           <span>2 km (Local)</span>
@@ -333,8 +340,12 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
           max={450000}
           step={10000}
           value={filters.budgetMax}
+          aria-valuemin={30000}
+          aria-valuemax={450000}
+          aria-valuenow={filters.budgetMax}
+          aria-valuetext={`${formatLakhs(filters.budgetMax)} annual tuition`}
           onChange={(e) => updateFilters({ budgetMax: Number(e.target.value) })}
-          className="w-full accent-amber-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer"
+          className="w-full accent-amber-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
         />
         <div className="flex justify-between text-[11px] text-stone-500">
           <span>₹30k</span>
@@ -764,7 +775,8 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
                     key={lang}
                     type="button"
                     onClick={() => toggleSchoolLanguage(lang)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    aria-pressed={isSelected}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                       isSelected
                         ? 'bg-teal-100 border-teal-300 text-teal-950 font-bold'
                         : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
@@ -785,9 +797,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
           <button
             type="button"
             onClick={onCloseMobile}
-            className="w-full min-h-[44px] py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition-colors"
+            className="w-full min-h-[44px] py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            aria-label="Apply filters and close drawer"
           >
-            Apply Filters
+            Apply Filters & Close
           </button>
         </div>
       )}

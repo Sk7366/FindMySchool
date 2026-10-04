@@ -4,6 +4,8 @@ import { useSearch } from '../../context/SearchContext';
 import { Curriculum, SchoolType, PreschoolProgram } from '../../types/school';
 import { useNavigate } from 'react-router-dom';
 import { getCurriculumColor, getFacilityCategoryColor, getPedagogyColor } from '../../utils/categoryColors';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { schoolService } from '../../services/schoolService';
 
 export type GuidedCategory = 'location' | 'preschool' | 'curriculum' | 'budget' | 'activities' | 'grade' | 'schoolType' | 'special';
 
@@ -24,15 +26,7 @@ const CATEGORIES: { id: GuidedCategory; label: string; icon: React.FC<{ classNam
   { id: 'special', label: 'Inclusive Support', icon: HeartHandshake },
 ];
 
-const CHENNAI_AREAS = [
-  'All Chennai',
-  'Tambaram & GST Corridor',
-  'OMR / Sholinganallur',
-  'Adyar & Besant Nagar',
-  'Porur & Manapakkam',
-  'Anna Nagar & Mogappair',
-  'Velachery & Guindy',
-];
+const CHENNAI_AREAS = ['All Chennai', ...schoolService.getAreasSync().map((a) => a.name)];
 
 const PRESCHOOL_PROGRAMS: { id: PreschoolProgram; label: string; ageRange: string }[] = [
   { id: 'playgroup', label: 'Playgroup / Toddler', ageRange: '1.5–2.5 years' },
@@ -77,22 +71,10 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
   const { searchState, updateFilters } = useSearch();
   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  const modalRef = useFocusTrap({
+    isOpen,
+    onClose,
+  });
 
   if (!isOpen) return null;
 
@@ -128,6 +110,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
+        ref={modalRef}
         className="bg-[#FAF9F6] w-full max-w-2xl rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
         role="dialog"
         aria-modal="true"
@@ -146,30 +129,34 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors shrink-0"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
             aria-label="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Category Horizontal Tab Bar */}
-        <div className="flex border-b border-stone-200 overflow-x-auto scrollbar-none px-2 sm:px-4 bg-[#F5F1E8]/70">
+        <div className="flex border-b border-stone-200 overflow-x-auto scrollbar-none px-2 sm:px-4 bg-[#F5F1E8]/70" role="tablist" aria-label="Search filter categories">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const isCurrent = activeTab === cat.id;
             return (
               <button
                 key={cat.id}
+                id={`tab-${cat.id}`}
                 type="button"
+                role="tab"
+                aria-selected={isCurrent}
+                aria-controls={`tabpanel-${cat.id}`}
                 onClick={() => setActiveTab(cat.id)}
-                className={`py-3 px-3.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all flex items-center gap-1.5 cursor-pointer min-h-[40px] shrink-0 ${
+                className={`py-3 px-3.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all flex items-center gap-1.5 cursor-pointer min-h-[40px] shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                   isCurrent
                     ? 'border-[#0D9488] text-[#0D9488] bg-white/60'
                     : 'border-transparent text-stone-600 hover:text-stone-900 hover:border-stone-300'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-[#0D9488]' : 'text-stone-500'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-[#0D9488]' : 'text-stone-400'}`} aria-hidden="true" />
                 <span>{cat.label}</span>
               </button>
             );
@@ -177,7 +164,13 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
         </div>
 
         {/* Tab Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 font-sans">
+        <div
+          id={`tabpanel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab}`}
+          tabIndex={0}
+          className="p-5 sm:p-6 overflow-y-auto flex-1 font-sans focus:outline-none"
+        >
           
           {/* Location Tab */}
           {activeTab === 'location' && (

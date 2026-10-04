@@ -1,9 +1,31 @@
-import React, { useState } from 'react';
-import { X, Sparkles, Send, HelpCircle, ShieldAlert, BookOpen, Compass, ChevronRight, CheckCircle2, Check } from 'lucide-react';
-import { MOCK_ADVISOR_FAQ } from '../../data/schools';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  X,
+  Sparkles,
+  Send,
+  Check,
+  RotateCcw,
+  Sliders,
+  Scale,
+  ArrowRight,
+  Bookmark,
+  MapPin,
+  ExternalLink,
+  ChevronRight,
+  ShieldAlert,
+} from 'lucide-react';
 import { useSearch } from '../../context/SearchContext';
 import { useShortlist } from '../../context/ShortlistContext';
 import { useComparison } from '../../context/ComparisonContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import {
+  buildAdvisorContext,
+  getSuggestedActions,
+  getAdvisorResponse,
+  AdvisorContext,
+  SuggestedAction,
+} from '../../utils/advisorContext';
 
 interface SchoolAdvisorModalProps {
   isOpen: boolean;
@@ -17,6 +39,9 @@ interface Message {
   text: string;
   checklist?: string[];
   caveats?: string[];
+  suggestedActions?: SuggestedAction[];
+  actionTrigger?: 'adjust-radius' | 'adjust-budget' | 'open-tuner' | 'compare-nav' | 'clear-filters';
+  actionTriggerLabel?: string;
 }
 
 export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
@@ -24,47 +49,73 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
   onClose,
   contextSchoolName,
 }) => {
-  const { searchState } = useSearch();
+  const { searchState, filteredSchools, updateFilters } = useSearch();
   const { savedSchools } = useShortlist();
   const { comparisonSchools } = useComparison();
+  const navigate = useNavigate();
 
   const [inputQuestion, setInputQuestion] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'm-1',
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Compute live search context snapshot
+  const currentContext = useMemo<AdvisorContext>(() => {
+    return buildAdvisorContext(
+      searchState,
+      savedSchools,
+      comparisonSchools,
+      filteredSchools,
+      contextSchoolName
+    );
+  }, [searchState, savedSchools, comparisonSchools, filteredSchools, contextSchoolName]);
+
+  // Suggested actions dynamically computed from context
+  const suggestedActions = useMemo<SuggestedAction[]>(() => {
+    return getSuggestedActions(currentContext);
+  }, [currentContext]);
+
+  // Generate initial contextual opening message
+  const createInitialMessage = (): Message => {
+    const openingText = currentContext.contextSummaryText;
+    return {
+      id: 'm-context-init',
       sender: 'advisor',
-      text: contextSchoolName
-        ? `Hello! I am your FindMySchool Advisor. I can analyze how ${contextSchoolName} fits your stated priorities (Class 5, CBSE/Cambridge, Tambaram/OMR commute, and ₹1.2L budget), or answer questions on admission timelines and hidden expenses.`
-        : `Welcome to the FindMySchool Decision Advisor. I help parents in Chennai evaluate schools realistically based on commute tolerances, board choices, transparent fee disclosures, and curriculum philosophies. What would you like to explore today?`,
+      text: `${openingText}\n\nI can help explain why certain filters matter, contrast learning approaches, analyze fees, or prepare questions for your school visits.`,
+      suggestedActions: suggestedActions.slice(0, 5),
       checklist: [
-        'Commute reality checks (peak OMR / GST traffic buffers)',
-        'Hidden school fees (transport, uniforms, admission non-refundable kit)',
-        'CBSE vs Cambridge for Indian competitive exams',
+        'Commute reality check for Chennai traffic corridors',
+        'Headline tuition vs total cost of ownership transparency',
+        'Curriculum and learning approach alignment',
       ],
-    },
-  ]);
-
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  };
+
+  const [messages, setMessages] = useState<Message[]>([createInitialMessage()]);
+
+  // When modal is reopened, update opening message if context has shifted
+  useEffect(() => {
+    if (isOpen) {
+      setMessages([createInitialMessage()]);
+      setInputQuestion('');
+    }
+  }, [isOpen, contextSchoolName]);
+
+  // Focus trap hook for accessible modal behavior
+  const modalRef = useFocusTrap({
+    isOpen,
+    onClose,
+  });
+
+  // Auto-scroll chat to bottom on new message
+  useEffect(() => {
+    if (isOpen) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen]);
 
   if (!isOpen) return null;
 
   const handleAsk = (presetKey?: string, customText?: string) => {
-    const questionText = customText || (presetKey ? getPresetText(presetKey) : inputQuestion);
+    const questionText = customText || presetKey || inputQuestion;
     if (!questionText.trim()) return;
 
     const userMsg: Message = {
@@ -73,87 +124,48 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
       text: questionText,
     };
 
-    let replyText = '';
-    let checklist: string[] | undefined;
-    let caveats: string[] | undefined;
-
-    if (presetKey && MOCK_ADVISOR_FAQ[presetKey]) {
-      replyText = MOCK_ADVISOR_FAQ[presetKey];
-    } else if (questionText.toLowerCase().includes('drawback') || questionText.toLowerCase().includes('risk')) {
-      replyText = `Based on curated school disclosures and commute models:
-1. Commute fatigue: For schools along OMR or Porur, afternoon return trips during monsoon can exceed 45 minutes.
-2. Incidental fee escalations: Some private institutions increase fees 8-12% annually without prior notice in the prospectus.
-3. Elective sports vs core syllabus: Ensure robotics and swimming are part of weekly timetable hours rather than expensive after-school clubs.`;
-      caveats = [
-        'Always confirm bus routes directly with the school transport coordinator before paying fees.',
-        'Request the previous 3 years fee revision history.',
-      ];
-    } else if (questionText.toLowerCase().includes('compare') || questionText.toLowerCase().includes('shortlist')) {
-      const activeSchools = comparisonSchools.length > 0 ? comparisonSchools : savedSchools;
-      if (activeSchools.length > 0) {
-        replyText = `Comparing your current selected options (${activeSchools.length} institution${activeSchools.length > 1 ? 's' : ''}):\n` +
-          activeSchools.slice(0, 3).map((s) => `• ${s.name} (${s.area}): Fit ${s.matchScore}% · Fee ${s.annualFeeMin ? `₹${(s.annualFeeMin / 100000).toFixed(1)}L` : 'Disclosed'} · ${s.curriculum?.join('/') || s.pedagogy?.join('/') || 'Disclosed approach'}`).join('\n');
-      } else {
-        replyText = `You currently have 0 institutions in your comparison or shortlist.\n\nTo compare schools side-by-side:\n1. Click "Compare" on any 2 to 4 school or preschool cards\n2. Click "Save" to bookmark institutions to your shortlist\n3. Open the Compare tab to evaluate commute buffers, fee structures, and facilities together.`;
-      }
-      checklist = [
-        'Visit campuses during morning drop-off hours (8:00 AM)',
-        'Check child-to-washroom ratio on primary school floors',
-      ];
-    } else {
-      const budgetMax = searchState.filters?.budgetMax || 150000;
-      const targetGrade = searchState.filters?.grade || 'Any Grade';
-      const radiusKm = searchState.filters?.radiusKm || 12;
-      replyText = `For ${contextSchoolName || 'your Chennai search'} with a budget limit of ₹${(budgetMax / 100000).toFixed(1)}L and target grade ${targetGrade}:
-1. Curriculum alignment: Matched with your stated preferences.
-2. Commute: Average travel radius is ${radiusKm} km.
-3. Verification advice: Request official receipts for sports and laboratory activity funds to ensure no surprise charges.`;
-      checklist = [
-        'Verify transport pick-up timing at your exact residential gate',
-        'Inquire about parent-teacher conference frequency',
-      ];
-    }
+    const reply = getAdvisorResponse(presetKey || questionText, currentContext, filteredSchools);
 
     const advisorMsg: Message = {
       id: `a-${Date.now() + 1}`,
       sender: 'advisor',
-      text: replyText,
-      checklist,
-      caveats,
+      text: reply.text,
+      checklist: reply.checklist,
+      caveats: reply.caveats,
+      suggestedActions: reply.suggestedFollowUps,
+      actionTrigger: reply.actionTrigger,
+      actionTriggerLabel: reply.actionTriggerLabel,
     };
 
     setMessages((prev) => [...prev, userMsg, advisorMsg]);
     setInputQuestion('');
   };
 
-  const getPresetText = (key: string) => {
-    switch (key) {
-      case 'why-match':
-        return 'Why is this school recommended for my requirements?';
-      case 'hidden-costs':
-        return 'What hidden or incidental fees should I watch out for in private schools?';
-      case 'cbse-vs-cambridge':
-        return 'How do CBSE and Cambridge compare for my child?';
-      case 'omr-commute':
-        return 'What are the potential drawbacks for an 8 km commute on OMR?';
-      case 'montessori-vs-playway':
-        return 'What is the difference between Montessori and Play-way learning approaches?';
-      case 'preschool-checklist':
-        return 'What key things should I verify during a preschool or daycare campus visit?';
-      case 'standalone-vs-k12':
-        return 'Should I choose a standalone preschool or an integrated K-12 campus?';
-      default:
-        return 'Can you give me key recommendations for admissions?';
+  const handleExecuteAction = (actionTrigger?: string) => {
+    if (actionTrigger === 'compare-nav') {
+      onClose();
+      navigate('/compare');
+    } else if (actionTrigger === 'open-tuner') {
+      onClose();
+      navigate('/results');
+    } else if (actionTrigger === 'adjust-radius') {
+      updateFilters({ radiusKm: Math.min(25, (searchState.filters.radiusKm || 12) + 5) });
+      handleAsk(undefined, 'I expanded your commute radius by 5 km to include neighboring corridors.');
+    } else if (actionTrigger === 'adjust-budget') {
+      updateFilters({ budgetMax: (searchState.filters.budgetMax || 150000) + 50000 });
+      handleAsk(undefined, 'I increased your budget ceiling by ₹50,000/year to evaluate additional institutions.');
     }
   };
 
-  const isPreschoolMode = searchState.filters?.educationTarget === 'preschool' || 
-    Boolean(searchState.filters?.preschool?.programs && searchState.filters.preschool.programs.length > 0);
+  const handleResetToContext = () => {
+    setMessages([createInitialMessage()]);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="bg-[#FAF9F6] w-full max-w-xl rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col h-[90vh] sm:h-[600px] max-h-[92vh]"
+        ref={modalRef}
+        className="bg-[#FAF9F6] w-full max-w-xl rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col h-[90vh] sm:h-[620px] max-h-[94vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="advisor-modal-title"
@@ -161,112 +173,101 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
         {/* Header */}
         <div className="px-4 sm:px-5 py-3.5 bg-stone-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[#0D9488] text-white flex items-center justify-center font-bold shrink-0 shadow-2xs">
+            <div
+              className="w-8 h-8 rounded-lg bg-[#0D9488] text-white flex items-center justify-center font-bold shrink-0 shadow-2xs"
+              aria-hidden="true"
+            >
               <Sparkles className="w-4 h-4 text-amber-300" />
             </div>
             <div className="min-w-0">
               <h2 id="advisor-modal-title" className="font-editorial text-sm sm:text-base font-bold flex items-center gap-2">
                 <span className="truncate">FindMySchool Decision Advisor</span>
                 <span className="text-[10px] bg-teal-900 text-teal-200 px-2 py-0.2 rounded font-mono shrink-0">
-                  Chennai Intelligence
+                  Context-Aware
                 </span>
               </h2>
               <p className="text-[11px] text-stone-400 truncate font-sans">
-                Objective parent decision intelligence · Zero marketing bias
+                Objective parent intelligence grounded in your current search criteria
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-800 transition-colors shrink-0"
+            className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-800 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
             aria-label="Close Advisor"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Quick Suggestion Chips with Semantic Colors */}
-        <div className="p-2 sm:p-2.5 bg-[#F5F1E8] border-b border-stone-200 flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs shrink-0 font-sans">
-          <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider shrink-0 mr-1">
-            Quick Ask:
-          </span>
+        {/* Live Context Ribbon */}
+        <div className="px-3.5 sm:px-4 py-2 bg-stone-100/90 border-b border-stone-200 text-xs text-stone-700 flex items-center justify-between gap-2 shrink-0 font-sans">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0 overflow-hidden">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0">
+              Active Context:
+            </span>
+            {currentContext.contextBadgeTags.slice(0, 4).map((tag, i) => (
+              <span
+                key={i}
+                className="px-2 py-0.5 rounded-md bg-white border border-stone-200/90 text-[11px] font-semibold text-stone-800 shadow-2xs whitespace-nowrap"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
 
-          {isPreschoolMode ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleAsk('montessori-vs-playway')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-teal-50 border border-teal-200 text-teal-900 hover:bg-teal-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                Montessori vs Play-way
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAsk('preschool-checklist')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                Daycare & Visit Checklist
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAsk('standalone-vs-k12')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                Standalone vs K-12
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => handleAsk('why-match')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-teal-50 border border-teal-200 text-teal-900 hover:bg-teal-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                Why this match?
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAsk('hidden-costs')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                Fee items to confirm
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAsk('cbse-vs-cambridge')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                CBSE vs Cambridge
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAsk('omr-commute')}
-                className="px-3 py-1.5 min-h-[36px] flex items-center rounded-lg bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 whitespace-nowrap text-xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
-              >
-                Commute drawbacks
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={handleResetToContext}
+            className="text-[11px] font-bold text-teal-800 hover:text-teal-950 flex items-center gap-1 shrink-0 p-1 rounded hover:bg-stone-200/60 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-600 cursor-pointer"
+            title="Reset conversation and sync with active search context"
+            aria-label="Sync Advisor with current search context"
+          >
+            <RotateCcw className="w-3 h-3 text-teal-700" aria-hidden="true" />
+            <span className="hidden sm:inline">Sync context</span>
+          </button>
         </div>
 
-        {/* Chat History */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#FAF9F6] text-sm font-sans">
+        {/* Quick Suggestion Action Chips Bar */}
+        <div
+          className="p-2 sm:p-2.5 bg-[#F5F1E8] border-b border-stone-200 flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs shrink-0 font-sans"
+          role="toolbar"
+          aria-label="Advisor suggested actions"
+        >
+          <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider shrink-0 mr-1">
+            Suggested Actions:
+          </span>
+
+          {suggestedActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => handleAsk(action.id, action.label)}
+              className="px-3 py-1.5 min-h-[34px] flex items-center rounded-lg bg-white hover:bg-teal-50 border border-stone-200 hover:border-teal-300 text-stone-800 hover:text-teal-950 whitespace-nowrap text-xs font-semibold transition-all shrink-0 cursor-pointer shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Chat Conversation History */}
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 bg-[#FAF9F6] text-sm font-sans">
           {messages.map((m) => (
             <div
               key={m.id}
               className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[94%] sm:max-w-[85%] rounded-2xl p-3.5 sm:p-4 leading-relaxed text-xs sm:text-sm ${
+                className={`max-w-[96%] sm:max-w-[88%] rounded-2xl p-3.5 sm:p-4 leading-relaxed text-xs sm:text-sm ${
                   m.sender === 'user'
-                    ? 'bg-[#0D9488] text-white shadow-2xs'
-                    : 'bg-white text-stone-800 border border-stone-200 shadow-2xs'
+                    ? 'bg-[#0D9488] text-white shadow-2xs font-medium'
+                    : 'bg-white text-stone-800 border border-stone-200/90 shadow-2xs'
                 }`}
               >
-                <p className="whitespace-pre-line leading-relaxed">{m.text}</p>
+                <p className="whitespace-pre-line leading-relaxed font-sans">{m.text}</p>
 
-                {/* Structured verification points */}
+                {/* Structured Verification Points */}
                 {m.checklist && m.checklist.length > 0 && (
                   <div className="mt-3 pt-2.5 border-t border-stone-100 text-xs">
                     <span className="font-bold text-stone-900 block mb-1.5">
@@ -275,7 +276,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
                     <ul className="space-y-1 text-stone-600">
                       {m.checklist.map((item, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <Check className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5 stroke-[3]" />
+                          <Check className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5 stroke-[3]" aria-hidden="true" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -283,7 +284,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
                   </div>
                 )}
 
-                {/* Caution flags if present */}
+                {/* Cautionary Flag */}
                 {m.caveats && m.caveats.length > 0 && (
                   <div className="mt-2.5 pt-2 border-t border-amber-100 text-xs bg-amber-50/80 p-2.5 rounded-xl text-amber-950 border border-amber-200/70">
                     <span className="font-bold block mb-0.5">Parent Cautionary Flag:</span>
@@ -294,9 +295,45 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
                     </ul>
                   </div>
                 )}
+
+                {/* Inline Action Trigger Button (e.g. Compare Matrix or Priority Tuner) */}
+                {m.actionTrigger && m.actionTriggerLabel && (
+                  <div className="mt-3 pt-2.5 border-t border-stone-100">
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteAction(m.actionTrigger)}
+                      className="px-3.5 py-2 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                    >
+                      <span>{m.actionTriggerLabel}</span>
+                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Inline Follow-up Suggested Actions */}
+                {m.suggestedActions && m.suggestedActions.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-stone-100">
+                    <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block mb-1.5">
+                      Follow-up questions:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {m.suggestedActions.map((action) => (
+                        <button
+                          key={action.id}
+                          type="button"
+                          onClick={() => handleAsk(action.id, action.label)}
+                          className="px-2.5 py-1 rounded-lg bg-stone-50 hover:bg-teal-50 border border-stone-200 hover:border-teal-300 text-stone-700 hover:text-teal-950 text-xs font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-600"
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
+          <div ref={chatBottomRef} />
         </div>
 
         {/* Input Bar */}
@@ -312,17 +349,17 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
               type="text"
               value={inputQuestion}
               onChange={(e) => setInputQuestion(e.target.value)}
-              placeholder="Ask about admissions, fee transparency, or boards..."
-              aria-label="Ask about admissions, fee transparency, or boards"
-              className="flex-1 bg-[#FAF9F6] border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:bg-white transition-all min-h-[44px]"
+              placeholder="Ask about admissions, fee transparency, or visit checklists..."
+              aria-label="Ask about admissions, fee transparency, or visit checklists"
+              className="flex-1 bg-[#FAF9F6] border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus-visible:ring-2 focus-visible:ring-[#0D9488] focus:bg-white transition-all min-h-[44px]"
             />
             <button
               type="submit"
               disabled={!inputQuestion.trim()}
-              className="min-h-[44px] min-w-[44px] px-4 py-2.5 bg-[#0D9488] hover:bg-[#115E59] disabled:opacity-40 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-              aria-label="Send question"
+              className="min-h-[44px] min-w-[44px] px-4 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 disabled:opacity-40 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+              aria-label="Send question to advisor"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4" aria-hidden="true" />
               <span className="hidden sm:inline">Ask</span>
             </button>
           </form>

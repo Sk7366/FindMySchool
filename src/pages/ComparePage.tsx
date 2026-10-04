@@ -30,12 +30,23 @@ import {
 } from 'lucide-react';
 import { useComparison } from '../context/ComparisonContext';
 import { useSearch } from '../context/SearchContext';
-import { CHENNAI_SCHOOLS } from '../data/schools';
+import { schoolService } from '../services/schoolService';
 import { School } from '../types/school';
 import { getCurriculumColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
-export const ComparePage: React.FC = () => {
+interface ComparePageProps {
+  onOpenAdvisor?: () => void;
+}
+
+export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
+  useDocumentMeta({
+    title: 'Compare Schools & Preschools in Chennai | FindMySchool',
+    description: 'Compare selected Chennai schools side-by-side on verified fees, commute distance, curriculum, student-teacher ratios, and facility offerings.',
+    canonicalPath: '/compare',
+    ogType: 'website',
+  });
   const {
     comparisonSchools,
     removeFromComparison,
@@ -58,7 +69,7 @@ export const ComparePage: React.FC = () => {
   ]);
   const [mobileViewStyle, setMobileViewStyle] = useState<'table' | 'cards' | 'side-by-side'>('table');
 
-  const availableToAdd = CHENNAI_SCHOOLS.filter(
+  const availableToAdd = schoolService.getSchoolsSync().filter(
     (s) => !comparisonSchools.some((c) => c.id === s.id)
   );
 
@@ -280,6 +291,18 @@ export const ComparePage: React.FC = () => {
                 <span>
                   Add Another ({comparisonSchools.length}/{maxComparisonLimit})
                 </span>
+              </button>
+            )}
+
+            {onOpenAdvisor && (
+              <button
+                type="button"
+                onClick={onOpenAdvisor}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F1E8] hover:bg-teal-50 border border-teal-200 text-teal-950 rounded-xl text-xs font-bold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                aria-label="Ask School Advisor to analyze this comparison"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Advisor Analysis</span>
               </button>
             )}
           </div>
@@ -524,9 +547,7 @@ export const ComparePage: React.FC = () => {
         <div className="grid grid-cols-2 gap-2.5">
           {comparisonSchools.map((school) => {
             const isEarly = school.institutionType === 'preschool';
-            const bColor = isEarly
-              ? { badge: 'bg-amber-50 text-amber-900 border-amber-300' }
-              : getCurriculumColor(school.curriculum?.[0]);
+            const matchStyle = getMatchScoreStyle(school.matchScore);
 
             return (
               <div
@@ -545,9 +566,10 @@ export const ComparePage: React.FC = () => {
                 <div className="pr-4">
                   <div className="flex items-center gap-1.5 flex-wrap mb-1">
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${bColor.badge}`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${matchStyle.badge}`}
+                      aria-label={`Match score: ${school.matchScore}% fit, ${matchStyle.tier}`}
                     >
-                      {school.matchScore}% Match
+                      {school.matchScore}% fit · {matchStyle.tier}
                     </span>
                     <VerificationBadge
                       status={school.dataStatus || 'demo'}
@@ -823,9 +845,7 @@ export const ComparePage: React.FC = () => {
                 </th>
                 {comparisonSchools.map((school) => {
                   const isEarly = school.institutionType === 'preschool';
-                  const bColor = isEarly
-                    ? { badge: 'bg-amber-50 text-amber-900 border-amber-300' }
-                    : getCurriculumColor(school.curriculum?.[0]);
+                  const matchStyle = getMatchScoreStyle(school.matchScore);
 
                   return (
                     <th key={school.id} className="p-5 w-64 align-top border-l border-stone-200">
@@ -843,9 +863,10 @@ export const ComparePage: React.FC = () => {
                         <div className="pr-6">
                           <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
                             <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${bColor.badge}`}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${matchStyle.badge}`}
+                              aria-label={`Match score: ${school.matchScore}% fit, ${matchStyle.tier}`}
                             >
-                              {school.matchScore}% Match
+                              {school.matchScore}% fit · {matchStyle.tier}
                             </span>
                             <VerificationBadge
                               status={school.dataStatus || 'demo'}

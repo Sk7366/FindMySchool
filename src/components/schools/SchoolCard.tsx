@@ -165,7 +165,7 @@ function getPrioritizedFacilities(
   return scored.slice(0, 4).map((s) => s.facility);
 }
 
-export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
+export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
   const { toggleComparison, isComparing } = useComparison();
   const { toggleSave, isSaved } = useShortlist();
   const { searchState } = useSearch();
@@ -253,6 +253,9 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             onError={() => setImageError(true)}
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
             loading="lazy"
+            decoding="async"
+            width="320"
+            height="200"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#FAF9F6] to-[#F5F1E8] p-4 text-center">
@@ -326,12 +329,13 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
           className={`absolute top-2.5 right-2.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 cursor-pointer ${
             saved
               ? 'bg-amber-500 text-white shadow-md scale-105'
-              : 'bg-white/80 text-stone-700 hover:text-amber-600 hover:bg-white shadow-2xs backdrop-blur-xs'
+              : 'bg-white/90 text-stone-700 hover:text-amber-600 hover:bg-white shadow-2xs backdrop-blur-xs'
           }`}
           title={saved ? 'Remove from shortlist' : 'Save to shortlist'}
           aria-label={saved ? `Remove ${school.name} from shortlist` : `Save ${school.name} to shortlist`}
+          aria-pressed={saved}
         >
-          <Bookmark className={`w-3.5 h-3.5 transition-transform active:scale-90 ${saved ? 'fill-current' : ''}`} />
+          <Bookmark className={`w-3.5 h-3.5 transition-transform active:scale-90 ${saved ? 'fill-current' : ''}`} aria-hidden="true" />
         </button>
       </div>
 
@@ -345,7 +349,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               {/* PRIMARY 3: Location / Distance + Provenance */}
               <div className="flex items-center gap-1.5 text-xs text-stone-600 font-semibold mb-1 flex-wrap">
                 <span className="inline-flex items-center gap-1 text-stone-800">
-                  <MapPin className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-teal-700 shrink-0" aria-hidden="true" />
                   <span className="truncate">{school.area}</span>
                   <span className="text-stone-400">·</span>
                   <span className="tabular-nums font-bold text-stone-900">{school.distanceKm} km commute</span>
@@ -360,11 +364,11 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               </div>
 
               {/* PRIMARY 1: Institution Name (Dominant Heading) */}
-              <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-950 group-hover:text-teal-900 transition-colors leading-snug tracking-tight">
-                <Link to={`/school/${school.slug}`} className="focus:outline-none focus-visible:underline">
+              <h3 className="font-editorial text-xl sm:text-2xl font-bold text-stone-950 group-hover:text-teal-900 transition-colors leading-snug tracking-tight">
+                <Link to={`/school/${school.slug}`} className="focus:outline-none focus-visible:underline focus-visible:ring-2 focus-visible:ring-teal-600 rounded">
                   {school.name}
                 </Link>
-              </h2>
+              </h3>
 
               {/* Tagline */}
               <p className="text-xs text-stone-600 mt-1 line-clamp-2 leading-relaxed font-sans">
@@ -372,10 +376,11 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               </p>
             </div>
 
-            {/* PRIMARY 2: Fit with Priorities (Distinctive Circular Match Score Ring) */}
+            {/* PRIMARY 2: Fit with Priorities (Distinctive Circular Match Score Ring readable with or without color) */}
             <div
               className="shrink-0 flex flex-col items-center"
-              aria-label={`${school.matchScore}% fit, ${scoreStyle.tier}`}
+              aria-label={`Match score: ${school.matchScore}% fit (${scoreStyle.tier})`}
+              title={`${school.matchScore}% fit - ${scoreStyle.tier}`}
             >
               <div className="relative w-13 h-13 flex items-center justify-center">
                 <svg className="w-13 h-13 -rotate-90" viewBox="0 0 40 40" aria-hidden="true">
@@ -404,12 +409,12 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                   <span className="text-[12px] font-extrabold font-sans text-stone-950 tabular-nums leading-none">
                     {school.matchScore}%
                   </span>
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-stone-600 leading-none mt-0.5">
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-stone-700 leading-none mt-0.5">
                     fit
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-stone-700 mt-0.5 whitespace-nowrap">
+              <span className="text-[10px] font-bold text-stone-800 mt-0.5 whitespace-nowrap">
                 {scoreStyle.tier}
               </span>
             </div>
@@ -666,7 +671,8 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                     e.preventDefault();
                     setShowAllReasons(!showAllReasons);
                   }}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 hover:text-teal-950 py-0.5 cursor-pointer focus:outline-none focus-visible:underline"
+                  aria-expanded={showAllReasons}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 hover:text-teal-950 py-0.5 cursor-pointer focus:outline-none focus-visible:underline focus-visible:ring-1 focus-visible:ring-teal-600 rounded"
                 >
                   <span>
                     {showAllReasons
@@ -674,9 +680,9 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                       : 'See more reasons'}
                   </span>
                   {showAllReasons ? (
-                    <ChevronUp className="w-3.5 h-3.5" />
+                    <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
+                    <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -693,13 +699,14 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
               type="button"
               onClick={() => toggleComparison(school.id)}
               aria-label={compared ? `Remove ${school.name} from comparison` : `Compare ${school.name}`}
-              className={`min-h-[42px] px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+              aria-pressed={compared}
+              className={`min-h-[42px] px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                 compared
                   ? 'bg-teal-50 text-teal-900 border-teal-300'
                   : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900 border-stone-200'
               }`}
             >
-              <Scale className={`w-3.5 h-3.5 ${compared ? 'text-teal-700' : 'text-stone-500'}`} />
+              <Scale className={`w-3.5 h-3.5 ${compared ? 'text-teal-700' : 'text-stone-500'}`} aria-hidden="true" />
               <span>{compared ? 'In Comparison (✓)' : 'Compare'}</span>
             </button>
 
@@ -707,14 +714,15 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             <button
               type="button"
               onClick={() => toggleSave(school.id)}
-              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
+              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                 saved
-                  ? 'text-amber-800 bg-amber-50 hover:bg-amber-100/80 border border-amber-200'
-                  : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/80'
+                  ? 'text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-300 font-bold'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/80'
               }`}
               aria-label={saved ? `Remove ${school.name} from shortlist` : `Save ${school.name} to shortlist`}
+              aria-pressed={saved}
             >
-              <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-amber-600 text-amber-600' : 'text-stone-400'}`} />
+              <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-amber-600 text-amber-600' : 'text-stone-400'}`} aria-hidden="true" />
               <span>{saved ? 'Saved' : 'Save'}</span>
             </button>
           </div>
@@ -726,7 +734,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             className="w-full min-[460px]:w-auto justify-center min-h-[42px] px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer group/cta focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 text-center"
           >
             <span>View profile</span>
-            <ChevronRight className="w-4 h-4 group-hover/cta:translate-x-0.5 transition-transform" />
+            <ChevronRight className="w-4 h-4 group-hover/cta:translate-x-0.5 transition-transform" aria-hidden="true" />
           </Link>
 
         </div>
@@ -734,3 +742,6 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
     </article>
   );
 };
+
+export const SchoolCard = React.memo(SchoolCardComponent);
+

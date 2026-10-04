@@ -70,20 +70,34 @@
   display: none;
 }
 
-/* Accessible visible focus rings for interactive elements */
+/* Accessible visible focus rings for interactive elements with high contrast */
 :focus-visible {
   outline: 2px solid #0d9488;
   outline-offset: 2px;
+  box-shadow: 0 0 0 1px #faf9f6;
 }
 
-/* Reduced motion preference */
+/* In dark container like footer */
+footer :focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #1c1917;
+}
+
+/* Reduced motion preference - WCAG 2.2 / 2.3.3 */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin {
+    animation: none !important;
   }
 }

@@ -3,6 +3,7 @@ import { Sliders, RotateCcw, X, Check } from 'lucide-react';
 import { useSearch } from '../../context/SearchContext';
 import { SearchPriorityWeights } from '../../types/search';
 import { DEFAULT_PRESCHOOL_WEIGHTS, DEFAULT_SCHOOL_WEIGHTS } from '../../utils/preschoolScoring';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface PriorityTunerModalProps {
   isOpen: boolean;
@@ -21,26 +22,14 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
 
   const [weights, setWeights] = React.useState<SearchPriorityWeights>(currentWeights);
 
+  const modalRef = useFocusTrap({
+    isOpen,
+    onClose,
+  });
+
   React.useEffect(() => {
     setWeights(filters.weights || defaultWeights);
   }, [filters.weights, isPreschool]);
-
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -80,6 +69,7 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
+        ref={modalRef}
         className="bg-[#FAF9F6] w-full max-w-lg rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         role="dialog"
         aria-modal="true"
@@ -99,10 +89,10 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
             aria-label="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -139,7 +129,7 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
                   aria-valuenow={item.val}
                   aria-valuetext={`${item.val} percent`}
                   onChange={(e) => handleSliderChange(item.key, Number(e.target.value))}
-                  className="w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer"
+                  className="w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                 />
               </div>
             ))}
@@ -151,18 +141,20 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
           <button
             type="button"
             onClick={handleReset}
-            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center justify-center gap-1.5 py-2 min-h-[44px] cursor-pointer"
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center justify-center gap-1.5 py-2 min-h-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded-lg"
+            aria-label="Reset priorities to defaults"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Reset to Defaults</span>
           </button>
 
           <button
             type="button"
             onClick={handleApply}
-            className="px-5 py-2.5 min-h-[44px] bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            className="px-5 py-2.5 min-h-[44px] bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            aria-label="Apply priorities and recalculate matches"
           >
-            <Check className="w-4 h-4" />
+            <Check className="w-4 h-4" aria-hidden="true" />
             <span>Apply Priorities & Recalculate</span>
           </button>
         </div>

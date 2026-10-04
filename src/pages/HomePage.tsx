@@ -25,9 +25,10 @@ import {
 import { useSearch } from '../context/SearchContext';
 import { GuidedSearchModal, GuidedCategory } from '../components/search/GuidedSearchModal';
 import { SchoolCard } from '../components/schools/SchoolCard';
-import { CHENNAI_SCHOOLS } from '../data/schools';
+import { schoolService } from '../services/schoolService';
 import { CHENNAI_HUBS } from '../utils/categoryColors';
 import { EducationTargetType } from '../types/search';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 const PRESCHOOL_PROMPTS = [
   "Find a Montessori preschool for my 3-year-old near Velachery with daycare.",
@@ -211,11 +212,59 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
   };
 
   const handleSimulateVoice = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-IN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results?.[0]?.[0]?.transcript;
+          if (transcript) {
+            setLocalQuery(transcript);
+          }
+          setIsListening(false);
+        };
+
+        recognition.onerror = () => {
+          setIsListening(false);
+          // Fallback to sample prompt if voice permission blocked or recognition error
+          if (selectedTarget === 'preschool') {
+            setLocalQuery("Montessori preschool for my 3-year-old near Velachery with daycare");
+          } else if (selectedTarget === 'combined') {
+            setLocalQuery("Find a school that offers preschool through Grade 12 near OMR");
+          } else {
+            setLocalQuery("CBSE schools near Tambaram under ₹1.2 lakh with swimming pool");
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognition.start();
+        return;
+      } catch {
+        // Fallback to simulation if instantiation failed
+      }
+    }
+
+    // Simulation fallback
     setIsListening(true);
     setTimeout(() => {
       setIsListening(false);
       if (selectedTarget === 'preschool') {
         setLocalQuery("Montessori preschool for my 3-year-old near Velachery with daycare");
+      } else if (selectedTarget === 'combined') {
+        setLocalQuery("Find a school that offers preschool through Grade 12 near OMR");
       } else {
         setLocalQuery("CBSE schools near Tambaram under ₹1.2 lakh with swimming pool");
       }
@@ -224,13 +273,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
 
   // Filtered featured list based on target
   const featuredSchools = useMemo(() => {
-    if (selectedTarget === 'preschool') {
-      return CHENNAI_SCHOOLS.filter((s) => s.institutionType === 'preschool' || s.institutionType === 'combined').slice(0, 3);
-    }
-    if (selectedTarget === 'school') {
-      return CHENNAI_SCHOOLS.filter((s) => !s.institutionType || s.institutionType === 'school' || s.institutionType === 'combined').slice(0, 3);
-    }
-    return CHENNAI_SCHOOLS.slice(0, 3);
+    return schoolService.getSchoolsSync({ target: selectedTarget }).slice(0, 3);
   }, [selectedTarget]);
 
   const currentPrompts = selectedTarget === 'preschool'
@@ -248,6 +291,26 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
     }, 4200);
     return () => clearInterval(timer);
   }, [currentPrompts.length]);
+
+  useDocumentMeta({
+    title: 'FindMySchool — Discover Schools & Preschools in Chennai That Actually Fit',
+    description: 'AI-driven school discovery and recommendation platform for parents in Chennai, India, featuring explainable school matching, comprehensive profiles, fee transparency, and comparison tools.',
+    canonicalPath: '/',
+    ogType: 'website',
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: 'FindMySchool',
+      applicationCategory: 'EducationalApplication',
+      operatingSystem: 'All',
+      description: 'Independent school & preschool discovery platform for Chennai families with transparent fee disclosures and commute analysis.',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'INR',
+      },
+    },
+  });
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900">
@@ -294,39 +357,42 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               <button
                 type="button"
                 onClick={() => handleTargetChange('preschool')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
+                aria-pressed={selectedTarget === 'preschool'}
+                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                   selectedTarget === 'preschool'
                     ? 'bg-amber-50 text-amber-950 border border-amber-300 shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                 }`}
               >
-                <Baby className={`w-4 h-4 shrink-0 ${selectedTarget === 'preschool' ? 'text-amber-700' : 'text-stone-400'}`} />
+                <Baby className={`w-4 h-4 shrink-0 ${selectedTarget === 'preschool' ? 'text-amber-700' : 'text-stone-400'}`} aria-hidden="true" />
                 <span className="truncate">Preschool & Early Years</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleTargetChange('school')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
+                aria-pressed={selectedTarget === 'school'}
+                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                   selectedTarget === 'school'
                     ? 'bg-teal-50 text-teal-950 border border-teal-300 shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                 }`}
               >
-                <SchoolIcon className={`w-4 h-4 shrink-0 ${selectedTarget === 'school' ? 'text-teal-700' : 'text-stone-400'}`} />
+                <SchoolIcon className={`w-4 h-4 shrink-0 ${selectedTarget === 'school' ? 'text-teal-700' : 'text-stone-400'}`} aria-hidden="true" />
                 <span className="truncate">Regular School</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleTargetChange('combined')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
+                aria-pressed={selectedTarget === 'combined'}
+                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                   selectedTarget === 'combined'
                     ? 'bg-[#F5F1E8] text-stone-950 border border-stone-300 shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                 }`}
               >
-                <Layers className={`w-4 h-4 shrink-0 ${selectedTarget === 'combined' ? 'text-stone-800' : 'text-stone-400'}`} />
+                <Layers className={`w-4 h-4 shrink-0 ${selectedTarget === 'combined' ? 'text-stone-800' : 'text-stone-400'}`} aria-hidden="true" />
                 <span className="truncate">Preschool + School</span>
               </button>
             </div>
@@ -334,16 +400,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
 
           {/* SIGNATURE NATURAL-LANGUAGE SEARCH BOX */}
           <div className="mt-6 max-w-3xl mx-auto">
-            <div className="bg-white/95 rounded-2xl border border-stone-300/90 hover:border-stone-400 focus-within:border-[#0D9488] focus-within:ring-4 focus-within:ring-teal-700/10 p-3.5 sm:p-4 shadow-md transition-all text-left flex flex-col gap-3">
+            <form onSubmit={handleSearchSubmit} className="bg-white/95 rounded-2xl border border-stone-300/90 hover:border-stone-400 focus-within:border-[#0D9488] focus-within:ring-4 focus-within:ring-teal-700/10 p-3.5 sm:p-4 shadow-md transition-all text-left flex flex-col gap-3">
               
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 mt-0.5 border border-teal-200/70">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 mt-0.5 border border-teal-200/70" aria-hidden="true">
                   <Search className="w-4 h-4 text-[#0D9488]" />
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <label htmlFor="hero-search-input" className="sr-only">
-                    Search criteria in natural language
+                    Search schools and preschools in natural language
                   </label>
                   <textarea
                     id="hero-search-input"
@@ -359,20 +425,24 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                     placeholder={`e.g. "${currentPrompts[promptIndex] || currentPrompts[0]}"`}
                     className="w-full text-sm sm:text-base text-stone-900 placeholder:text-stone-400 focus:outline-none resize-none bg-transparent leading-relaxed font-sans"
                     aria-label="Search criteria in natural language. Press Enter to submit search, or Shift+Enter for new line."
+                    aria-describedby="hero-search-help"
                   />
+                  <span id="hero-search-help" className="sr-only">
+                    Type your school requirements in everyday language. Press Enter to submit your search, or Shift plus Enter for a new line.
+                  </span>
                 </div>
 
                 {/* Voice / Mic input trigger */}
                 <button
                   type="button"
                   onClick={handleSimulateVoice}
-                  title="Search with voice input"
-                  className={`min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                  title={isListening ? "Listening to voice input... Click to stop" : "Search with voice input"}
+                  className={`min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                     isListening
                       ? 'bg-rose-50 text-rose-600 border border-rose-200 animate-pulse'
                       : 'bg-stone-50 text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200/80'
                   }`}
-                  aria-label={isListening ? "Listening to voice input..." : "Search with voice input"}
+                  aria-label={isListening ? "Listening to voice input... Click to stop." : "Search with voice input"}
                   aria-pressed={isListening}
                 >
                   <Mic className="w-4 h-4" aria-hidden="true" />
@@ -380,7 +450,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               </div>
 
               {/* Screen reader live notification */}
-              <div className="sr-only" aria-live="polite">
+              <div className="sr-only" aria-live="polite" role="status">
                 {isListening ? "Listening for your search prompt..." : ""}
               </div>
 
@@ -420,16 +490,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                   </button>
 
                   <button
-                    type="button"
-                    onClick={handleSearchSubmit}
-                    className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[44px]"
+                    type="submit"
+                    className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                    aria-label="See places that match your priorities"
                   >
                     <span>See places that match your priorities</span>
-                    <ArrowRight className="w-4 h-4 shrink-0" />
+                    <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                   </button>
                 </div>
               </div>
-            </div>
+            </form>
 
             {/* Quick Prompts adapted to selected education stage */}
             <div className="mt-4 max-w-3xl mx-auto space-y-2">
@@ -719,22 +789,29 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               >
                 <button
                   type="button"
+                  id={`faq-trigger-${idx}`}
                   onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
                   aria-expanded={isOpen}
-                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 text-stone-900 font-bold text-sm sm:text-base cursor-pointer hover:text-teal-900 transition-colors min-h-[48px]"
+                  aria-controls={`faq-panel-${idx}`}
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 text-stone-900 font-bold text-sm sm:text-base cursor-pointer hover:text-teal-900 transition-colors min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                 >
                   <span className="leading-snug pr-2">{faq.question}</span>
                   <div className="w-7 h-7 rounded-lg bg-[#FAF9F6] border border-stone-200 flex items-center justify-center shrink-0 text-stone-500">
                     {isOpen ? (
-                      <ChevronUp className="w-4 h-4 text-teal-700" />
+                      <ChevronUp className="w-4 h-4 text-teal-700" aria-hidden="true" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-stone-400" />
+                      <ChevronDown className="w-4 h-4 text-stone-400" aria-hidden="true" />
                     )}
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 text-xs sm:text-sm text-stone-600 leading-relaxed border-t border-stone-100 bg-[#FAF9F6]/40 animate-in fade-in duration-150">
+                  <div
+                    id={`faq-panel-${idx}`}
+                    role="region"
+                    aria-labelledby={`faq-trigger-${idx}`}
+                    className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 text-xs sm:text-sm text-stone-600 leading-relaxed border-t border-stone-100 bg-[#FAF9F6]/40 animate-in fade-in duration-150"
+                  >
                     <p>{faq.answer}</p>
                   </div>
                 )}

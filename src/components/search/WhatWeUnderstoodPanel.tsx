@@ -30,19 +30,25 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
   const [editingField, setEditingField] = useState<string | null>(null);
 
   const isPreschool = filters?.educationTarget === 'preschool' || 
-    Boolean(filters?.preschool?.programs && filters.preschool.programs.length > 0) ||
-    Boolean(filters?.preschool?.ageYears);
+    (filters?.educationTarget !== 'school' && (
+      Boolean(filters?.preschool?.programs && filters.preschool.programs.length > 0) ||
+      Boolean(filters?.preschool?.ageYears && filters.preschool.ageYears <= 5)
+    ));
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden transition-all mb-4">
       {/* Header bar */}
-      <div 
+      <button 
+        type="button"
+        id="understood-panel-header"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="p-4 sm:px-5 flex items-center justify-between cursor-pointer hover:bg-stone-50/70 transition-colors select-none"
+        aria-expanded={isExpanded}
+        aria-controls="understood-panel-content"
+        className="w-full p-4 sm:px-5 flex items-center justify-between cursor-pointer hover:bg-stone-50/70 transition-colors select-none text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
       >
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-teal-600 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-teal-600 animate-pulse" aria-hidden="true" />
             <h3 className="font-editorial text-sm sm:text-base font-bold text-stone-900">
               Here's what we understood from your search
             </h3>
@@ -50,7 +56,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
 
           {/* Calm, parent-friendly confidence pill */}
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-semibold text-teal-900">
-            <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
             <span>We're fairly confident we understood your preferences</span>
           </div>
         </div>
@@ -59,13 +65,13 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
           <span className="text-xs font-semibold text-stone-500 hidden sm:inline">
             {isExpanded ? 'Hide details' : 'Review & adjust'}
           </span>
-          {isExpanded ? <ChevronUp className="w-4 h-4 text-stone-600" /> : <ChevronDown className="w-4 h-4 text-stone-600" />}
+          {isExpanded ? <ChevronUp className="w-4 h-4 text-stone-600" aria-hidden="true" /> : <ChevronDown className="w-4 h-4 text-stone-600" aria-hidden="true" />}
         </div>
-      </div>
+      </button>
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 border-t border-stone-100 font-sans space-y-4">
+        <div id="understood-panel-content" aria-labelledby="understood-panel-header" className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 border-t border-stone-100 font-sans space-y-4">
           <p className="text-xs text-stone-600 leading-relaxed">
             Based on what you told us, we extracted these requirements. Every item can be adjusted or removed to refine your matches:
           </p>
@@ -128,6 +134,30 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                   </div>
                 )}
 
+                {/* Inline Grade selector if editing */}
+                {editingField === 'grade' && (
+                  <div className="p-2.5 bg-teal-50/60 rounded-lg border border-teal-200 space-y-1.5">
+                    <span className="text-[11px] font-bold text-teal-950 block">Select Target Grade:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Any Grade', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => {
+                            updateFilters({ grade: g });
+                            setEditingField(null);
+                          }}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                            filters.grade === g ? 'bg-teal-700 text-white' : 'bg-white border border-stone-200 text-stone-700'
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Inline Program selector if editing */}
                 {editingField === 'program' && (
                   <div className="p-2.5 bg-amber-50/60 rounded-lg border border-amber-200 space-y-1.5">
@@ -180,7 +210,15 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                   <div className="p-2.5 bg-teal-50/60 rounded-lg border border-teal-200 space-y-1.5">
                     <span className="text-[11px] font-bold text-teal-950 block">Preferred Area:</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {['All Chennai', 'Velachery', 'Anna Nagar', 'OMR / Karapakkam', 'Tambaram', 'Adyar / Besant Nagar'].map((loc) => (
+                      {[
+                        'All Chennai',
+                        'Velachery & Guindy',
+                        'Anna Nagar & Mogappair',
+                        'OMR / Sholinganallur',
+                        'Tambaram & GST Corridor',
+                        'Adyar & Besant Nagar',
+                        'Porur & Manapakkam',
+                      ].map((loc) => (
                         <button
                           key={loc}
                           type="button"

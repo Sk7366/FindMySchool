@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CHENNAI_SCHOOLS } from '../data/schools';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { schoolService } from '../services/schoolService';
 import { School } from '../types/school';
 
 interface ComparisonContextType {
@@ -95,22 +95,25 @@ export const ComparisonProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch {}
   };
 
-  const comparisonSchools = CHENNAI_SCHOOLS.filter((s) => comparisonIds.includes(s.id));
+  const comparisonSchools = useMemo(() => schoolService.compareSync(comparisonIds), [comparisonIds]);
+
+  const contextValue = useMemo(
+    () => ({
+      comparisonIds,
+      comparisonSchools,
+      toggleComparison,
+      isComparing,
+      removeFromComparison,
+      clearComparison,
+      maxComparisonLimit,
+      isDemoMode,
+      loadDemoComparison,
+    }),
+    [comparisonIds, comparisonSchools, isDemoMode]
+  );
 
   return (
-    <ComparisonContext.Provider
-      value={{
-        comparisonIds,
-        comparisonSchools,
-        toggleComparison,
-        isComparing,
-        removeFromComparison,
-        clearComparison,
-        maxComparisonLimit,
-        isDemoMode,
-        loadDemoComparison,
-      }}
-    >
+    <ComparisonContext.Provider value={contextValue}>
       {children}
     </ComparisonContext.Provider>
   );

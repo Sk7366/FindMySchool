@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { School } from '../../types/school';
 import { MapPin, Navigation, Compass, Layers, Check, ChevronRight } from 'lucide-react';
-import { getCurriculumColor } from '../../utils/categoryColors';
+import { getCurriculumColor, getMatchScoreStyle } from '../../utils/categoryColors';
 
 interface SchoolMapPreviewProps {
   schools: School[];
@@ -123,14 +123,15 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
               onClick={() => onSelectSchool?.(school.id)}
               onMouseEnter={() => setHoveredSchool(school)}
               onMouseLeave={() => setHoveredSchool(null)}
+              aria-label={`Select ${school.name}, ${school.area}. Fit: ${school.matchScore} percent`}
               style={{
                 left: `${mapX}%`,
                 top: `${mapY}%`,
               }}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-200 cursor-pointer focus:outline-none z-10 ${
-                isSelected || isHovered ? 'scale-125 z-30' : 'hover:scale-110'
+              className={`absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded-full z-10 ${
+                isSelected || isHovered ? 'scale-125 z-30 ring-2 ring-teal-600' : 'hover:scale-110'
               }`}
-              title={`${school.name} (${school.area})`}
+              title={`${school.name} (${school.area}) - ${school.matchScore}% fit`}
             >
               <div
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md transition-all border ${
@@ -139,7 +140,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
                     : 'bg-white text-stone-900 border-stone-300'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : bColor.dot}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : bColor.dot}`} aria-hidden="true" />
                 <span className="truncate max-w-[80px]">{school.name.split(' ')[0]}</span>
                 <span className="opacity-90 tabular-nums">({school.matchScore}%)</span>
               </div>
@@ -148,36 +149,40 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
         })}
 
         {/* Selected / Hovered School Popover Detail Card */}
-        {activeSchool && (
-          <div className="absolute bottom-3 left-3 right-3 z-30 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-stone-200 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.2 rounded border border-teal-200">
-                  {activeSchool.matchScore}% Match
-                </span>
-                <span className="text-[11px] text-stone-500 font-medium">
-                  {(activeSchool.curriculum && activeSchool.curriculum.length > 0)
-                    ? activeSchool.curriculum.join(', ')
-                    : (activeSchool.pedagogy?.join(' · ') || 'Early Years')} · {activeSchool.distanceKm} km away
-                </span>
+        {activeSchool && (() => {
+          const matchStyle = getMatchScoreStyle(activeSchool.matchScore);
+          return (
+            <div className="absolute bottom-3 left-3 right-3 z-30 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-stone-200 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className={`text-[10px] font-bold px-2 py-0.2 rounded border ${matchStyle.badge}`}>
+                    {activeSchool.matchScore}% Match · {matchStyle.tier}
+                  </span>
+                  <span className="text-[11px] text-stone-500 font-medium">
+                    {(activeSchool.curriculum && activeSchool.curriculum.length > 0)
+                      ? activeSchool.curriculum.join(', ')
+                      : (activeSchool.pedagogy?.join(' · ') || 'Early Years')} · {activeSchool.distanceKm} km away
+                  </span>
+                </div>
+                <h4 className="font-editorial text-xs sm:text-sm font-bold text-stone-900 truncate">
+                  {activeSchool.name}
+                </h4>
+                <p className="text-[11px] text-stone-600 truncate mt-0.5">
+                  {activeSchool.area} · ₹{((activeSchool.annualFeeMin || 0) / 100000).toFixed(1)}L – {((activeSchool.annualFeeMax || 0) / 100000).toFixed(1)}L/yr
+                </p>
               </div>
-              <h4 className="font-editorial text-xs sm:text-sm font-bold text-stone-900 truncate">
-                {activeSchool.name}
-              </h4>
-              <p className="text-[11px] text-stone-600 truncate mt-0.5">
-                {activeSchool.area} · ₹{((activeSchool.annualFeeMin || 0) / 100000).toFixed(1)}L – {((activeSchool.annualFeeMax || 0) / 100000).toFixed(1)}L/yr
-              </p>
-            </div>
 
-            <Link
-              to={`/school/${activeSchool.slug}`}
-              className="px-3.5 py-2 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shrink-0 transition-colors flex items-center gap-1"
-            >
-              <span>Profile</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        )}
+              <Link
+                to={`/school/${activeSchool.slug}`}
+                aria-label={`View profile of ${activeSchool.name}`}
+                className="px-3.5 py-2 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shrink-0 transition-colors flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+              >
+                <span>Profile</span>
+                <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

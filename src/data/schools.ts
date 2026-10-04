@@ -1328,6 +1328,12 @@ export const CHENNAI_NEIGHBOURHOODS = [
     description: 'Vibrant central-western Chennai with tech-enabled modern academies and competitive exam foundation prep.',
     popularFor: ['CBSE Excellence', 'Tech Smart Classrooms', 'Olympiad Training'],
   },
+  {
+    name: 'Velachery & Guindy',
+    count: 20,
+    description: 'Centrally connected commercial-residential junction with prominent Montessori playschools and established matriculation & CBSE institutions.',
+    popularFor: ['Montessori Early Years', 'Transit Accessibility', 'Daycare Hubs'],
+  },
 ];
 
 export const MOCK_ADVISOR_FAQ: Record<string, string> = {

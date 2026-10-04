@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { SearchState, SearchFilters, SortField, EducationTargetType, UpdateFiltersPayload, SavedSearch, RecentSearch } from '../types/search';
 import { School, Curriculum, SchoolType, PreschoolProgram } from '../types/school';
-import { CHENNAI_SCHOOLS } from '../data/schools';
+import { schoolService } from '../services/schoolService';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 
 export const DEFAULT_FILTERS: SearchFilters = {
@@ -457,6 +457,7 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       lower.includes('2 year');
 
     const hasSchoolKeyword =
+      lower.includes('school') ||
       lower.includes('class') ||
       lower.includes('grade') ||
       lower.includes('cbse') ||
@@ -466,7 +467,23 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       lower.includes('high school') ||
       lower.includes('secondary');
 
-    if (lower.includes('preschool and') || lower.includes('preschool +') || lower.includes('grade 1 onwards') || (hasPreschoolKeyword && hasSchoolKeyword)) {
+    const isCombinedKeyword =
+      lower.includes('combined') ||
+      lower.includes('preschool and') ||
+      lower.includes('preschool +') ||
+      lower.includes('preschool to') ||
+      lower.includes('preschool ->') ||
+      lower.includes('preschool through') ||
+      lower.includes('grade 1+') ||
+      lower.includes('class 1+') ||
+      lower.includes('grade 1 onwards') ||
+      lower.includes('class 1 onwards') ||
+      lower.includes('pre-kg to 12') ||
+      lower.includes('pre-kg to class 12') ||
+      lower.includes('k-12') ||
+      (hasPreschoolKeyword && hasSchoolKeyword);
+
+    if (isCombinedKeyword) {
       newFilters.educationTarget = 'combined';
     } else if (hasPreschoolKeyword) {
       newFilters.educationTarget = 'preschool';
@@ -504,19 +521,30 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       newFilters.budgetMax = 200000;
     }
 
-    // 4. Preschool specific: Age and Programs
+    // 4. Age and Grade detection
     const ageMatch = lower.match(/(\d+)[ -]year[ -]old/) || lower.match(/(\d+)\s*years/);
     if (ageMatch && ageMatch[1]) {
       const age = parseInt(ageMatch[1], 10);
-      newFilters.preschool.ageYears = age;
-      if (age <= 2.5) {
-        newFilters.preschool.programs = ['playgroup'];
-      } else if (age <= 3.5) {
-        newFilters.preschool.programs = ['nursery'];
-      } else if (age <= 4.5) {
-        newFilters.preschool.programs = ['lkg'];
+      if (age <= 5) {
+        newFilters.preschool.ageYears = age;
+        if (age <= 2.5) {
+          newFilters.preschool.programs = ['playgroup'];
+        } else if (age <= 3.5) {
+          newFilters.preschool.programs = ['nursery'];
+        } else if (age <= 4.5) {
+          newFilters.preschool.programs = ['lkg'];
+        } else {
+          newFilters.preschool.programs = ['ukg'];
+        }
       } else {
-        newFilters.preschool.programs = ['ukg'];
+        // Child is 6+ years old: School-age grade
+        newFilters.preschool.ageYears = undefined;
+        newFilters.preschool.programs = [];
+        const classNum = Math.min(Math.max(age - 5, 1), 12);
+        newFilters.grade = `Class ${classNum}`;
+        if (newFilters.educationTarget !== 'combined') {
+          newFilters.educationTarget = 'school';
+        }
       }
     }
 
@@ -609,8 +637,9 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Filter and dynamic scoring computation
   const filteredSchools = useMemo(() => {
     const { filters, sortBy } = searchState;
+    const allSchools = schoolService.getSchoolsSync();
 
-    const list = CHENNAI_SCHOOLS.filter((school) => {
+    const list = allSchools.filter((school) => {
       // 1. Education target filtering
       const isEarlyYearsInst = school.institutionType === 'preschool';
       const isCombined = school.institutionType === 'combined';
@@ -844,36 +873,46 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return count;
   }, [searchState.filters]);
 
+  const contextValue = useMemo<SearchContextType>(
+    () => ({
+      searchState,
+      setSearchState,
+      updateFilters,
+      setEducationTarget,
+      setRawQuery,
+      setSortBy,
+      resetFilters,
+      clearAllFilters,
+      removeFilter,
+      removeOneFilter,
+      relaxBudget,
+      increaseDistance,
+      applyNaturalLanguageQuery,
+      filteredSchools,
+      totalMatches: filteredSchools.length,
+      activeFilterCount,
+      recentSearches,
+      savedSearches,
+      addRecentSearch,
+      clearRecentSearches,
+      saveCurrentSearch,
+      removeSavedSearch,
+      clearSavedSearches,
+      isDemoSearches,
+      loadDemoSearches,
+    }),
+    [
+      searchState,
+      filteredSchools,
+      activeFilterCount,
+      recentSearches,
+      savedSearches,
+      isDemoSearches,
+    ]
+  );
+
   return (
-    <SearchContext.Provider
-      value={{
-        searchState,
-        setSearchState,
-        updateFilters,
-        setEducationTarget,
-        setRawQuery,
-        setSortBy,
-        resetFilters,
-        clearAllFilters,
-        removeFilter,
-        removeOneFilter,
-        relaxBudget,
-        increaseDistance,
-        applyNaturalLanguageQuery,
-        filteredSchools,
-        totalMatches: filteredSchools.length,
-        activeFilterCount,
-        recentSearches,
-        savedSearches,
-        addRecentSearch,
-        clearRecentSearches,
-        saveCurrentSearch,
-        removeSavedSearch,
-        clearSavedSearches,
-        isDemoSearches,
-        loadDemoSearches,
-      }}
-    >
+    <SearchContext.Provider value={contextValue}>
       {children}
     </SearchContext.Provider>
   );

@@ -32,8 +32,14 @@ import { WhatWeUnderstoodPanel } from '../components/search/WhatWeUnderstoodPane
 import { SearchTransitionPipeline } from '../components/search/SearchTransitionPipeline';
 import { SortField, EducationTargetType } from '../types/search';
 import { getCurriculumColor, getPedagogyColor } from '../utils/categoryColors';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
-export const SearchResultsPage: React.FC = () => {
+interface SearchResultsPageProps {
+  onOpenAdvisor?: () => void;
+}
+
+export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvisor }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const {
@@ -68,6 +74,11 @@ export const SearchResultsPage: React.FC = () => {
       ? 'Something went wrong while loading these results.'
       : null
   );
+
+  const mobileFiltersTrapRef = useFocusTrap({
+    isOpen: showMobileFilters,
+    onClose: () => setShowMobileFilters(false),
+  });
 
   // Intentional fast search loading sequence (~380ms)
   useEffect(() => {
@@ -137,6 +148,56 @@ export const SearchResultsPage: React.FC = () => {
 
   const isSavedMode = searchParams.get('view') === 'saved' || searchParams.get('filter') === 'saved';
   const displaySchools = isSavedMode ? savedSchools : filteredSchools;
+
+  const pageMeta = useMemo(() => {
+    const loc = filters.location && filters.location !== 'All Chennai' ? filters.location : '';
+    const locSuffix = loc ? ` near ${loc}, Chennai` : ' in Chennai';
+
+    if (isSavedMode) {
+      return {
+        title: `Shortlisted Institutions (${displaySchools.length}) | FindMySchool`,
+        description: 'Review and manage your shortlisted schools and preschools in Chennai. Compare fees, commute distances, and curriculum side-by-side.',
+        canonicalPath: '/results?filter=saved',
+      };
+    }
+
+    if (filters.educationTarget === 'preschool') {
+      return {
+        title: `Find Preschools${locSuffix} | FindMySchool`,
+        description: `Compare top Montessori and play-way preschools${locSuffix}. View transparent fee ranges, daycare facilities, and commute buffers.`,
+        canonicalPath: loc ? `/results?target=preschool&location=${encodeURIComponent(loc)}` : '/results?target=preschool',
+      };
+    }
+
+    if (filters.educationTarget === 'school') {
+      return {
+        title: `Find Schools${locSuffix} | FindMySchool`,
+        description: `Discover CBSE, ICSE, Cambridge, and IB schools${locSuffix}. Transparent fee ranges, student-teacher ratios, and commute analysis.`,
+        canonicalPath: loc ? `/results?target=school&location=${encodeURIComponent(loc)}` : '/results?target=school',
+      };
+    }
+
+    if (filters.educationTarget === 'combined') {
+      return {
+        title: `Preschool to Grade 12 Schools${locSuffix} | FindMySchool`,
+        description: `Discover integrated institutions offering preschool through Grade 12${locSuffix}. Unified campus environments with seamless grade progression.`,
+        canonicalPath: '/results?target=combined',
+      };
+    }
+
+    return {
+      title: `Find Schools & Preschools${locSuffix} | FindMySchool`,
+      description: `Search and filter verified schools and preschools across Chennai corridors. Filter by board, fees, student-teacher ratio, and proximity.`,
+      canonicalPath: '/results',
+    };
+  }, [filters.educationTarget, filters.location, isSavedMode, displaySchools.length]);
+
+  useDocumentMeta({
+    title: pageMeta.title,
+    description: pageMeta.description,
+    canonicalPath: pageMeta.canonicalPath,
+    ogType: 'website',
+  });
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,45 +390,55 @@ export const SearchResultsPage: React.FC = () => {
                 </p>
               </div>
 
+              {/* Live announcement of results count for screen readers */}
+              <div className="sr-only" aria-live="polite" role="status">
+                {isSavedMode
+                  ? `${savedSchools.length} shortlisted institutions.`
+                  : `${displaySchools.length} institutions match your current criteria.`}
+              </div>
+
               {/* 3 Supported Modes: [Preschool & Early Years] [School] [Preschool + School] */}
               {!isSavedMode && (
                 <div className="flex items-center gap-1.5 pt-1">
                   <span className="text-xs font-semibold text-stone-500 mr-1 hidden sm:inline">Education Type:</span>
-                  <div className="inline-flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs overflow-x-auto max-w-full scrollbar-none">
+                  <div className="inline-flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs overflow-x-auto max-w-full scrollbar-none" role="group" aria-label="Education Type">
                     <button
                       type="button"
                       onClick={() => handleStageChange('preschool')}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      aria-pressed={filters.educationTarget === 'preschool'}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                         filters.educationTarget === 'preschool'
                           ? 'bg-white text-amber-950 shadow-2xs border border-amber-300 font-bold'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      <Baby className="w-3.5 h-3.5 text-amber-700" />
+                      <Baby className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
                       <span>Preschool & Early Years</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleStageChange('school')}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      aria-pressed={filters.educationTarget === 'school'}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                         filters.educationTarget === 'school'
                           ? 'bg-white text-teal-950 shadow-2xs border border-teal-300 font-bold'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      <SchoolIcon className="w-3.5 h-3.5 text-teal-700" />
+                      <SchoolIcon className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
                       <span>School</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleStageChange('all')}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      aria-pressed={filters.educationTarget === 'all' || filters.educationTarget === 'combined'}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                         filters.educationTarget === 'all' || filters.educationTarget === 'combined'
                           ? 'bg-white text-stone-900 shadow-2xs border border-stone-300 font-bold'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      <Layers className="w-3.5 h-3.5 text-stone-600" />
+                      <Layers className="w-3.5 h-3.5 text-stone-600" aria-hidden="true" />
                       <span>Preschool + School</span>
                     </button>
                   </div>
@@ -387,29 +458,44 @@ export const SearchResultsPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={item.onRemove}
-                        className="text-stone-400 hover:text-rose-600 cursor-pointer p-0.5 rounded transition-colors"
-                        title={`Remove ${item.label}`}
+                        className="text-stone-400 hover:text-rose-600 cursor-pointer p-0.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                        title={`Remove filter: ${item.label}`}
+                        aria-label={`Remove filter: ${item.label}`}
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-3 h-3" aria-hidden="true" />
                       </button>
                     </span>
                   ))}
                   <button
                     type="button"
                     onClick={clearAllFilters}
-                    className="text-xs text-teal-800 hover:text-teal-950 font-bold ml-1 cursor-pointer flex items-center gap-1 py-1"
+                    className="text-xs text-teal-800 hover:text-teal-950 font-bold ml-1 cursor-pointer flex items-center gap-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded"
+                    aria-label="Clear all applied filters"
                   >
-                    <RotateCcw className="w-3 h-3" />
+                    <RotateCcw className="w-3 h-3" aria-hidden="true" />
                     <span>Clear all</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setPriorityTunerOpen(true)}
-                    className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-1"
+                    className="inline-flex items-center gap-1 text-teal-800 hover:text-teal-950 font-bold cursor-pointer ml-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded"
+                    aria-label="Tune matching priorities"
+                    aria-haspopup="dialog"
                   >
-                    <Sliders className="w-3 h-3 text-teal-700" />
+                    <Sliders className="w-3 h-3 text-teal-700" aria-hidden="true" />
                     <span>Tune priorities</span>
                   </button>
+                  {onOpenAdvisor && (
+                    <button
+                      type="button"
+                      onClick={onOpenAdvisor}
+                      className="inline-flex items-center gap-1 text-amber-800 hover:text-amber-950 font-bold cursor-pointer ml-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 rounded"
+                      aria-label="Open School Advisor with these results"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-600" aria-hidden="true" />
+                      <span>Ask Advisor</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -418,29 +504,31 @@ export const SearchResultsPage: React.FC = () => {
             <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-start flex-wrap pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
               
               {/* Desktop View Switcher (List vs Split Map) */}
-              <div className="hidden lg:flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs">
+              <div className="hidden lg:flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs" role="group" aria-label="View layout">
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
-                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  aria-pressed={viewMode === 'list'}
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                     viewMode === 'list'
                       ? 'bg-white text-stone-900 shadow-2xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  <List className="w-3.5 h-3.5" />
+                  <List className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>List</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('split')}
-                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  aria-pressed={viewMode === 'split'}
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                     viewMode === 'split'
                       ? 'bg-white text-stone-900 shadow-2xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  <Map className="w-3.5 h-3.5" />
+                  <Map className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Split Map</span>
                 </button>
               </div>
@@ -449,10 +537,13 @@ export const SearchResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowMobileFilters(true)}
-                className="md:hidden inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-800 shadow-2xs cursor-pointer hover:bg-stone-50 min-h-[40px]"
+                className="md:hidden inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-800 shadow-2xs cursor-pointer hover:bg-stone-50 min-h-[40px] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                 aria-label="Open filter options"
+                aria-haspopup="dialog"
+                aria-expanded={showMobileFilters}
+                aria-controls="mobile-filters-drawer"
               >
-                <Filter className="w-3.5 h-3.5 text-teal-700" />
+                <Filter className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
                 <span>Filters</span>
                 {activeFilterCount > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-teal-100 text-teal-900 font-bold text-[10px] border border-teal-200">
@@ -750,15 +841,12 @@ export const SearchResultsPage: React.FC = () => {
       {/* Mobile Filters Drawer */}
       {showMobileFilters && (
         <div
+          ref={mobileFiltersTrapRef}
+          id="mobile-filters-drawer"
           role="dialog"
           aria-modal="true"
           aria-labelledby="mobile-filters-heading"
           className="fixed inset-0 z-50 md:hidden bg-stone-900/50 backdrop-blur-xs flex justify-end"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setShowMobileFilters(false);
-            }
-          }}
         >
           <div className="w-full max-w-xs bg-white h-full overflow-y-auto p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200">
             <div>
@@ -769,10 +857,10 @@ export const SearchResultsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowMobileFilters(false)}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 cursor-pointer"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-600 hover:text-stone-900 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                   aria-label="Close filters panel"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
               <FilterSidebar onCloseMobile={() => setShowMobileFilters(false)} />
