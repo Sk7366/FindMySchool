@@ -25,6 +25,23 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
     setWeights(filters.weights || defaultWeights);
   }, [filters.weights, isPreschool]);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSliderChange = (key: keyof SearchPriorityWeights, value: number) => {
@@ -62,7 +79,12 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#FAF9F6] w-full max-w-lg rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div
+        className="bg-[#FAF9F6] w-full max-w-lg rounded-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="priority-tuner-title"
+      >
         
         {/* Header */}
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-white shrink-0">
@@ -70,14 +92,15 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
             <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider block">
               Tell us what matters most to you
             </span>
-            <h2 className="font-editorial text-base sm:text-lg font-bold text-stone-900">
+            <h2 id="priority-tuner-title" className="font-editorial text-base sm:text-lg font-bold text-stone-900">
               {isPreschool ? 'Preschool Priority Tuner' : 'School Priority Tuner'}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
@@ -94,7 +117,9 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
               <div key={item.key} className="bg-white p-3.5 rounded-xl border border-stone-200/80 shadow-2xs space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-stone-900 block">{item.label}</span>
+                    <label htmlFor={`slider-${item.key}`} className="font-bold text-stone-900 block cursor-pointer">
+                      {item.label}
+                    </label>
                     <span className="text-[11px] text-stone-500">{item.desc}</span>
                   </div>
                   <span className="font-bold text-teal-800 tabular-nums px-2 py-0.5 rounded bg-teal-50 border border-teal-200 text-xs">
@@ -102,11 +127,17 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
                   </span>
                 </div>
                 <input
+                  id={`slider-${item.key}`}
                   type="range"
                   min={5}
                   max={45}
                   step={5}
                   value={item.val}
+                  aria-label={`${item.label}: ${item.val}%`}
+                  aria-valuemin={5}
+                  aria-valuemax={45}
+                  aria-valuenow={item.val}
+                  aria-valuetext={`${item.val} percent`}
                   onChange={(e) => handleSliderChange(item.key, Number(e.target.value))}
                   className="w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer"
                 />
@@ -116,11 +147,11 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
         </div>
 
         {/* Footer Actions */}
-        <div className="px-5 py-3.5 border-t border-stone-200 bg-white flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 border-t border-stone-200 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleReset}
-            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 py-1"
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center justify-center gap-1.5 py-2 min-h-[44px] cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset to Defaults</span>
@@ -129,7 +160,7 @@ export const PriorityTunerModal: React.FC<PriorityTunerModalProps> = ({ isOpen, 
           <button
             type="button"
             onClick={handleApply}
-            className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-5 py-2.5 min-h-[44px] bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Check className="w-4 h-4" />
             <span>Apply Priorities & Recalculate</span>

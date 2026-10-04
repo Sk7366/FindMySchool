@@ -50,10 +50,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             <div className="space-y-2">
               <h2 className="font-editorial text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
-                Something interrupted this view.
+                Something went wrong while loading these results.
               </h2>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
-                Your search is safe. Try refreshing or returning to discovery.
+                Your search preferences are preserved. Try refreshing or returning to search.
               </p>
             </div>
 
@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               <button
                 type="button"
                 onClick={this.handleTryAgain}
-                className="w-full sm:w-auto px-4 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] shadow-2xs"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] shadow-2xs"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Try again</span>
@@ -70,10 +70,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               <button
                 type="button"
                 onClick={this.handleBackToDiscovery}
-                className="w-full sm:w-auto px-4 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-200/80 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-200/80 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to discovery</span>
+                <span>Return to search</span>
               </button>
             </div>
 

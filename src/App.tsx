@@ -34,12 +34,19 @@ export default function App() {
           <ComparisonProvider>
             <BrowserRouter>
               <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-stone-900 selection:bg-teal-100 selection:text-teal-900">
-                
+                {/* Skip to Main Content Link for Keyboard Accessibility */}
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#0D9488] focus:text-white focus:rounded-xl focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-white text-xs font-bold"
+                >
+                  Skip to main content
+                </a>
+
                 {/* Global Navigation Header */}
                 <Navbar onOpenAdvisor={() => handleOpenAdvisor()} />
 
                 {/* Main Routing Content */}
-                <main className="flex-1">
+                <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
                   <ErrorBoundary>
                     <Routes>
                       <Route

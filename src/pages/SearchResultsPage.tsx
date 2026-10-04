@@ -24,6 +24,7 @@ import {
 import { useSearch } from '../context/SearchContext';
 import { useShortlist } from '../context/ShortlistContext';
 import { SchoolCard } from '../components/schools/SchoolCard';
+import { SchoolCardSkeleton } from '../components/schools/SchoolCardSkeleton';
 import { FilterSidebar } from '../components/filters/FilterSidebar';
 import { SchoolMapPreview } from '../components/schools/SchoolMapPreview';
 import { PriorityTunerModal } from '../components/schools/PriorityTunerModal';
@@ -60,7 +61,23 @@ export const SearchResultsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'split' | 'map'>('list');
   const [quickQuery, setQuickQuery] = useState(rawQuery);
   const [priorityTunerOpen, setPriorityTunerOpen] = useState(false);
-  const [isFreshSearch, setIsFreshSearch] = useState<boolean>(() => Boolean(location.state?.fromSearch));
+  const [isFreshSearch, setIsFreshSearch] = useState<boolean>(() => Boolean(location.state?.fromSearch || searchParams.get('state') === 'loading'));
+  const [isSearching, setIsSearching] = useState<boolean>(() => Boolean(location.state?.fromSearch || searchParams.get('state') === 'loading'));
+  const [searchError, setSearchError] = useState<string | null>(() =>
+    searchParams.get('state') === 'error' || searchParams.get('error') === 'true'
+      ? 'Something went wrong while loading these results.'
+      : null
+  );
+
+  // Intentional fast search loading sequence (~380ms)
+  useEffect(() => {
+    if (isSearching && searchParams.get('state') !== 'loading') {
+      const timer = setTimeout(() => {
+        setIsSearching(false);
+      }, 380);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearching, searchParams]);
 
   // Sync query params if passed in URL
   useEffect(() => {
@@ -69,6 +86,13 @@ export const SearchResultsPage: React.FC = () => {
     const currParam = searchParams.get('curriculum');
     const targetParam = searchParams.get('target') as EducationTargetType;
     const progParam = searchParams.get('program');
+    const stateParam = searchParams.get('state');
+
+    if (stateParam === 'error' || searchParams.get('error') === 'true') {
+      setSearchError('Something went wrong while loading these results.');
+    } else if (stateParam !== 'loading') {
+      setSearchError(null);
+    }
 
     if (qParam && qParam !== rawQuery) {
       setRawQuery(qParam);
@@ -93,6 +117,24 @@ export const SearchResultsPage: React.FC = () => {
     setQuickQuery(rawQuery);
   }, [rawQuery]);
 
+  // Handle Escape key and body scroll locking for mobile filters drawer
+  useEffect(() => {
+    if (!showMobileFilters) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowMobileFilters(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showMobileFilters]);
+
   const isSavedMode = searchParams.get('view') === 'saved' || searchParams.get('filter') === 'saved';
   const displaySchools = isSavedMode ? savedSchools : filteredSchools;
 
@@ -100,6 +142,8 @@ export const SearchResultsPage: React.FC = () => {
     e.preventDefault();
     if (quickQuery.trim()) {
       setIsFreshSearch(true);
+      setIsSearching(true);
+      setSearchError(null);
       setRawQuery(quickQuery);
       applyNaturalLanguageQuery(quickQuery);
 
@@ -107,6 +151,11 @@ export const SearchResultsPage: React.FC = () => {
       nextParams.set('q', quickQuery.trim());
       setSearchParams(nextParams, { replace: true });
     }
+  };
+
+  const handleViewAllNearby = () => {
+    // Reset specific constraining preferences while keeping search context active
+    clearAllFilters();
   };
 
   const handleStageChange = (target: EducationTargetType) => {
@@ -229,7 +278,11 @@ export const SearchResultsPage: React.FC = () => {
           {/* Quick Search Input */}
           <form onSubmit={handleQuickSearch} className="max-w-3xl">
             <div className="relative flex items-center">
+              <label htmlFor="quick-search-input" className="sr-only">
+                Search schools and preschools by name, area, or description
+              </label>
               <input
+                id="quick-search-input"
                 type="text"
                 value={quickQuery}
                 onChange={(e) => setQuickQuery(e.target.value)}
@@ -241,10 +294,12 @@ export const SearchResultsPage: React.FC = () => {
                     : "Describe in your own words (e.g. Find a CBSE school for my 8-year-old near Anna Nagar under ₹1.5 lakh)..."
                 }
                 className="w-full bg-[#FAF9F6] border border-stone-300 hover:border-stone-400 focus:border-[#0D9488] focus:bg-white rounded-xl pl-4 pr-24 py-2.5 text-sm sm:text-base text-stone-900 focus:outline-none focus:ring-4 focus:ring-teal-700/10 transition-all shadow-2xs font-sans"
+                aria-label="Search schools and preschools by name, area, or description"
               />
               <button
                 type="submit"
                 className="absolute right-1.5 px-4 py-1.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer min-h-[36px]"
+                aria-label="Submit search"
               >
                 Search
               </button>
@@ -278,7 +333,7 @@ export const SearchResultsPage: React.FC = () => {
               {!isSavedMode && (
                 <div className="flex items-center gap-1.5 pt-1">
                   <span className="text-xs font-semibold text-stone-500 mr-1 hidden sm:inline">Education Type:</span>
-                  <div className="inline-flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs">
+                  <div className="inline-flex items-center bg-[#F5F1E8] p-0.5 rounded-xl border border-stone-200 text-xs overflow-x-auto max-w-full scrollbar-none">
                     <button
                       type="button"
                       onClick={() => handleStageChange('preschool')}
@@ -505,7 +560,53 @@ export const SearchResultsPage: React.FC = () => {
               </div>
             )}
 
-            {displaySchools.length > 0 ? (
+            {/* Results Display Area: Loading, Error, Empty, or Results */}
+            {searchError ? (
+              /* FRIENDLY ERROR STATE */
+              <div className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-12 text-center space-y-6 shadow-xs max-w-lg mx-auto">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+                  <AlertCircle className="w-7 h-7 text-amber-600" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-editorial text-2xl font-bold text-stone-900 tracking-tight">
+                    Something went wrong while loading these results.
+                  </h3>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans max-w-sm mx-auto">
+                    We encountered an issue retrieving the institutions for your search. Your preferences are preserved.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchError(null);
+                      setIsSearching(true);
+                    }}
+                    className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Try again</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchError(null);
+                      clearAllFilters();
+                    }}
+                    className="px-5 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px]"
+                  >
+                    Return to search
+                  </button>
+                </div>
+              </div>
+            ) : isSearching ? (
+              /* SEARCH LOADING STATE: 3 SchoolCardSkeleton items */
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <SchoolCardSkeleton />
+                <SchoolCardSkeleton />
+                <SchoolCardSkeleton />
+              </div>
+            ) : displaySchools.length > 0 ? (
               <div className="space-y-4 animate-in fade-in duration-300">
                 {displaySchools.map((school) => (
                   <div
@@ -548,7 +649,7 @@ export const SearchResultsPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              /* EMPTY STATE WHEN FILTERS PRODUCE NO RESULTS */
+              /* NO RESULTS STATE */
               <div className="bg-white rounded-3xl border border-stone-200/90 p-8 sm:p-12 text-center space-y-6 shadow-xs max-w-2xl mx-auto">
                 <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
                   <SlidersHorizontal className="w-7 h-7 text-amber-700" />
@@ -556,7 +657,7 @@ export const SearchResultsPage: React.FC = () => {
 
                 <div className="space-y-2">
                   <h3 className="font-editorial text-2xl font-bold text-stone-900 tracking-tight">
-                    No institutions match all of these preferences.
+                    No exact matches found.
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans max-w-md mx-auto">
                     Your current combination of location, fees, and specific preferences didn't return any matches. Try one of the options below to discover relevant institutions:
@@ -590,15 +691,15 @@ export const SearchResultsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* 4 Required Actions */}
+                {/* 4 Required Actions: Relax distance, Expand budget, Remove a preference, View all nearby institutions */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                   <button
                     type="button"
-                    onClick={removeOneFilter}
+                    onClick={increaseDistance}
                     className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                   >
-                    <MinusCircle className="w-4 h-4 text-teal-700" />
-                    <span>Remove one filter</span>
+                    <Compass className="w-4 h-4 text-blue-700" />
+                    <span>Relax distance</span>
                   </button>
 
                   <button
@@ -607,25 +708,25 @@ export const SearchResultsPage: React.FC = () => {
                     className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                   >
                     <IndianRupee className="w-4 h-4 text-amber-700" />
-                    <span>Relax budget</span>
+                    <span>Expand budget</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={increaseDistance}
+                    onClick={removeOneFilter}
                     className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                   >
-                    <Compass className="w-4 h-4 text-blue-700" />
-                    <span>Increase distance</span>
+                    <MinusCircle className="w-4 h-4 text-teal-700" />
+                    <span>Remove a preference</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={clearAllFilters}
+                    onClick={handleViewAllNearby}
                     className="px-4 py-3 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                   >
                     <Sparkles className="w-4 h-4 text-white" />
-                    <span>View all results</span>
+                    <span>View all nearby institutions</span>
                   </button>
                 </div>
               </div>
@@ -648,15 +749,28 @@ export const SearchResultsPage: React.FC = () => {
 
       {/* Mobile Filters Drawer */}
       {showMobileFilters && (
-        <div className="fixed inset-0 z-50 md:hidden bg-stone-900/50 backdrop-blur-xs flex justify-end">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-filters-heading"
+          className="fixed inset-0 z-50 md:hidden bg-stone-900/50 backdrop-blur-xs flex justify-end"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowMobileFilters(false);
+            }
+          }}
+        >
           <div className="w-full max-w-xs bg-white h-full overflow-y-auto p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200">
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-3">
-                <h3 className="font-editorial font-bold text-base text-stone-900">Filters</h3>
+                <h3 id="mobile-filters-heading" className="font-editorial font-bold text-base text-stone-900">
+                  Filters
+                </h3>
                 <button
                   type="button"
                   onClick={() => setShowMobileFilters(false)}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 cursor-pointer"
+                  aria-label="Close filters panel"
                 >
                   <X className="w-5 h-5" />
                 </button>

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Star,
   Bookmark,
@@ -30,6 +30,7 @@ import {
   Building2,
   BookOpen,
   Trophy,
+  RotateCcw,
 } from 'lucide-react';
 import { CHENNAI_SCHOOLS } from '../data/schools';
 import { useComparison } from '../context/ComparisonContext';
@@ -38,6 +39,7 @@ import { useSearch } from '../context/SearchContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
 import { formatMatchReason } from '../utils/matchProvenance';
+import { ProfileSkeleton } from '../components/schools/ProfileSkeleton';
 
 type ProfileTab = 'overview' | 'programs' | 'academics' | 'fees' | 'facilities' | 'admissions' | 'neighbourhood';
 
@@ -47,9 +49,35 @@ interface SchoolProfilePageProps {
 
 export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvisorWithSchool }) => {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const { toggleComparison, isComparing } = useComparison();
   const { toggleSave, isSaved } = useShortlist();
   const { searchState } = useSearch();
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => searchParams.get('state') === 'loading');
+  const [profileError, setProfileError] = useState<string | null>(() =>
+    searchParams.get('state') === 'error' || searchParams.get('error') === 'true'
+      ? 'Something went wrong while loading these results.'
+      : null
+  );
+
+  // Fast simulated network load sequence (~260ms) on route change
+  useEffect(() => {
+    if (searchParams.get('state') === 'loading') {
+      setIsLoading(true);
+      return;
+    }
+    if (searchParams.get('state') === 'error' || searchParams.get('error') === 'true') {
+      setProfileError('Something went wrong while loading these results.');
+      return;
+    }
+    setProfileError(null);
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 260);
+    return () => clearTimeout(timer);
+  }, [slug, searchParams]);
 
   const school = CHENNAI_SCHOOLS.find((s) => s.slug === slug);
 
@@ -60,6 +88,31 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isPlanVisitOpen, setIsPlanVisitOpen] = useState(false);
+  const [mainImageError, setMainImageError] = useState(false);
+  const [failedThumbnails, setFailedThumbnails] = useState<Record<number, boolean>>({});
+
+  // Reset main image error if selected photo changes
+  useEffect(() => {
+    setMainImageError(false);
+  }, [selectedPhotoIndex]);
+
+  // Handle Escape key and body lock for Plan Visit modal
+  useEffect(() => {
+    if (!isPlanVisitOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsPlanVisitOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPlanVisitOpen]);
 
   // Similar institutions: "Other places you may want to compare"
   const similarInstitutions = useMemo(() => {
@@ -80,20 +133,73 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
       .slice(0, 3);
   }, [school]);
 
+  // SKELETON PROFILE LOADING STATE
+  if (isLoading) {
+    return <ProfileSkeleton />;
+  }
+
+  // FRIENDLY ERROR STATE
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-[#FAF9F6] flex items-center justify-center p-4 font-sans text-stone-900">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200 p-8 shadow-xs text-center space-y-5">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+            <AlertTriangle className="w-7 h-7 text-amber-600" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="font-editorial text-2xl font-bold text-stone-900 tracking-tight">
+              Something went wrong while loading these results.
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 font-sans leading-relaxed">
+              We encountered an issue loading this institution profile. Please try again or return to search.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setProfileError(null);
+                setIsLoading(true);
+                setTimeout(() => setIsLoading(false), 260);
+              }}
+              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Try again</span>
+            </button>
+            <Link
+              to="/results"
+              className="px-5 py-2.5 bg-[#F5F1E8] hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
+            >
+              Return to search
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!school) {
     return (
-      <div className="min-h-screen bg-[#FAF9F6] py-24 px-4 text-center">
-        <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-stone-200 shadow-sm">
-          <h2 className="font-editorial text-2xl font-bold text-stone-900 mb-2">Institution Not Listed</h2>
-          <p className="text-xs text-stone-600 mb-6">
-            The school or preschool you are looking for is either unlisted or may have been updated in our 2026 directory.
-          </p>
-          <Link
-            to="/results"
-            className="px-5 py-2.5 bg-[#0D9488] text-white rounded-xl text-xs font-bold hover:bg-[#115E59] transition-colors"
-          >
-            Back to Directory
-          </Link>
+      <div className="min-h-screen bg-[#FAF9F6] py-24 px-4 text-center font-sans">
+        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+            <AlertTriangle className="w-7 h-7 text-amber-600" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="font-editorial text-2xl font-bold text-stone-900">Institution Not Listed</h2>
+            <p className="text-xs text-stone-600 font-sans">
+              The school or preschool you are looking for is either unlisted or may have been updated in our directory.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              to="/results"
+              className="inline-flex px-5 py-2.5 bg-[#0D9488] text-white rounded-xl text-xs font-bold hover:bg-[#115E59] transition-colors min-h-[44px] items-center"
+            >
+              Return to search
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -108,7 +214,10 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
     : getCurriculumColor(primaryBoard);
   const scoreStyle = getMatchScoreStyle(school.matchScore);
 
-  const formatFee = (amount: number) => {
+  const formatFee = (amount?: number) => {
+    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+      return 'Information not available';
+    }
     if (amount >= 100000) return `₹${(amount / 100000).toFixed(2)} Lakh`;
     return `₹${amount.toLocaleString('en-IN')}`;
   };
@@ -129,21 +238,21 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 font-sans selection:bg-teal-100 selection:text-teal-900">
       
       {/* Top Breadcrumb & Quick Actions Bar */}
-      <div className="bg-white border-b border-stone-200/90 py-3.5 px-3.5 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+      <div className="bg-white border-b border-stone-200/90 py-3 px-3.5 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <Link
             to="/results"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-teal-900 transition-colors shrink-0 py-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to discovery</span>
+            <span>Back<span className="hidden min-[400px]:inline"> to discovery</span></span>
           </Link>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <button
               type="button"
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700 hover:bg-[#FAF9F6] transition-colors cursor-pointer min-h-[38px]"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700 hover:bg-[#FAF9F6] transition-colors cursor-pointer min-h-[38px]"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>{copiedLink ? 'Copied' : 'Share'}</span>
@@ -153,7 +262,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             <button
               type="button"
               onClick={() => toggleSave(school.id)}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
                 saved
                   ? 'bg-amber-500 text-white shadow-2xs hover:bg-amber-600'
                   : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
@@ -161,7 +270,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             >
               <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-current' : ''}`} />
               <span>
-                {saved ? 'Saved in Shortlist' : 'Save'}
+                {saved ? 'Saved' : 'Save'}
               </span>
             </button>
 
@@ -169,7 +278,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             <button
               type="button"
               onClick={() => toggleComparison(school.id)}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
                 compared
                   ? 'bg-teal-700 text-white shadow-2xs hover:bg-teal-800'
                   : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
@@ -335,21 +444,25 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">1. Age Range</span>
                     <span className="font-bold text-stone-900">
-                      {school.ageRange ? `${school.ageRange.min}–${school.ageRange.max} yrs` : '2–6 yrs'}
+                      {school.ageRange ? `${school.ageRange.min}–${school.ageRange.max} yrs` : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">2. Programs</span>
                     <span className="font-bold text-stone-900 uppercase">
-                      {school.preschoolPrograms?.join(', ') || 'Playgroup, Nursery, LKG, UKG'}
+                      {school.preschoolPrograms && school.preschoolPrograms.length > 0
+                        ? school.preschoolPrograms.join(', ')
+                        : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">3. Learning Approach</span>
                     <span className="font-bold text-stone-900">
-                      {school.pedagogy?.join(' · ') || 'Montessori / Play-way'}
+                      {school.pedagogy && school.pedagogy.length > 0
+                        ? school.pedagogy.join(' · ')
+                        : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -362,12 +475,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">5. Timings</span>
-                    <span className="font-bold text-stone-900">{school.timings || '8:30 AM – 1:30 PM'}</span>
+                    <span className="font-bold text-stone-900">{school.timings || 'Information not available'}</span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">6. Caregiver Ratio</span>
-                    <span className="font-bold text-stone-900">{school.childToCaregiverRatio || '1:8'}</span>
+                    <span className="font-bold text-stone-900">{school.childToCaregiverRatio || 'Information not available'}</span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
@@ -387,7 +500,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">9. Transport</span>
                     <span className="font-bold text-stone-900">
-                      {school.hasTransport ? `AC Vans (up to ${school.transportRadiusKm} km)` : 'Parent Drop'}
+                      {school.hasTransport
+                        ? `AC Vans (${school.transportRadiusKm ? `up to ${school.transportRadiusKm} km` : 'Transport Available'})`
+                        : 'Parent Drop'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -397,39 +512,47 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-stone-700">
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">1. Board</span>
-                    <span className="font-bold text-stone-900">{school.curriculum?.join(', ') || 'CBSE'}</span>
+                    <span className="font-bold text-stone-900">
+                      {school.curriculum && school.curriculum.length > 0 ? school.curriculum.join(', ') : 'Information not available'}
+                    </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">2. Grades</span>
-                    <span className="font-bold text-stone-900">{school.grades}</span>
+                    <span className="font-bold text-stone-900">{school.grades || 'Information not available'}</span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">3. Fees</span>
                     <span className="font-bold text-stone-900 tabular-nums">
-                      ₹{(school.annualFeeMin / 100000).toFixed(1)}L – {(school.annualFeeMax / 100000).toFixed(1)}L
+                      {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
+                        ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${(school.annualFeeMax / 100000).toFixed(1)}L`
+                        : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">4. Academic Programs</span>
                     <span className="font-bold text-stone-900 truncate block">
-                      {school.academicHighlights?.[0] || 'Dual syllabus & experiential labs'}
+                      {school.academicHighlights?.[0] || 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">5. Activities</span>
                     <span className="font-bold text-stone-900 truncate block">
-                      {(school.extracurriculars || []).slice(0, 3).join(', ')}
+                      {school.extracurriculars && school.extracurriculars.length > 0
+                        ? school.extracurriculars.slice(0, 3).join(', ')
+                        : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">6. Facilities</span>
                     <span className="font-bold text-stone-900 truncate block">
-                      {(school.facilities || []).slice(0, 3).map(f => f.name).join(', ')}
+                      {school.facilities && school.facilities.length > 0
+                        ? school.facilities.slice(0, 3).map((f) => f.name).join(', ')
+                        : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -443,7 +566,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">8. Transport</span>
                     <span className="font-bold text-stone-900">
-                      {school.hasTransport ? `Bus Fleet (≤${school.transportRadiusKm} km)` : 'Independent Commute'}
+                      {school.hasTransport
+                        ? `Bus Fleet (${school.transportRadiusKm ? `≤${school.transportRadiusKm} km` : 'Transport Available'})`
+                        : 'Independent Commute'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -518,12 +643,26 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           {/* Photo Gallery Visual (Col 5) */}
           <div className="lg:col-span-5 space-y-2.5">
             <div className="aspect-16/10 rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 relative group shadow-sm">
-              <img
-                src={school.photos?.[selectedPhotoIndex]?.url || school.photos?.[0]?.url || ''}
-                alt={school.photos?.[selectedPhotoIndex]?.caption || school.name}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
-              />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-stone-950/80 via-stone-900/40 to-transparent p-3.5 text-white">
+              {!mainImageError && (school.photos?.[selectedPhotoIndex]?.url || school.photos?.[0]?.url) ? (
+                <img
+                  src={school.photos?.[selectedPhotoIndex]?.url || school.photos?.[0]?.url || ''}
+                  alt={school.photos?.[selectedPhotoIndex]?.caption || school.name}
+                  referrerPolicy="no-referrer"
+                  onError={() => setMainImageError(true)}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#FAF9F6] to-[#F5F1E8] p-6 text-center">
+                  {isEarlyYears ? (
+                    <Baby className="w-12 h-12 text-stone-400 mb-2" />
+                  ) : (
+                    <SchoolIcon className="w-12 h-12 text-stone-400 mb-2" />
+                  )}
+                  <span className="text-sm font-editorial font-medium text-stone-700 line-clamp-1">{school.name}</span>
+                  <span className="text-[11px] text-stone-400 mt-1">Campus photo placeholder</span>
+                </div>
+              )}
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-stone-950/80 via-stone-900/40 to-transparent p-3.5 text-white pointer-events-none">
                 <span className="text-xs font-semibold block font-sans">
                   {school.photos?.[selectedPhotoIndex]?.caption || school.name}
                 </span>
@@ -546,7 +685,19 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
-                  <img src={photo.url} alt={photo.caption} className="w-full h-full object-cover" />
+                  {!failedThumbnails[idx] && photo.url ? (
+                    <img
+                      src={photo.url}
+                      alt={photo.caption}
+                      referrerPolicy="no-referrer"
+                      onError={() => setFailedThumbnails((prev) => ({ ...prev, [idx]: true }))}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#FAF9F6] text-stone-400 text-[10px]">
+                      {isEarlyYears ? <Baby className="w-4 h-4 text-stone-400" /> : <SchoolIcon className="w-4 h-4 text-stone-400" />}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -556,7 +707,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
 
       {/* Sticky Tab Navigation Bar */}
       <div className="sticky top-16 z-30 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-stone-200">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-none gap-1 sm:gap-2 py-1.5">
+        <div
+          role="tablist"
+          aria-label="School profile sections"
+          className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-none gap-1 sm:gap-2 py-1.5"
+        >
           {[
             ...(isEarlyYears || isCombined ? [{ id: 'programs', label: isEarlyYears ? 'Programs & Timings' : 'Early Years Programs' }] : []),
             { id: 'overview', label: 'Overview & Fit' },
@@ -571,8 +726,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isCurrent}
+                aria-controls={`panel-${tab.id}`}
+                id={`tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id as ProfileTab)}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs font-bold whitespace-nowrap rounded-xl transition-all cursor-pointer min-h-[42px] flex items-center shrink-0 ${
+                className={`py-2.5 px-3.5 sm:px-4 text-xs font-bold whitespace-nowrap rounded-xl transition-all cursor-pointer min-h-[44px] flex items-center shrink-0 ${
                   isCurrent
                     ? 'bg-[#0D9488] text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
@@ -802,34 +961,40 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Age Range</span>
                           <span className="font-semibold text-stone-900">
-                            {school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : '1.5–6 yrs'}
+                            {school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : 'Information not available'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Programs Offered</span>
                           <span className="font-semibold text-stone-900 text-right">
-                            {school.preschoolPrograms?.map((p) => p.toUpperCase()).join(', ') || 'Playgroup, Nursery, LKG, UKG'}
+                            {school.preschoolPrograms && school.preschoolPrograms.length > 0
+                              ? school.preschoolPrograms.map((p) => p.toUpperCase()).join(', ')
+                              : 'Information not available'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Learning Approach</span>
                           <span className="font-semibold text-stone-900 text-right">
-                            {school.pedagogy?.join(' · ') || 'Play-way & Montessori'}
+                            {school.pedagogy && school.pedagogy.length > 0
+                              ? school.pedagogy.join(' · ')
+                              : 'Information not available'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Annual Fees</span>
                           <span className="font-bold text-stone-900 tabular-nums">
-                            ₹{(school.annualFeeMin / 1000).toFixed(0)}k – ₹{(school.annualFeeMax / 1000).toFixed(0)}k/yr
+                            {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
+                              ? `₹${(school.annualFeeMin / 1000).toFixed(0)}k – ₹${(school.annualFeeMax / 1000).toFixed(0)}k/yr`
+                              : 'Information not available'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Timings</span>
-                          <span className="font-semibold text-stone-900">{school.timings || '8:30 AM – 1:30 PM'}</span>
+                          <span className="font-semibold text-stone-900">{school.timings || 'Information not available'}</span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
@@ -842,54 +1007,70 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Transport</span>
                           <span className="font-semibold text-stone-900">
-                            {school.hasTransport ? `AC Vans (up to ${school.transportRadiusKm} km)` : 'Parent Drop'}
+                            {school.hasTransport
+                              ? `AC Vans (${school.transportRadiusKm ? `up to ${school.transportRadiusKm} km` : 'Transport Available'})`
+                              : 'Parent Drop'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1">
                           <span className="text-stone-500">Location</span>
-                          <span className="font-semibold text-stone-900">{school.area}, Chennai</span>
+                          <span className="font-semibold text-stone-900">{school.area || 'Information not available'}, Chennai</span>
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Affiliated Board</span>
-                          <span className="font-semibold text-stone-900">{school.curriculum?.join(', ') || 'Independent / State Recognized'}</span>
+                          <span className="font-semibold text-stone-900">
+                            {school.curriculum && school.curriculum.length > 0
+                              ? school.curriculum.join(', ')
+                              : 'Information not available'}
+                          </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Grades Offered</span>
-                          <span className="font-semibold text-stone-900">{school.grades}</span>
+                          <span className="font-semibold text-stone-900">{school.grades || 'Information not available'}</span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Annual Tuition</span>
                           <span className="font-bold text-stone-900 tabular-nums">
-                            ₹{(school.annualFeeMin / 100000).toFixed(1)}L – {(school.annualFeeMax / 100000).toFixed(1)}L/yr
+                            {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
+                              ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${(school.annualFeeMax / 100000).toFixed(1)}L/yr`
+                              : 'Information not available'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Location</span>
-                          <span className="font-semibold text-stone-900">{school.area}, Chennai</span>
+                          <span className="font-semibold text-stone-900">{school.area || 'Information not available'}, Chennai</span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Campus Facilities</span>
                           <span className="font-semibold text-stone-900 text-right truncate max-w-[140px]">
-                            {(school.facilities || []).slice(0, 3).map((f) => f.name).join(', ')}
+                            {school.facilities && school.facilities.length > 0
+                              ? school.facilities.slice(0, 3).map((f) => f.name).join(', ')
+                              : 'Information not available'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Student:Teacher</span>
-                          <span className="font-semibold text-stone-900 tabular-nums">{school.studentTeacherRatio}</span>
+                          <span className="font-semibold text-stone-900 tabular-nums">
+                            {school.studentTeacherRatio || 'Information not available'}
+                          </span>
                         </div>
 
                         <div className="flex justify-between py-1">
                           <span className="text-stone-500">Transport Radius</span>
-                          <span className="font-semibold text-stone-900 tabular-nums">Up to {school.transportRadiusKm} km</span>
+                          <span className="font-semibold text-stone-900 tabular-nums">
+                            {school.hasTransport
+                              ? `Up to ${school.transportRadiusKm || 15} km`
+                              : 'Information not available'}
+                          </span>
                         </div>
                       </>
                     )}
@@ -904,15 +1085,15 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-2.5 text-xs text-stone-700 font-sans">
                     <div className="flex items-center gap-2">
                       <Phone className="w-3.5 h-3.5 text-stone-500" />
-                      <span>{school.phone}</span>
+                      <span>{school.phone || 'Information not available'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Mail className="w-3.5 h-3.5 text-stone-500" />
-                      <span>{school.email}</span>
+                      <span>{school.email || 'Information not available'}</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
-                      <span>{school.address}</span>
+                      <span>{school.address || 'Information not available'}</span>
                     </div>
                   </div>
                 </div>
@@ -1466,14 +1647,19 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
           ======================================================== */}
       {isPlanVisitOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-lg w-full p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-150">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-visit-title"
+            className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-lg w-full p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-150"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center border border-teal-200">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-editorial text-lg font-bold text-stone-900">
+                  <h3 id="plan-visit-title" className="font-editorial text-lg font-bold text-stone-900">
                     Plan a Campus Visit
                   </h3>
                   <span className="text-[11px] text-stone-500 block truncate max-w-xs sm:max-w-sm">
@@ -1484,7 +1670,8 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <button
                 type="button"
                 onClick={() => setIsPlanVisitOpen(false)}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer transition-colors"
+                className="min-h-[44px] min-w-[44px] p-2 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer transition-colors"
+                aria-label="Close dialog"
               >
                 <X className="w-5 h-5" />
               </button>

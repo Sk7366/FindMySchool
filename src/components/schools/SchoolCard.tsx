@@ -186,11 +186,13 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
   const scoreStyle = getMatchScoreStyle(school.matchScore);
 
   const formatFee = (amount?: number) => {
-    const val = typeof amount === 'number' && !isNaN(amount) ? amount : 50000;
-    if (val >= 100000) {
-      return `₹${(val / 100000).toFixed(1)}L`;
+    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+      return 'Information not available';
     }
-    return `₹${(val / 1000).toFixed(0)}k`;
+    if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(1)}L`;
+    }
+    return `₹${(amount / 1000).toFixed(0)}k`;
   };
 
   // Helper to pick appropriate Lucide icon for facility
@@ -371,9 +373,12 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             </div>
 
             {/* PRIMARY 2: Fit with Priorities (Distinctive Circular Match Score Ring) */}
-            <div className="shrink-0 flex flex-col items-center">
+            <div
+              className="shrink-0 flex flex-col items-center"
+              aria-label={`${school.matchScore}% fit, ${scoreStyle.tier}`}
+            >
               <div className="relative w-13 h-13 flex items-center justify-center">
-                <svg className="w-13 h-13 -rotate-90" viewBox="0 0 40 40">
+                <svg className="w-13 h-13 -rotate-90" viewBox="0 0 40 40" aria-hidden="true">
                   <circle
                     cx="20"
                     cy="20"
@@ -396,8 +401,11 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[13px] font-bold font-sans text-stone-950 tabular-nums leading-none">
+                  <span className="text-[12px] font-extrabold font-sans text-stone-950 tabular-nums leading-none">
                     {school.matchScore}%
+                  </span>
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-stone-600 leading-none mt-0.5">
+                    fit
                   </span>
                 </div>
               </div>
@@ -416,7 +424,9 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                 {isEarlyYears ? 'Annual Preschool Fee' : 'Annual Tuition Fee'}
               </span>
               <span className="font-bold text-stone-950 text-base sm:text-lg tabular-nums">
-                {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
+                {school.annualFeeMin && school.annualFeeMax
+                  ? `${formatFee(school.annualFeeMin)} – ${formatFee(school.annualFeeMax)}`
+                  : 'Information not available'}
               </span>
               <span className="text-[10px] text-stone-500 block font-sans">
                 {isEarlyYears ? 'Program specific' : 'Grade specific'}
@@ -433,7 +443,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                   ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs`
                   : isCombined
                   ? `Ages ${school.ageRange?.min ?? 3}–18 yrs`
-                  : school.grades}
+                  : school.grades || 'Information not available'}
               </span>
               <span className="text-[10px] text-stone-500 block font-sans">
                 {isEarlyYears
@@ -450,7 +460,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
                 {isEarlyYears ? 'Caregiver Ratio' : 'Teacher Ratio'}
               </span>
               <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
-                {isEarlyYears ? (school.childToCaregiverRatio || '1:8') : (school.studentTeacherRatio || '1:16')}
+                {isEarlyYears ? (school.childToCaregiverRatio || 'Information not available') : (school.studentTeacherRatio || 'Information not available')}
               </span>
               <span className="text-[10px] text-stone-500 block font-sans">
                 {isEarlyYears ? 'Per classroom guide' : 'Average class density'}
@@ -550,17 +560,17 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-stone-200 font-medium">
                 <span className="text-[11px] text-stone-500">Board:</span>
-                <strong className="text-stone-900">{(school.curriculum || []).join(' · ')}</strong>
+                <strong className="text-stone-900">{(school.curriculum || []).join(' · ') || 'Information not available'}</strong>
               </div>
 
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-stone-200 font-medium">
                 <span className="text-[11px] text-stone-500">Grades:</span>
-                <strong className="text-stone-900">{school.grades}</strong>
+                <strong className="text-stone-900">{school.grades || 'Information not available'}</strong>
               </div>
 
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-stone-200 font-medium">
                 <span className="text-[11px] text-stone-500">Teacher Ratio:</span>
-                <strong className="text-stone-900">{school.studentTeacherRatio || '1:16'}</strong>
+                <strong className="text-stone-900">{school.studentTeacherRatio || 'Information not available'}</strong>
               </div>
 
               {school.hasTransport && (
@@ -682,6 +692,7 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
             <button
               type="button"
               onClick={() => toggleComparison(school.id)}
+              aria-label={compared ? `Remove ${school.name} from comparison` : `Compare ${school.name}`}
               className={`min-h-[42px] px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                 compared
                   ? 'bg-teal-50 text-teal-900 border-teal-300'
@@ -711,7 +722,8 @@ export const SchoolCard: React.FC<SchoolCardProps> = ({ school }) => {
           {/* PRIMARY ACTION: View Profile (Prominent bold teal CTA button) */}
           <Link
             to={`/school/${school.slug}`}
-            className="min-h-[42px] px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer group/cta focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            aria-label={`View profile for ${school.name}`}
+            className="w-full min-[460px]:w-auto justify-center min-h-[42px] px-5 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer group/cta focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 text-center"
           >
             <span>View profile</span>
             <ChevronRight className="w-4 h-4 group-hover/cta:translate-x-0.5 transition-transform" />

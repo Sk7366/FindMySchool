@@ -313,6 +313,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
               value={inputQuestion}
               onChange={(e) => setInputQuestion(e.target.value)}
               placeholder="Ask about admissions, fee transparency, or boards..."
+              aria-label="Ask about admissions, fee transparency, or boards"
               className="flex-1 bg-[#FAF9F6] border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:bg-white transition-all min-h-[44px]"
             />
             <button

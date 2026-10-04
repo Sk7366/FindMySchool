@@ -785,7 +785,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
           <button
             type="button"
             onClick={onCloseMobile}
-            className="w-full py-2.5 bg-[#0D9488] text-white font-bold rounded-xl text-xs shadow-xs"
+            className="w-full min-h-[44px] py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition-colors"
           >
             Apply Filters
           </button>

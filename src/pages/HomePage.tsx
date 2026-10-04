@@ -17,7 +17,10 @@ import {
   ChevronRight, 
   Baby, 
   School as SchoolIcon, 
-  Layers 
+  Layers,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp 
 } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 import { GuidedSearchModal, GuidedCategory } from '../components/search/GuidedSearchModal';
@@ -54,6 +57,29 @@ const ALL_PROMPTS = [
   "Find a school that offers preschool through Grade 12 near OMR.",
 ];
 
+const HOME_FAQS = [
+  {
+    question: "How does FindMySchool verify fee structures and avoid hidden costs?",
+    answer: "FindMySchool benchmarks tuition fees against published school circulars, parent fee receipts, and verified disclosures. We break down annual tuition, admission registration charges, and separate add-on costs like transport, uniform kits, and meal programs so families never encounter surprise admission costs."
+  },
+  {
+    question: "What is the difference between Montessori, Play-way, and traditional preschools?",
+    answer: "Montessori emphasizes self-directed learning using tactile sensory apparatus at the child's own developmental pace. Play-way centers around social play, imaginative games, and group exploration. Traditional kindergarten follows structured teacher-led pre-academic routines. Our profiles clearly disclose each institution's specific pedagogy."
+  },
+  {
+    question: "How are commute distances and school bus boundaries calculated?",
+    answer: "Commute estimates use actual road corridors across Chennai hubs (such as OMR, Velachery, Anna Nagar, and Tambaram). Each school card and profile highlights verified school bus and van coverage radiuses (typically 8–15 km) and caregiver attendant policies."
+  },
+  {
+    question: "When do Chennai CBSE, ICSE, and Cambridge admissions typically open?",
+    answer: "Most Chennai K–12 schools open applications between October and January for the upcoming academic year starting in June. Early years and preschool registrations frequently have rolling admissions, but popular neighborhood centers often fill pre-KG seats 6–9 months in advance."
+  },
+  {
+    question: "Is FindMySchool independent from school rankings or paid promotions?",
+    answer: "Yes, completely. FindMySchool does not accept sponsored rankings, 'Top School' badges, or pay-to-play placements. Institutions are compared strictly against your family's personal priorities (budget, commute, learning approach, facilities, and care ratios) without declaring artificial winners."
+  }
+];
+
 interface HomePageProps {
   onOpenAdvisor: () => void;
 }
@@ -68,6 +94,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
   const [selectedGuidedCategory, setSelectedGuidedCategory] = useState<GuidedCategory>('location');
   const [isListening, setIsListening] = useState(false);
   const [promptIndex, setPromptIndex] = useState(0);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   // Sync selected target with SearchContext
   const handleTargetChange = (target: EducationTargetType) => {
@@ -263,44 +290,44 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
             <p className="text-xs sm:text-sm text-stone-600 mb-3 font-sans max-w-lg mx-auto leading-relaxed">
               You can describe what you're looking for in your own words. No need to understand filters or school terminology before searching.
             </p>
-            <div className="grid grid-cols-3 gap-2 p-1.5 bg-white/90 rounded-2xl border border-stone-200/90 shadow-2xs">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-3 gap-2 p-1.5 bg-white/90 rounded-2xl border border-stone-200/90 shadow-2xs">
               <button
                 type="button"
                 onClick={() => handleTargetChange('preschool')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
                   selectedTarget === 'preschool'
                     ? 'bg-amber-50 text-amber-950 border border-amber-300 shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                 }`}
               >
-                <Baby className={`w-4 h-4 ${selectedTarget === 'preschool' ? 'text-amber-700' : 'text-stone-400'}`} />
-                <span>Preschool & Early Years</span>
+                <Baby className={`w-4 h-4 shrink-0 ${selectedTarget === 'preschool' ? 'text-amber-700' : 'text-stone-400'}`} />
+                <span className="truncate">Preschool & Early Years</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleTargetChange('school')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
                   selectedTarget === 'school'
                     ? 'bg-teal-50 text-teal-950 border border-teal-300 shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                 }`}
               >
-                <SchoolIcon className={`w-4 h-4 ${selectedTarget === 'school' ? 'text-teal-700' : 'text-stone-400'}`} />
-                <span>Regular School</span>
+                <SchoolIcon className={`w-4 h-4 shrink-0 ${selectedTarget === 'school' ? 'text-teal-700' : 'text-stone-400'}`} />
+                <span className="truncate">Regular School</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleTargetChange('combined')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
                   selectedTarget === 'combined'
                     ? 'bg-[#F5F1E8] text-stone-950 border border-stone-300 shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                 }`}
               >
-                <Layers className={`w-4 h-4 ${selectedTarget === 'combined' ? 'text-stone-800' : 'text-stone-400'}`} />
-                <span>Preschool + School</span>
+                <Layers className={`w-4 h-4 shrink-0 ${selectedTarget === 'combined' ? 'text-stone-800' : 'text-stone-400'}`} />
+                <span className="truncate">Preschool + School</span>
               </button>
             </div>
           </div>
@@ -322,9 +349,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                     id="hero-search-input"
                     value={localQuery}
                     onChange={(e) => setLocalQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSearchSubmit(e);
+                      }
+                    }}
                     rows={2}
                     placeholder={`e.g. "${currentPrompts[promptIndex] || currentPrompts[0]}"`}
                     className="w-full text-sm sm:text-base text-stone-900 placeholder:text-stone-400 focus:outline-none resize-none bg-transparent leading-relaxed font-sans"
+                    aria-label="Search criteria in natural language. Press Enter to submit search, or Shift+Enter for new line."
                   />
                 </div>
 
@@ -332,16 +366,22 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                 <button
                   type="button"
                   onClick={handleSimulateVoice}
-                  title="Voice search prompt"
+                  title="Search with voice input"
                   className={`min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                     isListening
                       ? 'bg-rose-50 text-rose-600 border border-rose-200 animate-pulse'
                       : 'bg-stone-50 text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200/80'
                   }`}
-                  aria-label="Simulate voice search"
+                  aria-label={isListening ? "Listening to voice input..." : "Search with voice input"}
+                  aria-pressed={isListening}
                 >
-                  <Mic className="w-4 h-4" />
+                  <Mic className="w-4 h-4" aria-hidden="true" />
                 </button>
+              </div>
+
+              {/* Screen reader live notification */}
+              <div className="sr-only" aria-live="polite">
+                {isListening ? "Listening for your search prompt..." : ""}
               </div>
 
               {/* Dynamic Detected Concepts Bar: What we understood */}
@@ -382,10 +422,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                   <button
                     type="button"
                     onClick={handleSearchSubmit}
-                    className="flex-1 sm:flex-initial px-6 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap min-h-[44px]"
+                    className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 bg-[#0D9488] hover:bg-[#115E59] active:bg-teal-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-center min-h-[44px]"
                   >
                     <span>See places that match your priorities</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 shrink-0" />
                   </button>
                 </div>
               </div>
@@ -652,6 +692,75 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
               </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* FREQUENTLY ASKED QUESTIONS (FAQ) */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 sm:mt-24">
+        <div className="text-center mb-8 pb-3 border-b border-stone-200">
+          <span className="text-xs font-bold text-teal-800 uppercase tracking-wider block mb-1">
+            Parent Questions & Answers
+          </span>
+          <h2 className="font-editorial text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-600 mt-1 max-w-xl mx-auto font-sans leading-relaxed">
+            Essential facts for Chennai families navigating preschool admissions, school boards, fee disclosures, and commute logistics.
+          </p>
+        </div>
+
+        <div className="space-y-3 font-sans">
+          {HOME_FAQS.map((faq, idx) => {
+            const isOpen = openFaqIndex === idx;
+            return (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl border border-stone-200/90 overflow-hidden shadow-2xs transition-all hover:border-stone-300"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                  aria-expanded={isOpen}
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 text-stone-900 font-bold text-sm sm:text-base cursor-pointer hover:text-teal-900 transition-colors min-h-[48px]"
+                >
+                  <span className="leading-snug pr-2">{faq.question}</span>
+                  <div className="w-7 h-7 rounded-lg bg-[#FAF9F6] border border-stone-200 flex items-center justify-center shrink-0 text-stone-500">
+                    {isOpen ? (
+                      <ChevronUp className="w-4 h-4 text-teal-700" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-stone-400" />
+                    )}
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 text-xs sm:text-sm text-stone-600 leading-relaxed border-t border-stone-100 bg-[#FAF9F6]/40 animate-in fade-in duration-150">
+                    <p>{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Advisor Help prompt at bottom of FAQ */}
+        <div className="mt-8 p-4 sm:p-5 rounded-2xl bg-teal-50/70 border border-teal-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
+              <HelpCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <strong className="text-teal-950 font-bold block text-sm">Have a specific question about your child's cohort?</strong>
+              <span className="text-teal-900/80">Use our School Advisor for tailored recommendations and advice based on your family's priorities.</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenAdvisor}
+            className="px-4 py-2 bg-[#0D9488] hover:bg-[#115E59] text-white rounded-xl font-bold transition-colors shrink-0 shadow-2xs min-h-[40px] cursor-pointer"
+          >
+            Ask School Advisor
+          </button>
         </div>
       </section>
 

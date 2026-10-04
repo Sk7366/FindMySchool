@@ -19,6 +19,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
     setMobileMenuOpen(false);
   }, [location.pathname, location.search]);
 
+  // Handle Escape key to close mobile menu
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
   // Prevent body scrolling when mobile menu drawer is open
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -46,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdvisor }) => {
             <div className="w-8 h-8 rounded-lg bg-[#0D9488] flex items-center justify-center text-white font-editorial font-bold text-lg shadow-2xs group-hover:bg-[#115E59] transition-all transform group-hover:scale-105 shrink-0">
               F
             </div>
-            <span className="font-editorial font-bold text-xl sm:text-2xl tracking-tight text-stone-900 group-hover:text-teal-900 transition-colors">
+            <span className="font-editorial font-bold text-lg min-[360px]:text-xl sm:text-2xl tracking-tight text-stone-900 group-hover:text-teal-900 transition-colors">
               FindMySchool
             </span>
           </Link>

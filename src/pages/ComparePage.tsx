@@ -56,7 +56,7 @@ export const ComparePage: React.FC = () => {
     0,
     Math.min(1, comparisonSchools.length - 1),
   ]);
-  const [mobileViewStyle, setMobileViewStyle] = useState<'cards' | 'side-by-side'>('cards');
+  const [mobileViewStyle, setMobileViewStyle] = useState<'table' | 'cards' | 'side-by-side'>('table');
 
   const availableToAdd = CHENNAI_SCHOOLS.filter(
     (s) => !comparisonSchools.some((c) => c.id === s.id)
@@ -373,22 +373,30 @@ export const ComparePage: React.FC = () => {
 
           {/* Priority Factors Comparison Table highlighting differences */}
           <div className="overflow-x-auto rounded-2xl border border-stone-200">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#FAF9F6] text-stone-700 uppercase tracking-wider font-bold border-b border-stone-200">
+            <div className="md:hidden py-1.5 px-3 bg-teal-50/70 border-b border-teal-100 text-[11px] text-teal-900 font-semibold flex items-center justify-between">
+              <span>Swipe horizontally to compare all</span>
+              <span className="text-teal-700">← →</span>
+            </div>
+            <table className="w-full text-xs text-left min-w-[500px]">
+              <thead className="bg-[#FAF9F6] text-stone-700 uppercase tracking-wider font-bold border-b border-stone-200 sticky top-0 z-20">
                 <tr>
-                  <th className="py-3 px-4 w-44">Factor</th>
+                  <th className="py-3 px-4 w-44 sticky left-0 bg-[#FAF9F6] z-30 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4]">
+                    Factor
+                  </th>
                   {comparisonSchools.map((s) => (
-                    <th key={s.id} className="py-3 px-4 font-bold text-stone-900">
+                    <th key={s.id} className="py-3 px-4 font-bold text-stone-900 min-w-[140px]">
                       <span className="block truncate max-w-[170px]">{s.name}</span>
                     </th>
                   ))}
-                  <th className="py-3 px-4 w-28 text-center">Status</th>
+                  <th className="py-3 px-4 w-28 text-center min-w-[90px]">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 font-sans">
                 {/* Distance */}
                 <tr className={isDiff((s) => s.distanceKm) ? 'bg-amber-50/20' : ''}>
-                  <td className="py-3 px-4 font-bold text-stone-700">Distance</td>
+                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => s.distanceKm) ? 'bg-amber-50/95' : 'bg-white'}`}>
+                    Distance
+                  </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 font-medium text-stone-900 tabular-nums">
                       {s.distanceKm} km
@@ -401,7 +409,9 @@ export const ComparePage: React.FC = () => {
 
                 {/* Fee */}
                 <tr className={isDiff((s) => s.annualFeeMin) ? 'bg-amber-50/20' : ''}>
-                  <td className="py-3 px-4 font-bold text-stone-700">Fee</td>
+                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => s.annualFeeMin) ? 'bg-amber-50/95' : 'bg-white'}`}>
+                    Fee
+                  </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 font-bold text-stone-900 tabular-nums">
                       {formatFee(s.annualFeeMin)}
@@ -418,7 +428,9 @@ export const ComparePage: React.FC = () => {
                     isDiff((s) => s.curriculum?.[0] || s.pedagogy?.[0]) ? 'bg-amber-50/20' : ''
                   }
                 >
-                  <td className="py-3 px-4 font-bold text-stone-700">Board / Approach</td>
+                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => s.curriculum?.[0] || s.pedagogy?.[0]) ? 'bg-amber-50/95' : 'bg-white'}`}>
+                    Board / Approach
+                  </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 text-stone-800">
                       {s.institutionType === 'preschool'
@@ -435,7 +447,9 @@ export const ComparePage: React.FC = () => {
 
                 {/* Sports */}
                 <tr className={isDiff((s) => getNeutralSports(s)) ? 'bg-amber-50/20' : ''}>
-                  <td className="py-3 px-4 font-bold text-stone-700">Sports</td>
+                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => getNeutralSports(s)) ? 'bg-amber-50/95' : 'bg-white'}`}>
+                    Sports
+                  </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 text-stone-800">
                       {getNeutralSports(s)}
@@ -448,7 +462,9 @@ export const ComparePage: React.FC = () => {
 
                 {/* Transport */}
                 <tr className={isDiff((s) => s.hasTransport) ? 'bg-amber-50/20' : ''}>
-                  <td className="py-3 px-4 font-bold text-stone-700">Transport</td>
+                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => s.hasTransport) ? 'bg-amber-50/95' : 'bg-white'}`}>
+                    Transport
+                  </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 text-stone-800">
                       {s.hasTransport ? 'Available' : 'Not available'}
@@ -470,27 +486,36 @@ export const ComparePage: React.FC = () => {
       <div className="block md:hidden px-3.5 pt-6 space-y-4">
         {/* Mobile View Style Switcher */}
         {comparisonSchools.length >= 2 && (
-          <div className="flex p-1 bg-stone-200/60 rounded-xl text-xs font-bold">
+          <div className="flex p-1 bg-stone-200/60 rounded-xl text-xs font-bold gap-1">
+            <button
+              type="button"
+              onClick={() => setMobileViewStyle('table')}
+              className={`flex-1 py-2 text-center rounded-lg transition-all min-h-[44px] flex items-center justify-center gap-1 cursor-pointer ${
+                mobileViewStyle === 'table' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'text-stone-600'
+              }`}
+            >
+              <span>Scroll Table</span>
+            </button>
             <button
               type="button"
               onClick={() => setMobileViewStyle('cards')}
-              className={`flex-1 py-1.5 text-center rounded-lg transition-all ${
-                mobileViewStyle === 'cards' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600'
+              className={`flex-1 py-2 text-center rounded-lg transition-all min-h-[44px] flex items-center justify-center gap-1 cursor-pointer ${
+                mobileViewStyle === 'cards' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'text-stone-600'
               }`}
             >
-              Metric Cards
+              <span>Metric Cards</span>
             </button>
             <button
               type="button"
               onClick={() => setMobileViewStyle('side-by-side')}
-              className={`flex-1 py-1.5 text-center rounded-lg transition-all flex items-center justify-center gap-1 ${
+              className={`flex-1 py-2 text-center rounded-lg transition-all min-h-[44px] flex items-center justify-center gap-1 cursor-pointer ${
                 mobileViewStyle === 'side-by-side'
-                  ? 'bg-white text-stone-900 shadow-2xs'
+                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
                   : 'text-stone-600'
               }`}
             >
               <ArrowLeftRight className="w-3.5 h-3.5 text-teal-700" />
-              <span>Side-by-Side (2)</span>
+              <span>Dual (2)</span>
             </button>
           </div>
         )}
@@ -605,7 +630,7 @@ export const ComparePage: React.FC = () => {
                           Meals: <strong>{s.meals ? 'Available' : 'Not available'}</strong>
                         </div>
                         <div>
-                          Care Ratio: <strong>{s.childToCaregiverRatio || 'Information unavailable'}</strong>
+                          Care Ratio: <strong>{s.childToCaregiverRatio || 'Information not available'}</strong>
                         </div>
                         <div>
                           Timings: <strong>{s.timings || 'Needs confirmation'}</strong>
@@ -638,10 +663,10 @@ export const ComparePage: React.FC = () => {
                     <span className="font-bold text-stone-900 block truncate">{s.name}</span>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
                       <div>
-                        Board: <strong>{s.curriculum?.join(', ') || (s.institutionType === 'preschool' ? 'Information unavailable' : 'CBSE')}</strong>
+                        Board: <strong>{s.curriculum?.join(', ') || (s.institutionType === 'preschool' ? 'Information not available' : 'CBSE')}</strong>
                       </div>
                       <div>
-                        Grades: <strong>{s.grades || 'Information unavailable'}</strong>
+                        Grades: <strong>{s.grades || 'Information not available'}</strong>
                       </div>
                       <div>
                         Fee: <strong className="tabular-nums">{formatFee(s.annualFeeMin)}</strong>
@@ -741,8 +766,8 @@ export const ComparePage: React.FC = () => {
                   )}
                 </div>
                 <div className="grid grid-cols-2 divide-x divide-stone-100 text-center font-medium text-stone-800">
-                  <div className="text-[11px]">{schoolA.pedagogy?.[0] || schoolA.curriculum?.[0] || 'Information unavailable'}</div>
-                  <div className="text-[11px]">{schoolB.pedagogy?.[0] || schoolB.curriculum?.[0] || 'Information unavailable'}</div>
+                  <div className="text-[11px]">{schoolA.pedagogy?.[0] || schoolA.curriculum?.[0] || 'Information not available'}</div>
+                  <div className="text-[11px]">{schoolB.pedagogy?.[0] || schoolB.curriculum?.[0] || 'Information not available'}</div>
                 </div>
               </div>
 
@@ -779,16 +804,21 @@ export const ComparePage: React.FC = () => {
       </div>
 
       {/* ========================================================
-          DESKTOP COMPARISON MATRIX (hidden md:block)
+          FULL COMPARISON MATRIX (Horizontally scrollable on mobile)
           Preschool 10 factors + School 8 factors + Neutral labels
           ======================================================== */}
-      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+      <div className={`${mobileViewStyle === 'table' ? 'block' : 'hidden md:block'} max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 mt-6 sm:mt-8`}>
+        {/* Mobile horizontal scroll hint */}
+        <div className="md:hidden mb-2.5 py-1.5 px-3 bg-teal-50/80 border border-teal-100 rounded-xl text-[11px] text-teal-900 font-semibold flex items-center justify-between">
+          <span>← Swipe horizontally to compare institutions →</span>
+          <span className="text-teal-700 font-bold">{comparisonSchools.length} places</span>
+        </div>
         <div className="bg-white rounded-3xl border border-stone-200 overflow-x-auto shadow-sm">
-          <table className="w-full text-xs text-left border-collapse min-w-[750px]">
-            {/* Column Header: School Identity Cards */}
-            <thead>
+          <table className="w-full text-xs text-left border-collapse min-w-[620px]">
+            {/* Column Header: School Identity Cards (Sticky on vertical scroll) */}
+            <thead className="sticky top-16 z-20 bg-[#FAF9F6] shadow-2xs">
               <tr className="border-b border-stone-200 bg-[#FAF9F6]">
-                <th className="p-5 w-60 shrink-0 font-bold text-stone-700 uppercase tracking-wider text-[11px] align-top sticky left-0 bg-[#FAF9F6] z-20 border-r border-stone-200">
+                <th className="p-4 sm:p-5 w-44 sm:w-60 min-w-[140px] sm:min-w-[200px] shrink-0 font-bold text-stone-700 uppercase tracking-wider text-[10px] sm:text-[11px] align-top sticky left-0 bg-[#FAF9F6] z-30 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4]">
                   Comparison Metric
                 </th>
                 {comparisonSchools.map((school) => {
@@ -1052,7 +1082,7 @@ export const ComparePage: React.FC = () => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 tabular-nums font-bold text-stone-900">
-                    {s.childToCaregiverRatio || (s.studentTeacherRatio ? `${s.studentTeacherRatio} (School)` : 'Information unavailable')}
+                    {s.childToCaregiverRatio || (s.studentTeacherRatio ? `${s.studentTeacherRatio} (School)` : 'Information not available')}
                   </td>
                 ))}
               </tr>
@@ -1092,7 +1122,7 @@ export const ComparePage: React.FC = () => {
                     {s.curriculum && s.curriculum.length > 0
                       ? s.curriculum.join(', ')
                       : s.institutionType === 'preschool'
-                      ? 'Information unavailable (Preschool)'
+                      ? 'Information not available (Preschool)'
                       : 'CBSE'}
                   </td>
                 ))}
@@ -1108,7 +1138,7 @@ export const ComparePage: React.FC = () => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-900 font-medium">
-                    {s.grades || (s.ageRange ? `Ages ${s.ageRange.min}–${s.ageRange.max} yrs` : 'Information unavailable')}
+                    {s.grades || (s.ageRange ? `Ages ${s.ageRange.min}–${s.ageRange.max} yrs` : 'Information not available')}
                   </td>
                 ))}
               </tr>
