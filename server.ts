@@ -22,7 +22,7 @@ async function startServer() {
       llmEnabled:
         process.env.ENABLE_LLM_QUERY_PARSER !== 'false' &&
         Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     });
   });
 
@@ -45,7 +45,7 @@ async function startServer() {
         });
       }
 
-      const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || '3500', 10);
+      const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || '6000', 10);
       const result = await parseQueryWithGemini({
         query: query.trim(),
         contextLocation: typeof contextLocation === 'string' ? contextLocation.trim() : undefined,

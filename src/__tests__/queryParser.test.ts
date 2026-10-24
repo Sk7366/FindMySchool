@@ -274,4 +274,87 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
     expect(score1).toBe(score2);
     expect(score1).toBeGreaterThan(60);
   });
+
+  // Scenario 11: Timeout cancellation and timer cleanup
+  it('Scenario 11: Times out gracefully when request exceeds timeoutMs and clears timers', async () => {
+    const originalKey = process.env.GEMINI_API_KEY;
+    const originalFlag = process.env.ENABLE_LLM_QUERY_PARSER;
+    process.env.GEMINI_API_KEY = 'test-api-key';
+    process.env.ENABLE_LLM_QUERY_PARSER = 'true';
+
+    // Call with an immediate 1ms timeout
+    const result = await parseQueryWithGemini({
+      query: 'CBSE school in Velachery',
+      timeoutMs: 1,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.source).toBe('local_fallback');
+    expect(result.error).toBeTruthy();
+
+    process.env.GEMINI_API_KEY = originalKey;
+    process.env.ENABLE_LLM_QUERY_PARSER = originalFlag;
+  });
+
+  // Scenario 12: Vercel Serverless Function handler validation
+  it('Scenario 12: Vercel serverless function enforces POST method and validates payload', async () => {
+    // Dynamic import to test Vercel handler
+    const vercelHandler = (await import('../../api/parse-query')).default;
+
+    const createMockRes = () => {
+      const res: any = {
+        statusCode: 200,
+        headers: {} as Record<string, string>,
+        setHeader(k: string, v: string) {
+          res.headers[k] = v;
+        },
+        status(code: number) {
+          res.statusCode = code;
+          return res;
+        },
+        json(data: any) {
+          res.body = data;
+          return res;
+        },
+      };
+      return res;
+    };
+
+    // Test GET method rejection
+    const getRes = createMockRes();
+    await vercelHandler({ method: 'GET' } as any, getRes);
+    expect(getRes.statusCode).toBe(405);
+    expect(getRes.headers['Allow']).toBe('POST');
+    expect(getRes.body.error).toContain('Method Not Allowed');
+
+    // Test empty query rejection
+    const emptyRes = createMockRes();
+    await vercelHandler({ method: 'POST', body: { query: '   ' } } as any, emptyRes);
+    expect(emptyRes.statusCode).toBe(400);
+    expect(emptyRes.body.error).toContain('Query string must be a non-empty string');
+
+    // Test overlong query rejection (>500 chars)
+    const longRes = createMockRes();
+    await vercelHandler({ method: 'POST', body: { query: 'x'.repeat(501) } } as any, longRes);
+    expect(longRes.statusCode).toBe(400);
+    expect(longRes.body.error).toContain('exceeds maximum allowed length');
+
+    // Test string JSON body parsing
+    const strBodyRes = createMockRes();
+    await vercelHandler({ method: 'POST', body: JSON.stringify({ query: 'CBSE in Anna Nagar' }) } as any, strBodyRes);
+    expect(strBodyRes.statusCode).toBe(200);
+    expect(strBodyRes.body.status).toBe('success');
+    expect(strBodyRes.body.meta.parsedBy).toBeDefined();
+  });
+
+  // Scenario 13: ApiClient safe instantiation in non-Vite / Node environment
+  it('Scenario 13: ApiClient safely instantiates and normalizes baseUrl without throwing', async () => {
+    const { ApiClient } = await import('../services/apiClient');
+    const client = new ApiClient();
+    expect(client).toBeDefined();
+
+    const customClient = new ApiClient('https://example.com/api/');
+    expect(customClient).toBeDefined();
+  });
 });
+

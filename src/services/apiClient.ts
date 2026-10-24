@@ -27,12 +27,27 @@ export class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = (baseUrl || (import.meta.env.VITE_API_BASE_URL as string) || '/api').replace(/\/+$/, '');
+    let envBaseUrl: string | undefined;
+    try {
+      if (typeof import.meta !== 'undefined' && (import.meta as any)?.env) {
+        envBaseUrl = (import.meta as any).env.VITE_API_BASE_URL;
+      }
+    } catch {
+      // In non-Vite or Node environments where import.meta is not accessible
+    }
+    if (!envBaseUrl && typeof process !== 'undefined' && process?.env?.VITE_API_BASE_URL) {
+      envBaseUrl = process.env.VITE_API_BASE_URL;
+    }
+    this.baseUrl = (baseUrl || envBaseUrl || '/api').replace(/\/+$/, '');
   }
 
   private buildUrl(path: string, params?: Record<string, any>): string {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const url = new URL(`${this.baseUrl}${cleanPath}`, window.location.origin);
+    const origin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'http://localhost:3000';
+    const url = new URL(`${this.baseUrl}${cleanPath}`, origin);
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {

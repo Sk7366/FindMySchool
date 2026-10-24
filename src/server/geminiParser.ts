@@ -273,7 +273,7 @@ export function sanitizeParsedData(raw: any): ParsedQueryData {
  */
 export async function parseQueryWithGemini(options: ParseQueryOptions): Promise<ParseQueryResult> {
   const startTime = Date.now();
-  const { query, contextLocation, timeoutMs = 3500 } = options;
+  const { query, contextLocation, timeoutMs = 6000 } = options;
 
   // Feature flag check
   const isEnabled = process.env.ENABLE_LLM_QUERY_PARSER !== 'false';
@@ -297,11 +297,21 @@ export async function parseQueryWithGemini(options: ParseQueryOptions): Promise<
     };
   }
 
-  // Model selection
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+  // Model selection: default to gemini-3.5-flash (operational model confirmed in environment audit)
+  const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+
+  const abortController = new AbortController();
+  let timer: NodeJS.Timeout | null = null;
 
   try {
-    const ai = new GoogleGenAI();
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
 
     const systemInstruction = `You are a precision search intent extractor for FindMySchool, an education discovery portal for Chennai, India.
 Your responsibility:
@@ -329,7 +339,14 @@ Your responsibility:
       ? `Parent query: "${query}"\nUser location context: "${contextLocation}"`
       : `Parent query: "${query}"`;
 
-    // Timeout via Promise.race
+    // Timeout via Promise.race with active AbortSignal cancellation
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        abortController.abort();
+        reject(new Error(`LLM parse request timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
     const callPromise = ai.models.generateContent({
       model: modelName,
       contents: userPrompt,
@@ -338,15 +355,12 @@ Your responsibility:
         responseMimeType: 'application/json',
         responseSchema: queryExtractionSchema,
         temperature: 0.1,
+        abortSignal: abortController.signal,
       },
     });
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
-        clearTimeout(timer);
-        reject(new Error(`LLM parse request timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-    });
+    // Prevent unhandled promise rejection if abort completes after timeoutPromise settled
+    callPromise.catch(() => {});
 
     const response = await Promise.race([callPromise, timeoutPromise]);
     const rawText = response.text;
@@ -366,11 +380,23 @@ Your responsibility:
       executionTimeMs: Date.now() - startTime,
     };
   } catch (err: any) {
+    const isTimeout =
+      abortController.signal.aborted ||
+      err?.name === 'AbortError' ||
+      err?.message?.includes('timed out');
+
     return {
       success: false,
       source: 'local_fallback',
-      error: err?.message || 'Failed to parse query with LLM',
+      error: isTimeout
+        ? `LLM parse request timed out after ${timeoutMs}ms`
+        : err?.message || 'Failed to parse query with LLM',
       executionTimeMs: Date.now() - startTime,
     };
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
   }
 }
