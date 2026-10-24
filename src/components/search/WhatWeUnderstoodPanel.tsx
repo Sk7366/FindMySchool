@@ -13,6 +13,7 @@ import {
   Heart, 
   TreePine, 
   Bus,
+  AlertCircle,
   Sparkles,
   School as SchoolIcon
 } from 'lucide-react';
@@ -24,7 +25,15 @@ interface WhatWeUnderstoodPanelProps {
 }
 
 export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ onOpenPriorityTuner }) => {
-  const { searchState, updateFilters, setEducationTarget } = useSearch();
+  const { 
+    searchState, 
+    updateFilters, 
+    setEducationTarget,
+    parsingStatus,
+    parsingSource,
+    clarificationMessage,
+    dismissClarification 
+  } = useSearch();
   const { filters, rawQuery } = searchState;
   const [isExpanded, setIsExpanded] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -54,11 +63,23 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
             </h3>
           </div>
 
-          {/* Calm, parent-friendly confidence pill */}
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-semibold text-teal-900">
-            <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
-            <span>We're fairly confident we understood your preferences</span>
-          </div>
+          {/* Accurate parsing source status badge */}
+          {parsingStatus === 'parsing_llm' ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-900 animate-pulse">
+              <Sparkles className="w-3.5 h-3.5 text-amber-700 animate-spin" aria-hidden="true" />
+              <span>Refining with Gemini AI...</span>
+            </div>
+          ) : parsingSource === 'llm' ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[11px] font-semibold text-violet-900">
+              <Sparkles className="w-3.5 h-3.5 text-violet-700" aria-hidden="true" />
+              <span>AI-Assisted Query Understanding</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-semibold text-teal-900">
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
+              <span>Keyword Filter Matching (Local)</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-stone-400">
@@ -72,6 +93,26 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
       {/* Expanded content */}
       {isExpanded && (
         <div id="understood-panel-content" aria-labelledby="understood-panel-header" className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 border-t border-stone-100 font-sans space-y-4">
+          {/* Clarification prompt if model detected ambiguity */}
+          {clarificationMessage && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start justify-between gap-3 text-amber-900">
+              <div className="flex items-start gap-2 text-xs">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-950">Clarification Note</p>
+                  <p className="text-amber-800 mt-0.5">{clarificationMessage}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={dismissClarification}
+                className="text-amber-700 hover:text-amber-900 text-xs font-semibold px-2 py-1 rounded bg-amber-100/60 hover:bg-amber-100 cursor-pointer shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           <p className="text-xs text-stone-600 leading-relaxed">
             Based on what you told us, we extracted these requirements. Every item can be adjusted or removed to refine your matches:
           </p>

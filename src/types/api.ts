@@ -123,3 +123,33 @@ export interface FacilitySummary {
 }
 
 export type GetFacilitiesResponse = ApiResponse<FacilitySummary[]>;
+
+// ==========================================
+// 7. POST /api/parse-query (LLM Natural Language Understanding)
+// ==========================================
+export interface ParseQueryRequest {
+  query: string;
+  contextLocation?: string;
+}
+
+export interface ParsedQueryData {
+  educationTarget: EducationTargetType;
+  childAge?: number | null;
+  requestedProgram?: PreschoolProgram | null;
+  grade?: string | null;
+  location?: string | null;
+  radiusKm?: number | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  curriculum?: Curriculum[];
+  pedagogy?: string[];
+  facilities?: string[];
+  daycare?: boolean | null;
+  preferredTimings?: 'morning' | 'full_day' | 'extended' | null;
+  mustHavePreferences?: string[];
+  niceToHavePreferences?: string[];
+  clarificationNeeded?: string | null;
+  confidence?: 'high' | 'medium' | 'needs_clarification';
+}
+
+export type ParseQueryResponse = ApiResponse<ParsedQueryData>;
