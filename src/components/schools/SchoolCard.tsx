@@ -33,7 +33,7 @@ import { useShortlist } from '../../context/ShortlistContext';
 import { useSearch } from '../../context/SearchContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../../utils/categoryColors';
 import { VerificationBadge } from '../common/VerificationBadge';
-import { formatMatchReason } from '../../utils/matchProvenance';
+import { formatMatchReason, generateDynamicMatchReasons } from '../../utils/matchProvenance';
 import { SearchFilters } from '../../types/search';
 
 interface SchoolCardProps {
@@ -45,7 +45,7 @@ interface SchoolCardProps {
  * Prioritizes facilities that directly relate to the user's search query or active filters.
  * Returns the top 3-4 most relevant facilities.
  */
-function getPrioritizedFacilities(
+export function getPrioritizedFacilities(
   school: School,
   rawQuery?: string,
   filters?: SearchFilters
@@ -94,15 +94,15 @@ function getPrioritizedFacilities(
     scoringTerms.push({ pattern: /wellness|counselling|psycholog|special|remedial/i, boost: 40 });
   }
 
-  // Pool of candidate facilities
+  // Pool of candidate facilities strictly grounded in school data
   const candidates: Facility[] = [...allFacilities];
 
-  // If this is a preschool with extended hours or daycare and the query touches it, ensure synthetic items exist if not already present
+  // Include daycare / extended hours only if the school's structured data explicitly confirms it
   if (school.institutionType === 'preschool' || school.institutionType === 'combined') {
     const hasExtHoursInFac = candidates.some((f) => /extended|hours|timing/i.test(f.name));
-    if (!hasExtHoursInFac && (school.extendedHours || query.includes('daycare') || query.includes('extended'))) {
+    if (!hasExtHoursInFac && school.extendedHours === true) {
       candidates.push({
-        id: 'synth-ext-hours',
+        id: `${school.id}-ext-hours`,
         name: 'Extended Hours',
         category: 'Wellness & Care',
         available: true,
@@ -112,38 +112,14 @@ function getPrioritizedFacilities(
     }
 
     const hasDaycareInFac = candidates.some((f) => /daycare|care|nap/i.test(f.name));
-    if (!hasDaycareInFac && (school.daycare || query.includes('daycare'))) {
+    if (!hasDaycareInFac && school.daycare === true) {
       candidates.push({
-        id: 'synth-daycare',
+        id: `${school.id}-daycare`,
         name: 'Daycare & Care Wing',
         category: 'Wellness & Care',
         available: true,
         highlight: 'Nurturing daycare with supervised rest pods',
         iconName: 'HeartHandshake',
-      });
-    }
-
-    const hasMontessoriInFac = candidates.some((f) => /montessori/i.test(f.name));
-    if (!hasMontessoriInFac && (school.pedagogy?.includes('Montessori') || query.includes('montessori'))) {
-      candidates.push({
-        id: 'synth-montessori',
-        name: 'Montessori Activity Lab',
-        category: 'STEM & Tech',
-        available: true,
-        highlight: 'Authentic child-paced sensory apparatus',
-        iconName: 'Cpu',
-      });
-    }
-
-    const hasOutdoorInFac = candidates.some((f) => /outdoor|garden|play/i.test(f.name));
-    if (!hasOutdoorInFac && (school.outdoorPlay || query.includes('outdoor') || query.includes('play'))) {
-      candidates.push({
-        id: 'synth-outdoor',
-        name: 'Outdoor Play Garden',
-        category: 'Infrastructure',
-        available: true,
-        highlight: 'Shaded sand pit and gross motor play equipment',
-        iconName: 'TreePine',
       });
     }
   }
@@ -214,8 +190,10 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
     return getPrioritizedFacilities(school, searchState.rawQuery, searchState.filters);
   }, [school, searchState.rawQuery, searchState.filters]);
 
-  // Match reasons management
-  const allReasons = school.matchReasons || [];
+  // Match reasons management — dynamically generated and query-aware
+  const allReasons = useMemo(() => {
+    return generateDynamicMatchReasons(school, searchState.filters, searchState.rawQuery);
+  }, [school, searchState.filters, searchState.rawQuery]);
   const allFormattedExplanations = useMemo(() => {
     return allReasons.map(formatMatchReason);
   }, [allReasons]);
@@ -501,7 +479,7 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                     Programs: <strong className="text-stone-900">{school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ') || 'Pre-KG · LKG · UKG'}</strong>
                   </p>
                   <div className="flex items-center gap-2 text-[10px] text-stone-600 font-medium">
-                    <span>Approach: {school.pedagogy?.join(' · ') || 'Montessori & Play-way'}</span>
+                    <span>Approach: {school.pedagogy?.join(' · ') || 'Early Childhood Foundation'}</span>
                     {school.daycare && <span className="text-teal-800 font-bold">· Daycare available</span>}
                   </div>
                 </div>

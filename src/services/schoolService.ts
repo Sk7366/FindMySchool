@@ -15,6 +15,7 @@ import {
 } from '../types/api';
 import { CHENNAI_SCHOOLS, CHENNAI_NEIGHBOURHOODS } from '../data/schools';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
+import { generateDynamicMatchReasons } from '../utils/matchProvenance';
 import { apiClient } from './apiClient';
 import { SearchFilters, EducationTargetType } from '../types/search';
 
@@ -71,9 +72,23 @@ function filterMockSchools(schools: School[], params?: GetSchoolsParams): School
       if (!school.pedagogy?.includes(params.pedagogy)) return false;
     }
 
-    // Budget
-    if (params.maxBudget && school.annualFeeMin && school.annualFeeMin > params.maxBudget) {
-      return false;
+    // Budget — Program-aware when target is preschool
+    if (params.maxBudget) {
+      if (params.target === 'preschool') {
+        if (school.preschoolProgramDetails && school.preschoolProgramDetails.length > 0) {
+          const fees = school.preschoolProgramDetails
+            .map((d) => d.annualFee ?? (d.monthlyFee ? d.monthlyFee * 12 : undefined))
+            .filter((f): f is number => typeof f === 'number' && f > 0);
+          if (fees.length > 0) {
+            const minProgFee = Math.min(...fees);
+            if (minProgFee > params.maxBudget) return false;
+          }
+        } else if (school.annualFeeMin && school.annualFeeMin > params.maxBudget) {
+          return false;
+        }
+      } else if (school.annualFeeMin && school.annualFeeMin > params.maxBudget) {
+        return false;
+      }
     }
 
     // Query text match
@@ -130,12 +145,14 @@ class MockSchoolService implements ISchoolService {
     await new Promise((r) => setTimeout(r, 50));
     const { filters = {}, sortBy = 'best_match' } = request;
 
-    // Apply fit scoring and filters
+    // Apply fit scoring and dynamic match reasons
     const scoredSchools = CHENNAI_SCHOOLS.map((school) => {
       const score = calculateSchoolFitScore(school, filters as SearchFilters);
+      const dynamicReasons = generateDynamicMatchReasons(school, filters as SearchFilters, request.query);
       return {
         ...school,
         matchScore: score,
+        matchReasons: dynamicReasons,
       };
     });
 
