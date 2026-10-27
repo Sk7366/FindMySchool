@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { sanitizeParsedData, parseQueryWithGemini } from '../server/geminiParser';
-import { parseQueryLocally, mapParsedDataToFilters, parseQuery } from '../services/queryParserService';
+import { parseQueryLocally, mapParsedDataToFilters, parseQuery, CLIENT_LLM_TIMEOUT_MS } from '../services/queryParserService';
 import { DEFAULT_FILTERS } from '../context/SearchContext';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 import { School } from '../types/school';
+import { apiClient } from '../services/apiClient';
+import { createApp } from '../../server';
+import type { AddressInfo } from 'net';
 
 describe('LLM Query Understanding & Sanitization Layer', () => {
   beforeEach(() => {
@@ -345,7 +348,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
     expect(strBodyRes.statusCode).toBe(200);
     expect(strBodyRes.body.status).toBe('success');
     expect(strBodyRes.body.meta.parsedBy).toBeDefined();
-  });
+  }, 15000);
 
   // Scenario 13: ApiClient safe instantiation in non-Vite / Node environment
   it('Scenario 13: ApiClient safely instantiates and normalizes baseUrl without throwing', async () => {
@@ -355,6 +358,177 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
     const customClient = new ApiClient('https://example.com/api/');
     expect(customClient).toBeDefined();
+  });
+
+  // Scenario 14: Client timeout configuration and abort handling fallback
+  it('Scenario 14: Client uses 6500ms timeout with 0 retries and falls back cleanly on timeout', async () => {
+    expect(CLIENT_LLM_TIMEOUT_MS).toBe(6500);
+
+    const postSpy = vi.spyOn(apiClient, 'post').mockRejectedValueOnce(new Error('Request timed out after 6500ms'));
+
+    const result = await parseQuery('CBSE school in Anna Nagar under 1.5 lakh', DEFAULT_FILTERS);
+    expect(postSpy).toHaveBeenCalledWith(
+      '/parse-query',
+      { query: 'CBSE school in Anna Nagar under 1.5 lakh', contextLocation: undefined },
+      { timeoutMs: 6500, retries: 0 }
+    );
+    // Gracefully falls back to local deterministic parser without throwing
+    expect(result.source).toBe('local_fallback');
+    expect(result.filters.curriculums).toContain('CBSE');
+    expect(result.filters.location).toBe('Anna Nagar & Mogappair');
+    expect(result.filters.budgetMax).toBe(150000);
+  });
+
+  // Scenario 15: Client accepts slow response finishing within the timeout window
+  it('Scenario 15: Client accepts slow responses finishing within 6500ms window as llm source', async () => {
+    vi.spyOn(apiClient, 'post').mockImplementationOnce(async () => {
+      // Simulate server execution delay within 6500ms
+      await new Promise((r) => setTimeout(r, 20));
+      return {
+        status: 'success',
+        data: {
+          educationTarget: 'preschool',
+          childAge: 3,
+          location: 'Velachery & Guindy',
+          pedagogy: ['Montessori'],
+          confidence: 'high',
+          mustHavePreferences: ['Montessori', 'Velachery'],
+          niceToHavePreferences: [],
+        },
+        meta: {
+          parsedBy: 'llm',
+          executionTimeMs: 4200,
+        },
+      };
+    });
+
+    const result = await parseQuery('Montessori in Velachery', DEFAULT_FILTERS);
+    expect(result.source).toBe('llm');
+    expect(result.filters.preschool.pedagogy).toContain('Montessori');
+    expect(result.filters.location).toBe('Velachery & Guindy');
+    expect(result.filters.preschool.ageYears).toBe(3);
+  });
+
+  // Scenario 16: Express dev server rejects non-POST methods with HTTP 405 and Allow header
+  it('Scenario 16: Express dev server rejects non-POST requests to /api/parse-query with 405 and Allow: POST header', async () => {
+    const app = createApp();
+    const server = app.listen(0);
+    const port = (server.address() as AddressInfo).port;
+    const url = `http://127.0.0.1:${port}/api/parse-query`;
+
+    try {
+      for (const method of ['GET', 'PUT', 'DELETE', 'PATCH']) {
+        const res = await fetch(url, { method });
+        expect(res.status).toBe(405);
+        expect(res.headers.get('allow')).toBe('POST');
+        const body = await res.json();
+        expect(body).toEqual({
+          status: 'error',
+          error: 'Method Not Allowed. Only POST requests are supported.',
+        });
+      }
+    } finally {
+      server.close();
+    }
+  });
+
+  // Scenario 17: Express dev server handles malformed JSON request bodies with HTTP 400
+  it('Scenario 17: Express dev server handles malformed JSON request bodies with HTTP 400 without leaking stack traces', async () => {
+    const app = createApp();
+    const server = app.listen(0);
+    const port = (server.address() as AddressInfo).port;
+    const url = `http://127.0.0.1:${port}/api/parse-query`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{"query": "unclosed json payload',
+      });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toEqual({
+        status: 'error',
+        error: 'Invalid JSON',
+      });
+      // Ensure no stack traces or server internals are exposed
+      expect((body as any).stack).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
+  // Scenario 18: Express dev server processes valid POST requests and rejects empty/oversized queries
+  it('Scenario 18: Express dev server validates query payloads and processes valid requests', async () => {
+    const app = createApp();
+    const server = app.listen(0);
+    const port = (server.address() as AddressInfo).port;
+    const url = `http://127.0.0.1:${port}/api/parse-query`;
+
+    try {
+      // Empty query rejected with 400
+      const emptyRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: '   ' }),
+      });
+      expect(emptyRes.status).toBe(400);
+      const emptyBody = await emptyRes.json();
+      expect(emptyBody.error).toContain('Query string must be a non-empty string');
+
+      // Oversized query (>500 chars) rejected with 400
+      const longRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'x'.repeat(501) }),
+      });
+      expect(longRes.status).toBe(400);
+      const longBody = await longRes.json();
+      expect(longBody.error).toContain('exceeds maximum allowed length');
+
+      // Valid query returns 200 with JSON structure
+      const validRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'CBSE school in Anna Nagar' }),
+      });
+      expect(validRes.status).toBe(200);
+      const validBody = await validRes.json();
+      expect(validBody.status).toBe('success');
+      expect(validBody.meta?.parsedBy).toBeDefined();
+    } finally {
+      server.close();
+    }
+  }, 15000);
+
+  // Scenario 19: Express dev server and Vercel handler parity
+  it('Scenario 19: Express dev server and Vercel handler maintain HTTP method and error response parity', async () => {
+    const vercelHandler = (await import('../../api/parse-query')).default;
+    const app = createApp();
+    const server = app.listen(0);
+    const port = (server.address() as AddressInfo).port;
+
+    try {
+      const expressRes = await fetch(`http://127.0.0.1:${port}/api/parse-query`, { method: 'GET' });
+      const expressBody = await expressRes.json();
+
+      const vercelMockRes: any = {
+        statusCode: 200,
+        headers: {},
+        setHeader(k: string, v: string) { this.headers[k] = v; },
+        status(c: number) { this.statusCode = c; return this; },
+        json(d: any) { this.body = d; return this; },
+      };
+      await vercelHandler({ method: 'GET' } as any, vercelMockRes);
+
+      expect(expressRes.status).toBe(405);
+      expect(vercelMockRes.statusCode).toBe(405);
+      expect(expressRes.headers.get('allow')).toBe('POST');
+      expect(vercelMockRes.headers['Allow']).toBe('POST');
+      expect(expressBody.error).toBe(vercelMockRes.body.error);
+    } finally {
+      server.close();
+    }
   });
 });
 

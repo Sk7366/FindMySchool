@@ -7,12 +7,22 @@ import { parseQueryWithGemini } from './src/server/geminiParser';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
+export function createApp() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
-  const isProduction = process.env.NODE_ENV === 'production';
 
   app.use(express.json({ limit: '50kb' }));
+
+  // Handle malformed JSON request bodies without leaking stack traces or internal details
+  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const errorObj = err as { status?: number; statusCode?: number; body?: unknown };
+    if (err instanceof SyntaxError && (errorObj.status === 400 || errorObj.statusCode === 400) && 'body' in err) {
+      return res.status(400).json({
+        status: 'error',
+        error: 'Invalid JSON',
+      });
+    }
+    next(err);
+  });
 
   // Health check endpoint
   app.get('/api/health', (_req, res) => {
@@ -82,6 +92,23 @@ async function startServer() {
     }
   });
 
+  // Explicitly reject non-POST requests to /api/parse-query
+  app.all('/api/parse-query', (_req, res) => {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({
+      status: 'error',
+      error: 'Method Not Allowed. Only POST requests are supported.',
+    });
+  });
+
+  return app;
+}
+
+export async function startServer() {
+  const app = createApp();
+  const PORT = Number(process.env.PORT) || 3000;
+  const isProduction = process.env.NODE_ENV === 'production';
+
   // Vite development middleware vs production static files
   if (!isProduction) {
     const { createServer } = await import('vite');
@@ -98,9 +125,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`FindMySchool server running on http://0.0.0.0:${PORT}`);
   });
+
+  return { app, server };
 }
 
-startServer();
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  startServer();
+}

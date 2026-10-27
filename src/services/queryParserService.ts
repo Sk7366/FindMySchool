@@ -265,6 +265,8 @@ export function mapParsedDataToFilters(
   return next;
 }
 
+export const CLIENT_LLM_TIMEOUT_MS = 6500;
+
 /**
  * Attempts to parse user query via backend Gemini API with strict timeout and fallback
  */
@@ -287,7 +289,7 @@ export async function parseQuery(
     const response = await apiClient.post<ParsedQueryData | null>(
       '/parse-query',
       { query, contextLocation },
-      { timeoutMs: 3500, retries: 0 }
+      { timeoutMs: CLIENT_LLM_TIMEOUT_MS, retries: 0 }
     );
 
     if (response?.data && response.meta?.parsedBy === 'llm') {
