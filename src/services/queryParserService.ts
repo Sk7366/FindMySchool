@@ -268,7 +268,7 @@ export function mapParsedDataToFilters(
 export const CLIENT_LLM_TIMEOUT_MS = 6500;
 
 /**
- * Attempts to parse user query via backend Gemini API with strict timeout and fallback
+ * Attempts to parse user query via backend LLM API with strict timeout and fallback
  */
 export async function parseQuery(
   query: string,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sanitizeParsedData, parseQueryWithGemini } from '../server/geminiParser';
+import { sanitizeParsedData, parseQueryWithGroq } from '../server/groqParser';
 import { parseQueryLocally, mapParsedDataToFilters, parseQuery, CLIENT_LLM_TIMEOUT_MS } from '../services/queryParserService';
 import { DEFAULT_FILTERS } from '../context/SearchContext';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
@@ -140,16 +140,27 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
   });
 
   // Scenario 7: Missing API key or disabled flag triggers local fallback
-  it('Scenario 7: Returns local_fallback if ENABLE_LLM_QUERY_PARSER is false', async () => {
+  it('Scenario 7: Returns local_fallback if ENABLE_LLM_QUERY_PARSER is false or GROQ_API_KEY is missing', async () => {
     const originalFlag = process.env.ENABLE_LLM_QUERY_PARSER;
-    process.env.ENABLE_LLM_QUERY_PARSER = 'false';
+    const originalKey = process.env.GROQ_API_KEY;
 
-    const result = await parseQueryWithGemini({ query: 'Montessori near Velachery' });
-    expect(result.success).toBe(false);
-    expect(result.source).toBe('local_fallback');
-    expect(result.error).toContain('disabled');
+    // Disabled flag
+    process.env.ENABLE_LLM_QUERY_PARSER = 'false';
+    const resultDisabled = await parseQueryWithGroq({ query: 'Montessori near Velachery' });
+    expect(resultDisabled.success).toBe(false);
+    expect(resultDisabled.source).toBe('local_fallback');
+    expect(resultDisabled.error).toContain('disabled');
+
+    // Missing key
+    process.env.ENABLE_LLM_QUERY_PARSER = 'true';
+    delete process.env.GROQ_API_KEY;
+    const resultNoKey = await parseQueryWithGroq({ query: 'Montessori near Velachery' });
+    expect(resultNoKey.success).toBe(false);
+    expect(resultNoKey.source).toBe('local_fallback');
+    expect(resultNoKey.error).toContain('GROQ_API_KEY is not configured');
 
     process.env.ENABLE_LLM_QUERY_PARSER = originalFlag;
+    process.env.GROQ_API_KEY = originalKey;
   });
 
   // Scenario 8: Local parser handles preschool, school, combined queries deterministically
@@ -280,22 +291,27 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
   // Scenario 11: Timeout cancellation and timer cleanup
   it('Scenario 11: Times out gracefully when request exceeds timeoutMs and clears timers', async () => {
-    const originalKey = process.env.GEMINI_API_KEY;
+    const originalKey = process.env.GROQ_API_KEY;
     const originalFlag = process.env.ENABLE_LLM_QUERY_PARSER;
-    process.env.GEMINI_API_KEY = 'test-api-key';
+    process.env.GROQ_API_KEY = 'test-groq-key';
     process.env.ENABLE_LLM_QUERY_PARSER = 'true';
 
-    // Call with an immediate 1ms timeout
-    const result = await parseQueryWithGemini({
+    // Mock fetch to simulate a network call that hangs longer than timeoutMs
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(resolve, 500)) as any
+    );
+
+    // Call with an immediate 5ms timeout
+    const result = await parseQueryWithGroq({
       query: 'CBSE school in Velachery',
-      timeoutMs: 1,
+      timeoutMs: 5,
     });
 
     expect(result.success).toBe(false);
     expect(result.source).toBe('local_fallback');
-    expect(result.error).toBeTruthy();
+    expect(result.error).toContain('timed out');
 
-    process.env.GEMINI_API_KEY = originalKey;
+    process.env.GROQ_API_KEY = originalKey;
     process.env.ENABLE_LLM_QUERY_PARSER = originalFlag;
   });
 
@@ -530,5 +546,218 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
       server.close();
     }
   });
+
+  // Scenario 20: Successful Groq query parsing via mocked Chat Completions API
+  it('Scenario 20: Parses query successfully via Groq Chat Completions API', async () => {
+    const originalKey = process.env.GROQ_API_KEY;
+    const originalFlag = process.env.ENABLE_LLM_QUERY_PARSER;
+    process.env.GROQ_API_KEY = 'gsk_test_mock_key';
+    process.env.ENABLE_LLM_QUERY_PARSER = 'true';
+
+    const mockGroqResponse = {
+      id: 'chatcmpl-test-123',
+      model: 'llama-3.3-70b-versatile',
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: JSON.stringify({
+              educationTarget: 'preschool',
+              childAge: 3,
+              requestedProgram: 'nursery',
+              location: 'Velachery',
+              pedagogy: ['Montessori'],
+              daycare: true,
+              mustHavePreferences: ['Montessori', 'Velachery', 'Preschool for 3yo'],
+              niceToHavePreferences: ['Daycare'],
+              confidence: 'high',
+            }),
+          },
+          finish_reason: 'stop',
+        },
+      ],
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockGroqResponse,
+    } as any);
+
+    const result = await parseQueryWithGroq({
+      query: 'Montessori preschool for 3-year-old near Velachery with daycare',
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const calledUrl = fetchSpy.mock.calls[0][0];
+    const calledInit = fetchSpy.mock.calls[0][1] as RequestInit;
+
+    expect(calledUrl).toContain('https://api.groq.com/openai/v1/chat/completions');
+    expect(calledInit.method).toBe('POST');
+    expect((calledInit.headers as any)['Authorization']).toBe('Bearer gsk_test_mock_key');
+    expect(result.success).toBe(true);
+    expect(result.source).toBe('llm');
+    expect(result.model).toBe('llama-3.3-70b-versatile');
+    expect(result.parsed).toBeDefined();
+    expect(result.parsed?.educationTarget).toBe('preschool');
+    expect(result.parsed?.childAge).toBe(3);
+    expect(result.parsed?.location).toBe('Velachery & Guindy');
+    expect(result.parsed?.pedagogy).toContain('Montessori');
+    expect(result.parsed?.daycare).toBe(true);
+
+    process.env.GROQ_API_KEY = originalKey;
+    process.env.ENABLE_LLM_QUERY_PARSER = originalFlag;
+  });
+
+  // Scenario 21: Groq provider rate limiting (HTTP 429) triggers clean local fallback
+  it('Scenario 21: Groq rate limit error (429) triggers clean local fallback without throwing', async () => {
+    const originalKey = process.env.GROQ_API_KEY;
+    process.env.GROQ_API_KEY = 'gsk_test_mock_key';
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+      json: async () => ({
+        error: {
+          message: 'Rate limit exceeded: please slow down requests',
+          type: 'tokens',
+          code: 'rate_limit_exceeded',
+        },
+      }),
+    } as any);
+
+    const result = await parseQueryWithGroq({
+      query: 'CBSE school in Anna Nagar',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.source).toBe('local_fallback');
+    expect(result.error).toContain('429');
+    expect(result.error).toContain('rate limit');
+
+    process.env.GROQ_API_KEY = originalKey;
+  });
+
+  // Scenario 22: Groq provider authentication error (HTTP 401) and server error (HTTP 500)
+  it('Scenario 22: Groq auth (401) and server error (500) trigger local fallback', async () => {
+    const originalKey = process.env.GROQ_API_KEY;
+    process.env.GROQ_API_KEY = 'gsk_invalid_key';
+
+    // Test 401
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      json: async () => ({ error: { message: 'Invalid API Key' } }),
+    } as any);
+
+    const res401 = await parseQueryWithGroq({ query: 'CBSE in Anna Nagar' });
+    expect(res401.success).toBe(false);
+    expect(res401.source).toBe('local_fallback');
+    expect(res401.error).toContain('401');
+
+    // Test 500
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { message: 'Internal Groq failure' } }),
+    } as any);
+
+    const res500 = await parseQueryWithGroq({ query: 'CBSE in Anna Nagar' });
+    expect(res500.success).toBe(false);
+    expect(res500.source).toBe('local_fallback');
+    expect(res500.error).toContain('500');
+
+    process.env.GROQ_API_KEY = originalKey;
+  });
+
+  // Scenario 23: Groq malformed response / invalid JSON in assistant message
+  it('Scenario 23: Malformed response or invalid JSON from Groq triggers local fallback', async () => {
+    const originalKey = process.env.GROQ_API_KEY;
+    process.env.GROQ_API_KEY = 'gsk_test_mock_key';
+
+    // Non-JSON assistant content
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'I cannot provide JSON right now.',
+            },
+          },
+        ],
+      }),
+    } as any);
+
+    const result = await parseQueryWithGroq({ query: 'Preschool in Adyar' });
+    expect(result.success).toBe(false);
+    expect(result.source).toBe('local_fallback');
+
+    // Empty choices
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [] }),
+    } as any);
+
+    const resultEmpty = await parseQueryWithGroq({ query: 'Preschool in Adyar' });
+    expect(resultEmpty.success).toBe(false);
+    expect(resultEmpty.source).toBe('local_fallback');
+
+    process.env.GROQ_API_KEY = originalKey;
+  });
+
+  // Scenario 24: /api/health reports configured Groq provider/model without leaking the API key
+  it('Scenario 24: Health endpoints report Groq provider and model status without leaking GROQ_API_KEY', async () => {
+    const originalKey = process.env.GROQ_API_KEY;
+    process.env.GROQ_API_KEY = 'gsk_secret_12345_production_value';
+
+    // Test Express dev server health endpoint
+    const app = createApp();
+    const server = app.listen(0);
+    const port = (server.address() as AddressInfo).port;
+
+    try {
+      const expressRes = await fetch(`http://127.0.0.1:${port}/api/health`);
+      expect(expressRes.status).toBe(200);
+      const expressBody = await expressRes.json();
+
+      expect(expressBody.status).toBe('ok');
+      expect(expressBody.provider).toBe('groq');
+      expect(expressBody.model).toBe('llama-3.3-70b-versatile');
+      expect(expressBody.llmEnabled).toBe(true);
+      // Key must never be leaked
+      expect(JSON.stringify(expressBody)).not.toContain('gsk_secret');
+      expect(expressBody.apiKey).toBeUndefined();
+      expect(expressBody.key).toBeUndefined();
+
+      // Test Vercel serverless health handler
+      const vercelHealthHandler = (await import('../../api/health')).default;
+      const vercelMockRes: any = {
+        statusCode: 200,
+        headers: {},
+        setHeader(k: string, v: string) { this.headers[k] = v; },
+        status(c: number) { this.statusCode = c; return this; },
+        json(d: any) { this.body = d; return this; },
+      };
+      await vercelHealthHandler({ method: 'GET' } as any, vercelMockRes);
+
+      expect(vercelMockRes.statusCode).toBe(200);
+      expect(vercelMockRes.body.provider).toBe('groq');
+      expect(vercelMockRes.body.model).toBe('llama-3.3-70b-versatile');
+      expect(vercelMockRes.body.llmEnabled).toBe(true);
+      expect(JSON.stringify(vercelMockRes.body)).not.toContain('gsk_secret');
+    } finally {
+      server.close();
+      process.env.GROQ_API_KEY = originalKey;
+    }
+  });
 });
+
 

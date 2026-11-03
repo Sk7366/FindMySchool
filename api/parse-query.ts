@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { parseQueryWithGemini } from '../src/server/geminiParser';
+import { parseQueryWithGroq } from '../src/server/groqParser';
 
 interface VercelRequest extends IncomingMessage {
   body?: any;
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || '6000', 10);
-    const result = await parseQueryWithGemini({
+    const result = await parseQueryWithGroq({
       query: query.trim(),
       contextLocation: typeof contextLocation === 'string' ? contextLocation.trim() : undefined,
       timeoutMs,

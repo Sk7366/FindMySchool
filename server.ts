@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { parseQueryWithGemini } from './src/server/geminiParser';
+import { parseQueryWithGroq } from './src/server/groqParser';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,13 +26,15 @@ export function createApp() {
 
   // Health check endpoint
   app.get('/api/health', (_req, res) => {
+    const groqKey = process.env.GROQ_API_KEY;
+    const hasGroqKey = Boolean(groqKey && groqKey.trim() !== '' && groqKey !== 'MY_GROQ_API_KEY');
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
+      provider: 'groq',
       llmEnabled:
-        process.env.ENABLE_LLM_QUERY_PARSER !== 'false' &&
-        Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
-      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+        process.env.ENABLE_LLM_QUERY_PARSER !== 'false' && hasGroqKey,
+      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
     });
   });
 
@@ -56,7 +58,7 @@ export function createApp() {
       }
 
       const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || '6000', 10);
-      const result = await parseQueryWithGemini({
+      const result = await parseQueryWithGroq({
         query: query.trim(),
         contextLocation: typeof contextLocation === 'string' ? contextLocation.trim() : undefined,
         timeoutMs,

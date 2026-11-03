@@ -10,13 +10,15 @@ interface VercelResponse extends ServerResponse {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const hasGroqKey = Boolean(groqKey && groqKey.trim() !== '' && groqKey !== 'MY_GROQ_API_KEY');
   const data = {
     status: 'ok',
     timestamp: new Date().toISOString(),
+    provider: 'groq',
     llmEnabled:
-      process.env.ENABLE_LLM_QUERY_PARSER !== 'false' &&
-      Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
-    model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+      process.env.ENABLE_LLM_QUERY_PARSER !== 'false' && hasGroqKey,
+    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
   };
 
   if (typeof res.status === 'function' && typeof res.json === 'function') {
