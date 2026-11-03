@@ -200,15 +200,16 @@ export async function parseQueryWithGroq(options: ParseQueryOptions): Promise<Pa
   const startTime = Date.now();
   const { query, contextLocation, timeoutMs = 6000 } = options;
 
-  // Feature flag check
-  const isEnabled = process.env.ENABLE_LLM_QUERY_PARSER !== 'false';
+  // Feature flag check (supports both ENABLE_LLM_QUERY_PARSE and ENABLE_LLM_QUERY_PARSER)
+  const parseFlag = process.env.ENABLE_LLM_QUERY_PARSE ?? process.env.ENABLE_LLM_QUERY_PARSER;
+  const isEnabled = parseFlag !== 'false';
   const apiKey = process.env.GROQ_API_KEY;
 
   if (!isEnabled) {
     return {
       success: false,
       source: 'local_fallback',
-      error: 'LLM query parsing is disabled via ENABLE_LLM_QUERY_PARSER flag',
+      error: 'LLM query parsing is disabled via ENABLE_LLM_QUERY_PARSE flag',
       executionTimeMs: Date.now() - startTime,
     };
   }
@@ -222,8 +223,8 @@ export async function parseQueryWithGroq(options: ParseQueryOptions): Promise<Pa
     };
   }
 
-  // Configurable Groq model ID; default to llama-3.3-70b-versatile which supports JSON mode
-  const modelName = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  // Configurable Groq model ID; default to llama-3.1-8b-instant (production model available across all tiers with native JSON mode)
+  const modelName = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
   const baseUrl = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
 
   const abortController = new AbortController();

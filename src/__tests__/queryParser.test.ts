@@ -140,11 +140,21 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
   });
 
   // Scenario 7: Missing API key or disabled flag triggers local fallback
-  it('Scenario 7: Returns local_fallback if ENABLE_LLM_QUERY_PARSER is false or GROQ_API_KEY is missing', async () => {
-    const originalFlag = process.env.ENABLE_LLM_QUERY_PARSER;
+  it('Scenario 7: Returns local_fallback if ENABLE_LLM_QUERY_PARSE / ENABLE_LLM_QUERY_PARSER is false or GROQ_API_KEY is missing', async () => {
+    const originalParserFlag = process.env.ENABLE_LLM_QUERY_PARSER;
+    const originalParseFlag = process.env.ENABLE_LLM_QUERY_PARSE;
     const originalKey = process.env.GROQ_API_KEY;
 
-    // Disabled flag
+    // Disabled flag via ENABLE_LLM_QUERY_PARSE
+    delete process.env.ENABLE_LLM_QUERY_PARSER;
+    process.env.ENABLE_LLM_QUERY_PARSE = 'false';
+    const resultDisabledParse = await parseQueryWithGroq({ query: 'Montessori near Velachery' });
+    expect(resultDisabledParse.success).toBe(false);
+    expect(resultDisabledParse.source).toBe('local_fallback');
+    expect(resultDisabledParse.error).toContain('disabled');
+
+    // Disabled flag via legacy ENABLE_LLM_QUERY_PARSER
+    delete process.env.ENABLE_LLM_QUERY_PARSE;
     process.env.ENABLE_LLM_QUERY_PARSER = 'false';
     const resultDisabled = await parseQueryWithGroq({ query: 'Montessori near Velachery' });
     expect(resultDisabled.success).toBe(false);
@@ -152,14 +162,16 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
     expect(resultDisabled.error).toContain('disabled');
 
     // Missing key
-    process.env.ENABLE_LLM_QUERY_PARSER = 'true';
+    process.env.ENABLE_LLM_QUERY_PARSE = 'true';
+    delete process.env.ENABLE_LLM_QUERY_PARSER;
     delete process.env.GROQ_API_KEY;
     const resultNoKey = await parseQueryWithGroq({ query: 'Montessori near Velachery' });
     expect(resultNoKey.success).toBe(false);
     expect(resultNoKey.source).toBe('local_fallback');
     expect(resultNoKey.error).toContain('GROQ_API_KEY is not configured');
 
-    process.env.ENABLE_LLM_QUERY_PARSER = originalFlag;
+    process.env.ENABLE_LLM_QUERY_PARSER = originalParserFlag;
+    process.env.ENABLE_LLM_QUERY_PARSE = originalParseFlag;
     process.env.GROQ_API_KEY = originalKey;
   });
 
@@ -556,7 +568,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
     const mockGroqResponse = {
       id: 'chatcmpl-test-123',
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       choices: [
         {
           index: 0,
@@ -598,7 +610,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
     expect((calledInit.headers as any)['Authorization']).toBe('Bearer gsk_test_mock_key');
     expect(result.success).toBe(true);
     expect(result.source).toBe('llm');
-    expect(result.model).toBe('llama-3.3-70b-versatile');
+    expect(result.model).toBe('llama-3.1-8b-instant');
     expect(result.parsed).toBeDefined();
     expect(result.parsed?.educationTarget).toBe('preschool');
     expect(result.parsed?.childAge).toBe(3);
@@ -730,7 +742,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
       expect(expressBody.status).toBe('ok');
       expect(expressBody.provider).toBe('groq');
-      expect(expressBody.model).toBe('llama-3.3-70b-versatile');
+      expect(expressBody.model).toBe('llama-3.1-8b-instant');
       expect(expressBody.llmEnabled).toBe(true);
       // Key must never be leaked
       expect(JSON.stringify(expressBody)).not.toContain('gsk_secret');
@@ -750,7 +762,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
       expect(vercelMockRes.statusCode).toBe(200);
       expect(vercelMockRes.body.provider).toBe('groq');
-      expect(vercelMockRes.body.model).toBe('llama-3.3-70b-versatile');
+      expect(vercelMockRes.body.model).toBe('llama-3.1-8b-instant');
       expect(vercelMockRes.body.llmEnabled).toBe(true);
       expect(JSON.stringify(vercelMockRes.body)).not.toContain('gsk_secret');
     } finally {

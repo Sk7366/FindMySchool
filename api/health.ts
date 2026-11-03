@@ -12,13 +12,13 @@ interface VercelResponse extends ServerResponse {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const groqKey = process.env.GROQ_API_KEY;
   const hasGroqKey = Boolean(groqKey && groqKey.trim() !== '' && groqKey !== 'MY_GROQ_API_KEY');
+  const parseFlag = process.env.ENABLE_LLM_QUERY_PARSE ?? process.env.ENABLE_LLM_QUERY_PARSER;
   const data = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     provider: 'groq',
-    llmEnabled:
-      process.env.ENABLE_LLM_QUERY_PARSER !== 'false' && hasGroqKey,
-    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    llmEnabled: parseFlag !== 'false' && hasGroqKey,
+    model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
   };
 
   if (typeof res.status === 'function' && typeof res.json === 'function') {
