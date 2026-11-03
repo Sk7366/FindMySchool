@@ -223,8 +223,10 @@ export async function parseQueryWithGroq(options: ParseQueryOptions): Promise<Pa
     };
   }
 
-  // Configurable Groq model ID; default to llama-3.1-8b-instant (production model available across all tiers with native JSON mode)
-  const modelName = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  // Configurable Groq model ID; default to openai/gpt-oss-20b (active production model with native JSON mode and structured outputs)
+  const envModel = process.env.GROQ_MODEL;
+  const isDeprecatedLlama = envModel === 'llama-3.1-8b-instant' || envModel === 'llama-3.3-70b-versatile';
+  const modelName = envModel && !isDeprecatedLlama ? envModel : 'openai/gpt-oss-20b';
   const baseUrl = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
 
   const abortController = new AbortController();

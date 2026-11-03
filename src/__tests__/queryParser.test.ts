@@ -568,7 +568,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
     const mockGroqResponse = {
       id: 'chatcmpl-test-123',
-      model: 'llama-3.1-8b-instant',
+      model: 'openai/gpt-oss-20b',
       choices: [
         {
           index: 0,
@@ -610,7 +610,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
     expect((calledInit.headers as any)['Authorization']).toBe('Bearer gsk_test_mock_key');
     expect(result.success).toBe(true);
     expect(result.source).toBe('llm');
-    expect(result.model).toBe('llama-3.1-8b-instant');
+    expect(result.model).toBe('openai/gpt-oss-20b');
     expect(result.parsed).toBeDefined();
     expect(result.parsed?.educationTarget).toBe('preschool');
     expect(result.parsed?.childAge).toBe(3);
@@ -742,7 +742,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
       expect(expressBody.status).toBe('ok');
       expect(expressBody.provider).toBe('groq');
-      expect(expressBody.model).toBe('llama-3.1-8b-instant');
+      expect(expressBody.model).toBe('openai/gpt-oss-20b');
       expect(expressBody.llmEnabled).toBe(true);
       // Key must never be leaked
       expect(JSON.stringify(expressBody)).not.toContain('gsk_secret');
@@ -762,7 +762,7 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
 
       expect(vercelMockRes.statusCode).toBe(200);
       expect(vercelMockRes.body.provider).toBe('groq');
-      expect(vercelMockRes.body.model).toBe('llama-3.1-8b-instant');
+      expect(vercelMockRes.body.model).toBe('openai/gpt-oss-20b');
       expect(vercelMockRes.body.llmEnabled).toBe(true);
       expect(JSON.stringify(vercelMockRes.body)).not.toContain('gsk_secret');
     } finally {
