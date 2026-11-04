@@ -1,1 +1,1 @@
-export * from '../../api/_lib/groqParser';
+export * from '../../api/_lib/groqParser.js';
