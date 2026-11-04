@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { parseQueryWithGroq } from '../src/server/groqParser';
+import { parseQueryWithGroq } from './_lib/groqParser';
 
 interface VercelRequest extends IncomingMessage {
   body?: any;
