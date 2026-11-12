@@ -67,7 +67,7 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
           {parsingStatus === 'parsing_llm' ? (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-900 animate-pulse">
               <Sparkles className="w-3.5 h-3.5 text-amber-700 animate-spin" aria-hidden="true" />
-              <span>Refining with Gemini AI...</span>
+              <span>Refining with AI...</span>
             </div>
           ) : parsingSource === 'llm' ? (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[11px] font-semibold text-violet-900">

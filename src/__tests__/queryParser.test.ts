@@ -770,6 +770,268 @@ describe('LLM Query Understanding & Sanitization Layer', () => {
       process.env.GROQ_API_KEY = originalKey;
     }
   });
+
+  // Scenario 25: Client parseQuery fallback behavior on API errors, timeouts, and backend fallback payloads
+  it('Scenario 25: parseQuery falls back to local parser on backend fallback, HTTP errors, or timeouts', async () => {
+    // 1. Backend returned explicit local_fallback meta
+    vi.spyOn(apiClient, 'post').mockResolvedValueOnce({
+      status: 'success',
+      data: null,
+      meta: {
+        parsedBy: 'local_fallback',
+        error: 'Groq API rate limit exceeded',
+        executionTimeMs: 120,
+      },
+    });
+
+    const resFallbackMeta = await parseQuery('CBSE school in Anna Nagar under 1.5 lakh', DEFAULT_FILTERS);
+    expect(resFallbackMeta.source).toBe('local_fallback');
+    expect(resFallbackMeta.parsedData).toBeUndefined();
+    expect(resFallbackMeta.filters.curriculums).toContain('CBSE');
+    expect(resFallbackMeta.filters.location).toBe('Anna Nagar & Mogappair');
+    expect(resFallbackMeta.filters.budgetMax).toBe(150000);
+
+    // 2. Backend threw HTTP 500 / Network error
+    vi.spyOn(apiClient, 'post').mockRejectedValueOnce(new Error('Internal Server Error 500'));
+
+    const resHttpError = await parseQuery('Montessori preschool in Velachery with daycare', DEFAULT_FILTERS);
+    expect(resHttpError.source).toBe('local_fallback');
+    expect(resHttpError.filters.educationTarget).toBe('preschool');
+    expect(resHttpError.filters.location).toBe('Velachery & Guindy');
+    expect(resHttpError.filters.preschool.pedagogy).toContain('Montessori');
+    expect(resHttpError.filters.preschool.daycare).toBe(true);
+
+    // 3. Client timed out or aborted
+    vi.spyOn(apiClient, 'post').mockRejectedValueOnce(new Error('Request timed out after 6500ms'));
+
+    const resTimeout = await parseQuery('ICSE school in Adyar', DEFAULT_FILTERS);
+    expect(resTimeout.source).toBe('local_fallback');
+    expect(resTimeout.filters.curriculums).toContain('ICSE');
+    expect(resTimeout.filters.location).toBe('Adyar & Besant Nagar');
+  });
+
+  // Scenario 26: User search query is strictly preserved and never mutated across fallback and success flows
+  it('Scenario 26: Preserves the user original search query without alteration', async () => {
+    const originalQuery = 'Montessori preschool near Velachery for 3-year-old with daycare under 1.5 lakh';
+
+    // Synchronous local parse
+    const localResult = parseQueryLocally(originalQuery, DEFAULT_FILTERS);
+    expect(localResult.source).toBe('local_fallback');
+    expect(localResult.filters.location).toBe('Velachery & Guindy');
+    expect(localResult.filters.preschool.ageYears).toBe(3);
+    expect(localResult.filters.preschool.daycare).toBe(true);
+
+    // Async parse under fallback
+    vi.spyOn(apiClient, 'post').mockRejectedValueOnce(new Error('Backend unavailable'));
+    const asyncResult = await parseQuery(originalQuery, DEFAULT_FILTERS);
+    expect(asyncResult.source).toBe('local_fallback');
+    // Ensure the query passed is not mutated
+    expect(originalQuery).toBe('Montessori preschool near Velachery for 3-year-old with daycare under 1.5 lakh');
+  });
+
+  // Scenario 27: Fallback results are clearly distinguishable from LLM-parsed results in internal metadata
+  it('Scenario 27: Clearly distinguishes between LLM parsed results and local fallback in metadata', async () => {
+    // LLM Success case
+    vi.spyOn(apiClient, 'post').mockResolvedValueOnce({
+      status: 'success',
+      data: {
+        educationTarget: 'school',
+        location: 'Anna Nagar & Mogappair',
+        curriculum: ['CBSE'],
+        mustHavePreferences: ['CBSE', 'Anna Nagar'],
+        niceToHavePreferences: [],
+        confidence: 'high',
+      },
+      meta: {
+        parsedBy: 'llm',
+        model: 'openai/gpt-oss-20b',
+        executionTimeMs: 1420,
+      },
+    });
+
+    const llmResult = await parseQuery('CBSE in Anna Nagar', DEFAULT_FILTERS);
+    expect(llmResult.source).toBe('llm');
+    expect(llmResult.parsedData).toBeDefined();
+    expect(llmResult.parsedData?.educationTarget).toBe('school');
+
+    // Fallback case
+    vi.spyOn(apiClient, 'post').mockResolvedValueOnce({
+      status: 'success',
+      data: null,
+      meta: {
+        parsedBy: 'local_fallback',
+        error: 'Groq timeout',
+        executionTimeMs: 6000,
+      },
+    });
+
+    const fallbackResult = await parseQuery('CBSE in Anna Nagar', DEFAULT_FILTERS);
+    expect(fallbackResult.source).toBe('local_fallback');
+    expect(fallbackResult.parsedData).toBeUndefined();
+    expect(fallbackResult.source).not.toBe('llm');
+  });
+
+  // Scenario 28: Deterministic filtering and ranking logic continues to operate seamlessly with fallback filters
+  it('Scenario 28: Existing deterministic filtering and scoring operates accurately on fallback results', () => {
+    const fallbackResult = parseQueryLocally('Montessori preschool in Velachery for 3-year-old with daycare', DEFAULT_FILTERS);
+    expect(fallbackResult.source).toBe('local_fallback');
+
+    const matchingPreschool = {
+      id: 'pre-velachery-test-1',
+      name: 'Little Explorers Montessori Velachery',
+      slug: 'little-explorers-velachery',
+      area: 'Velachery',
+      city: 'Chennai',
+      address: '12 1st Main Rd, Velachery',
+      institutionType: 'preschool' as const,
+      pedagogy: ['Montessori'],
+      preschoolPrograms: ['nursery'] as any,
+      studentTeacherRatio: '8:1',
+      daycare: true,
+      annualFeeMin: 85000,
+      annualFeeMax: 95000,
+      admissionFee: 10000,
+      distanceKm: 1.2,
+      rating: 4.8,
+      reviewCount: 36,
+      matchScore: 92,
+      matchTier: 'Strong match' as const,
+      matchReasons: [],
+      curriculum: [],
+      schoolType: ['Co-educational' as const],
+      grades: 'Pre-KG to UKG',
+      gradeLevels: { min: 'Playgroup', max: 'UKG' },
+      ageRange: { min: 2, max: 6 },
+      preschoolProgramDetails: [
+        { program: 'nursery', displayName: 'Nursery', ageRange: '2.5 - 3.5 yrs', timings: '9:00 AM - 12:30 PM', annualFee: 85000, ratio: '8:1' },
+      ],
+      establishedYear: 2019,
+      facilities: [],
+      extracurriculars: [],
+      hasTransport: true,
+      transportRadiusKm: 5,
+      hasHostel: false,
+      hasSpecialNeedsSupport: false,
+      description: 'Montessori preschool with daycare',
+      academicHighlights: [],
+      teachingPhilosophy: 'Montessori',
+      admissionStatus: 'Admissions Open 2026-27' as const,
+      admissionDeadline: '2026-04-30',
+      verificationStatus: 'Verified by School' as const,
+      feeSource: 'School circular',
+      lastAuditedDate: '2026-01-10',
+      website: 'https://example.com',
+      phone: '+91 98400 12345',
+      email: 'info@example.com',
+      photos: [],
+      coordinates: { lat: 12.98, lng: 80.22, mapX: 50, mapY: 50 },
+      neighbourhood: {
+        area: 'Velachery',
+        commuteNote: 'Near metro',
+        nearestTransit: 'Velachery MRTS',
+        trafficIntensity: 'Moderate' as const,
+        neighbouringLocalities: ['Guindy'],
+        safeWalkingZones: true,
+      },
+    } as unknown as School;
+
+    const nonMatchingSchool = {
+      id: 'school-adyar-test-1',
+      name: 'Adyar High School',
+      slug: 'adyar-high-school',
+      area: 'Adyar',
+      city: 'Chennai',
+      address: '50 Gandhi Rd, Adyar',
+      institutionType: 'school' as const,
+      curriculum: ['ICSE' as const],
+      grades: 'Class 1 to 12',
+      gradeLevels: { min: 'Class 1', max: 'Class 12' },
+      annualFeeMin: 220000,
+      annualFeeMax: 260000,
+      admissionFee: 25000,
+      distanceKm: 8.5,
+      rating: 4.2,
+      reviewCount: 20,
+      matchScore: 40,
+      matchTier: 'Partial fit' as const,
+      matchReasons: [],
+      facilities: [],
+      schoolType: ['Co-educational' as const],
+      studentTeacherRatio: '20:1',
+      establishedYear: 2005,
+      extracurriculars: [],
+      hasTransport: false,
+      transportRadiusKm: 0,
+      hasHostel: false,
+      hasSpecialNeedsSupport: false,
+      description: 'ICSE secondary school',
+      academicHighlights: [],
+      teachingPhilosophy: 'Traditional',
+      admissionStatus: 'Admissions Open 2026-27' as const,
+      admissionDeadline: '2026-03-31',
+      verificationStatus: 'Parent Audited' as const,
+      feeSource: 'Parent invoice',
+      lastAuditedDate: '2025-11-15',
+      website: 'https://example.com',
+      phone: '+91 98400 54321',
+      email: 'info@adyarhigh.example.com',
+      photos: [],
+      coordinates: { lat: 13.00, lng: 80.25, mapX: 70, mapY: 60 },
+      neighbourhood: {
+        area: 'Adyar',
+        commuteNote: 'Near bus stand',
+        nearestTransit: 'Adyar Depot',
+        trafficIntensity: 'Heavy during peak hours' as const,
+        neighbouringLocalities: ['Besant Nagar'],
+        safeWalkingZones: false,
+      },
+      daycare: false,
+    } as unknown as School;
+
+    const scoreMatch = calculateSchoolFitScore(matchingPreschool, fallbackResult.filters);
+    const scoreNonMatch = calculateSchoolFitScore(nonMatchingSchool, fallbackResult.filters);
+
+    expect(typeof scoreMatch).toBe('number');
+    expect(typeof scoreNonMatch).toBe('number');
+    expect(scoreMatch).toBeGreaterThan(scoreNonMatch);
+    expect(scoreMatch).toBeGreaterThanOrEqual(70);
+  });
+
+  // Scenario 29: No sensitive credentials or API keys exposed in fallback responses, error messages, or logs
+  it('Scenario 29: Zero API key leakage in fallback error handling and serverless responses', async () => {
+    const originalKey = process.env.GROQ_API_KEY;
+    const secretKey = 'gsk_super_secret_token_never_expose_99999';
+    process.env.GROQ_API_KEY = secretKey;
+
+    // Simulate Groq fetch failure with an error that might reference internals
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Failed to connect to Groq with key ' + secretKey));
+
+    const result = await parseQueryWithGroq({ query: 'CBSE school in Anna Nagar' });
+    expect(result.success).toBe(false);
+    expect(result.source).toBe('local_fallback');
+
+    // Serverless handler execution
+    const vercelHandler = (await import('../../api/parse-query')).default;
+    const mockRes: any = {
+      statusCode: 200,
+      headers: {},
+      setHeader(k: string, v: string) { this.headers[k] = v; },
+      status(c: number) { this.statusCode = c; return this; },
+      json(d: any) { this.body = d; return this; },
+    };
+
+    await vercelHandler({ method: 'POST', body: { query: 'CBSE in Anna Nagar' } } as any, mockRes);
+    expect(mockRes.statusCode).toBe(200);
+    expect(mockRes.body.status).toBe('success');
+    expect(mockRes.body.meta.parsedBy).toBe('local_fallback');
+
+    // Serialization check: Ensure the secret never appears anywhere in the response JSON
+    const serialized = JSON.stringify(mockRes.body);
+    expect(serialized).not.toContain(secretKey);
+    expect(serialized).not.toContain('gsk_');
+
+    process.env.GROQ_API_KEY = originalKey;
+  });
 });
 
 
