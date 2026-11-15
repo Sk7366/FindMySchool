@@ -187,7 +187,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
 
     return {
       title: `Find Schools & Preschools${locSuffix} | FindMySchool`,
-      description: `Search and filter verified schools and preschools across Chennai corridors. Filter by board, fees, student-teacher ratio, and proximity.`,
+      description: `Search and filter listed schools and preschools across Chennai corridors. Filter by board, illustrative fees, student-teacher ratio, and proximity.`,
       canonicalPath: '/results',
     };
   }, [filters.educationTarget, filters.location, isSavedMode, displaySchools.length]);
@@ -567,7 +567,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
                 <label htmlFor="search-sort-select" className="text-stone-500 font-bold hidden sm:inline">Sort:</label>
                 <select
                   id="search-sort-select"
-                  value={sortBy}
+                  value={sortBy === 'rating_desc' ? 'best_match' : sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortField)}
                   className="bg-white border border-stone-200 hover:border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer shadow-2xs transition-colors min-h-[40px]"
                 >
@@ -575,7 +575,6 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
                   <option value="distance_asc">Nearest commute</option>
                   <option value="fee_asc">Fees: Low to high</option>
                   <option value="fee_desc">Fees: High to low</option>
-                  <option value="rating_desc">Parent rating</option>
                 </select>
               </div>
             </div>

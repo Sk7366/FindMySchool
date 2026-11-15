@@ -4,7 +4,7 @@ import { checkGradeOfferings } from './preschoolScoring';
 
 export interface FormattedMatchExplanation {
   category: 'preference' | 'fact' | 'confirmation';
-  tag: 'Matches your preference' | 'Verified factual information' | 'Information requiring confirmation';
+  tag: 'Matches your preference' | 'Listed catalog information' | 'Information requiring confirmation';
   prefixLabel: string;
   tagBadgeClass: string;
   tagIconClass: string;
@@ -16,7 +16,7 @@ export interface FormattedMatchExplanation {
 /**
  * Formats match reasons to clearly distinguish between:
  * 1. matched from user preferences (e.g., "Matches your preference: Montessori")
- * 2. verified factual information (e.g., "Listed fee: ₹80K/year")
+ * 2. listed catalog information (e.g., "Listed fee: ₹80K/year")
  * 3. information requiring confirmation (e.g., "Confirm current fee with the institution.")
  */
 export function formatMatchReason(reason: MatchReason): FormattedMatchExplanation {
@@ -67,8 +67,8 @@ export function formatMatchReason(reason: MatchReason): FormattedMatchExplanatio
 
   return {
     category: 'fact',
-    tag: 'Verified factual information',
-    prefixLabel: 'Factual information',
+    tag: 'Listed catalog information',
+    prefixLabel: 'Catalog information',
     tagBadgeClass: 'bg-stone-100 text-stone-900 border-stone-300',
     tagIconClass: 'text-stone-600',
     title: reason.title,
@@ -303,7 +303,7 @@ export function generateDynamicMatchReasons(
         sourceType: 'preference',
         matchedCriteria: 'philosophy',
         title: `Enrolling for ${matched.map((m) => m.toUpperCase()).join(' & ')}`,
-        description: `Offers verified early-childhood program(s) for your target age level.`,
+        description: `Listed early-childhood program(s) for your target age level.`,
       });
     } else if (supported.length > 0) {
       reasons.push({
@@ -439,7 +439,7 @@ export function generateDynamicMatchReasons(
           sourceType: 'verified_fact',
           matchedCriteria: 'facility',
           title: `Equipped with ${matchedFac.name}`,
-          description: matchedFac.highlight || 'Verified campus infrastructure.',
+          description: matchedFac.highlight || 'Listed in campus facility records.',
         });
       } else {
         reasons.push({
@@ -447,8 +447,8 @@ export function generateDynamicMatchReasons(
           type: 'partial',
           sourceType: 'needs_confirmation',
           matchedCriteria: 'facility',
-          title: `No verified ${reqFac}`,
-          description: `No verified ${reqFac} listed in school facility records.`,
+          title: `${reqFac} not listed`,
+          description: `No ${reqFac} listed in catalog facility records.`,
           confirmationAction: `Confirm ${reqFac} availability directly with school.`,
         });
       }

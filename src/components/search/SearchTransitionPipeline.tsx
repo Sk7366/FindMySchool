@@ -88,7 +88,7 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
           <div className="text-xs text-stone-500 font-medium flex items-center gap-1.5">
             <span>
               {isAnimating
-                ? 'Translating priorities into verified recommendations...'
+                ? 'Matching institutions against your priorities...'
                 : `${resultsCount} institutions matched against your criteria`}
             </span>
           </div>
@@ -221,7 +221,7 @@ export const SearchTransitionPipeline: React.FC<SearchTransitionPipelineProps> =
                 Preparing your results
               </p>
               <span className="text-[10px] text-stone-500 block truncate">
-                {resultsCount} verified results ready
+                {resultsCount} matching results ready
               </span>
             </div>
           </div>

@@ -25,7 +25,7 @@ import { useDocumentMeta } from '../hooks/useDocumentMeta';
 export const HowItWorksPage: React.FC = () => {
   useDocumentMeta({
     title: 'How FindMySchool Works | Objective School Matching',
-    description: 'Learn how FindMySchool calculates transparent fit scores, evaluates parent commute realities, and verifies school data without commercial bias.',
+    description: 'Learn how FindMySchool calculates transparent fit scores, evaluates parent commute realities, and discloses school data provenance without commercial bias.',
     canonicalPath: '/how-it-works',
     ogType: 'article',
     structuredData: {
@@ -52,7 +52,7 @@ export const HowItWorksPage: React.FC = () => {
         {
           '@type': 'HowToStep',
           name: 'Parent Due Diligence',
-          text: 'Verified data badges, campus visit checklists, and objective comparisons.',
+          text: 'Data status badges, campus visit checklists, and objective comparisons.',
         },
       ],
     },
@@ -145,7 +145,7 @@ export const HowItWorksPage: React.FC = () => {
                 Every Match Must Be Explainable
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
-                Rather than an opaque single score, every recommendation clearly differentiates between items matched from user preferences (✓), verified factual details (✦), and points requiring on-site confirmation (ℹ).
+                Rather than an opaque single score, every recommendation clearly differentiates between items matched from user preferences (✓), listed catalog details (✦), and points requiring on-site confirmation (ℹ).
               </p>
             </div>
 
@@ -357,8 +357,8 @@ export const HowItWorksPage: React.FC = () => {
                 <span className="text-stone-600 text-[11px]">E.g., "Matches your preference: Montessori" based directly on your search priorities.</span>
               </div>
               <div className="p-2.5 rounded-lg bg-white border border-stone-200">
-                <span className="font-bold text-stone-900 block text-[11px]">2. Factual Information</span>
-                <span className="text-stone-600 text-[11px]">E.g., "Listed fee: ₹80K/year" or verified lab facilities published on record.</span>
+                <span className="font-bold text-stone-900 block text-[11px]">2. Listed Catalog Information</span>
+                <span className="text-stone-600 text-[11px]">E.g., "Listed fee: ₹80K/year (illustrative)" or listed lab facilities on record.</span>
               </div>
               <div className="p-2.5 rounded-lg bg-white border border-amber-200/80">
                 <span className="font-bold text-amber-900 block text-[11px]">3. Requires Confirmation</span>

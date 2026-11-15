@@ -413,6 +413,7 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
               </span>
               <span className="text-[10px] text-stone-500 block font-sans">
                 {isEarlyYears ? 'Program specific' : 'Grade specific'}
+                {school.dataStatus === 'demo' || !school.dataStatus ? ' · Illustrative demo fee' : ''}
               </span>
             </div>
 
@@ -425,14 +426,16 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                 {isEarlyYears && school.ageRange
                   ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs`
                   : isCombined
-                  ? `Ages ${school.ageRange?.min ?? 3}–18 yrs`
+                  ? school.grades || (school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : 'Information not available')
                   : school.grades || 'Information not available'}
               </span>
               <span className="text-[10px] text-stone-500 block font-sans">
                 {isEarlyYears
                   ? 'Early Childhood'
                   : isCombined
-                  ? 'Pre-KG to Class 12'
+                  ? school.preschoolPrograms?.length
+                    ? `${school.preschoolPrograms.map((p) => p.toUpperCase()).join(', ')} & K–12`
+                    : 'Early Years + K–12'
                   : 'Standard Grades'}
               </span>
             </div>
@@ -450,12 +453,19 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
               </span>
             </div>
 
-            {/* Parent Rating */}
-            <div className="flex items-center gap-1.5 text-stone-800 bg-white px-2.5 py-1 rounded-lg border border-stone-200 self-center">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 shrink-0" />
-              <span className="font-bold text-xs tabular-nums">{(school.rating ?? 4.5).toFixed(1)}</span>
-              <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount ?? 0})</span>
-            </div>
+            {/* Parent Rating — only render when genuinely verified with actual reviews */}
+            {(school.dataStatus === 'verified' || school.dataStatus === 'partially_verified') &&
+              school.verificationStatus !== 'Demo Data' &&
+              typeof school.rating === 'number' &&
+              school.rating > 0 &&
+              typeof school.reviewCount === 'number' &&
+              school.reviewCount > 0 && (
+                <div className="flex items-center gap-1.5 text-stone-800 bg-white px-2.5 py-1 rounded-lg border border-stone-200 self-center">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 shrink-0" />
+                  <span className="font-bold text-xs tabular-nums">{school.rating.toFixed(1)}</span>
+                  <span className="text-[11px] text-stone-500 font-medium">({school.reviewCount})</span>
+                </div>
+              )}
           </div>
 
           {/* COMBINED INSTITUTIONS: Clearly separate Early Years vs K–12 */}
@@ -473,14 +483,28 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                 <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-200/80 space-y-1">
                   <div className="flex items-center gap-1.5 text-amber-950 font-bold text-xs">
                     <Baby className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                    <span>Early Years Wing (Ages {school.ageRange?.min ?? 3}–{school.ageRange?.max ?? 6} yrs)</span>
+                    <span>
+                      {school.ageRange
+                        ? `Early Years Wing (Ages ${school.ageRange.min}–${school.ageRange.max} yrs)`
+                        : 'Early Years Wing'}
+                    </span>
                   </div>
                   <p className="text-[11px] text-stone-700">
-                    Programs: <strong className="text-stone-900">{school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ') || 'Pre-KG · LKG · UKG'}</strong>
+                    Programs:{' '}
+                    <strong className="text-stone-900">
+                      {school.preschoolPrograms && school.preschoolPrograms.length > 0
+                        ? school.preschoolPrograms.map((p) => p.toUpperCase()).join(' · ')
+                        : 'Information not available'}
+                    </strong>
                   </p>
                   <div className="flex items-center gap-2 text-[10px] text-stone-600 font-medium">
-                    <span>Approach: {school.pedagogy?.join(' · ') || 'Early Childhood Foundation'}</span>
-                    {school.daycare && <span className="text-teal-800 font-bold">· Daycare available</span>}
+                    <span>
+                      Approach:{' '}
+                      {school.pedagogy && school.pedagogy.length > 0
+                        ? school.pedagogy.join(' · ')
+                        : 'Approach not listed'}
+                    </span>
+                    {school.daycare === true && <span className="text-teal-800 font-bold">· Daycare available</span>}
                   </div>
                 </div>
 
@@ -488,14 +512,21 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                 <div className="p-2.5 rounded-lg bg-teal-50/60 border border-teal-200/80 space-y-1">
                   <div className="flex items-center gap-1.5 text-teal-950 font-bold text-xs">
                     <SchoolIcon className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                    <span>K–12 Academy ({school.grades || 'Classes 1–12'})</span>
+                    <span>K–12 Academy{school.grades ? ` (${school.grades})` : ''}</span>
                   </div>
                   <p className="text-[11px] text-stone-700">
-                    Boards: <strong className="text-stone-900">{(school.curriculum || []).join(' · ') || 'CBSE'}</strong>
+                    Boards:{' '}
+                    <strong className="text-stone-900">
+                      {school.curriculum && school.curriculum.length > 0
+                        ? school.curriculum.join(' · ')
+                        : 'Information not available'}
+                    </strong>
                   </p>
                   <div className="flex items-center gap-2 text-[10px] text-stone-600 font-medium">
-                    <span>Teacher ratio: {school.studentTeacherRatio || '1:16'}</span>
-                    <span>· Labs & Sports Turf</span>
+                    <span>Teacher ratio: {school.studentTeacherRatio || 'Information not available'}</span>
+                    {school.facilities && school.facilities.length > 0 && (
+                      <span>· {school.facilities.length} listed facilities</span>
+                    )}
                   </div>
                 </div>
 
@@ -510,14 +541,18 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
               <div className="p-2 rounded-lg bg-white border border-stone-200">
                 <span className="text-[10px] text-stone-500 font-semibold block uppercase">Programs</span>
                 <span className="font-bold text-stone-900 block truncate" title={school.preschoolPrograms?.map(p => p.toUpperCase()).join(', ')}>
-                  {school.preschoolPrograms?.map(p => p.toUpperCase()).join(' · ') || 'Toddler to UKG'}
+                  {school.preschoolPrograms && school.preschoolPrograms.length > 0
+                    ? school.preschoolPrograms.map(p => p.toUpperCase()).join(' · ')
+                    : 'Information not available'}
                 </span>
               </div>
 
               <div className="p-2 rounded-lg bg-white border border-stone-200">
                 <span className="text-[10px] text-stone-500 font-semibold block uppercase">Learning Approach</span>
                 <span className="font-bold text-stone-900 block truncate" title={school.pedagogy?.join(' · ')}>
-                  {school.pedagogy?.join(' · ') || 'Montessori / Play-way'}
+                  {school.pedagogy && school.pedagogy.length > 0
+                    ? school.pedagogy.join(' · ')
+                    : 'Information not available'}
                 </span>
               </div>
 
@@ -525,14 +560,18 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                 <span className="text-[10px] text-stone-500 font-semibold block uppercase">Hours</span>
                 <span className="font-bold text-stone-900 block truncate flex items-center gap-1">
                   <Clock className="w-3 h-3 text-stone-400 shrink-0" />
-                  <span>{school.timings ? school.timings.split('(')[0].trim() : '8:30 AM – 1:30 PM'}</span>
+                  <span>{school.timings ? school.timings.split('(')[0].trim() : 'Information not available'}</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-lg bg-white border border-stone-200">
                 <span className="text-[10px] text-stone-500 font-semibold block uppercase">Daycare & Care</span>
-                <span className={`font-bold block truncate ${school.daycare ? 'text-teal-800' : 'text-stone-600'}`}>
-                  {school.daycare ? 'Daycare Available' : 'Half-day program'}
+                <span className={`font-bold block truncate ${school.daycare === true ? 'text-teal-800' : 'text-stone-600'}`}>
+                  {school.daycare === true
+                    ? 'Daycare Available'
+                    : school.daycare === false
+                    ? 'Half-day program'
+                    : 'Needs confirmation'}
                 </span>
               </div>
             </div>
@@ -556,9 +595,9 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                 <strong className="text-stone-900">{school.studentTeacherRatio || 'Information not available'}</strong>
               </div>
 
-              {school.hasTransport && (
+              {school.hasTransport === true && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 font-medium text-teal-950">
-                  <span>Transport fleet ({school.transportRadiusKm} km)</span>
+                  <span>Transport fleet{school.transportRadiusKm ? ` (${school.transportRadiusKm} km)` : ''}</span>
                 </div>
               )}
             </div>
@@ -573,20 +612,24 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
               <span className="text-[10px] text-stone-400">Prioritized by search match</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {prioritizedFacilities.map((f) => {
-                const fColor = getFacilityCategoryColor(f.category, f.name);
-                const IconComp = getFacilityIcon(f.iconName, f.name);
-                return (
-                  <div
-                    key={f.id}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${fColor.bg} ${fColor.text} ${fColor.border}`}
-                    title={f.highlight || f.name}
-                  >
-                    <IconComp className="w-3 h-3 shrink-0" />
-                    <span className="truncate max-w-[150px]">{f.name}</span>
-                  </div>
-                );
-              })}
+              {prioritizedFacilities.length > 0 ? (
+                prioritizedFacilities.map((f) => {
+                  const fColor = getFacilityCategoryColor(f.category, f.name);
+                  const IconComp = getFacilityIcon(f.iconName, f.name);
+                  return (
+                    <div
+                      key={f.id}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${fColor.bg} ${fColor.text} ${fColor.border}`}
+                      title={f.highlight || f.name}
+                    >
+                      <IconComp className="w-3 h-3 shrink-0" />
+                      <span className="truncate max-w-[150px]">{f.name}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <span className="text-xs text-stone-500 italic">No facilities listed in catalog records</span>
+              )}
             </div>
           </div>
 

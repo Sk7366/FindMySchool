@@ -551,7 +551,7 @@ ${summaryList}
 
 **How to decide between them**:
 • Check whether the daily commute route crosses peak congestion junctions along your daily travel path.
-• Compare verified fee transparency versus institutions whose auxiliary costs need direct verification.`,
+• Compare listed fee breakdowns versus institutions whose auxiliary costs need direct verification.`,
         checklist: [
           'Schedule visits on different days to observe drop-off and pickup logistics.',
           'Verify seat availability for your child’s exact entry grade before applying.',

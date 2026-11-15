@@ -60,16 +60,16 @@ const ALL_PROMPTS = [
 
 const HOME_FAQS = [
   {
-    question: "How does FindMySchool verify fee structures and avoid hidden costs?",
-    answer: "FindMySchool benchmarks tuition fees against published school circulars, parent fee receipts, and verified disclosures. We break down annual tuition, admission registration charges, and separate add-on costs like transport, uniform kits, and meal programs so families never encounter surprise admission costs."
+    question: "How does FindMySchool present fee structures and avoid hidden costs?",
+    answer: "In this prototype, FindMySchool displays illustrative demo fee estimates broken down into annual tuition, admission registration charges, and optional add-on costs like transport and meal programs so families know what components to check. Always confirm official 2026-27 fee circulars directly with each institution."
   },
   {
     question: "What is the difference between Montessori, Play-way, and traditional preschools?",
-    answer: "Montessori emphasizes self-directed learning using tactile sensory apparatus at the child's own developmental pace. Play-way centers around social play, imaginative games, and group exploration. Traditional kindergarten follows structured teacher-led pre-academic routines. Our profiles clearly disclose each institution's specific pedagogy."
+    answer: "Montessori emphasizes self-directed learning using tactile sensory apparatus at the child's own developmental pace. Play-way centers around social play, imaginative games, and group exploration. Traditional kindergarten follows structured teacher-led pre-academic routines. Our profiles disclose each institution's listed pedagogy when available."
   },
   {
-    question: "How are commute distances and school bus boundaries calculated?",
-    answer: "Commute estimates use actual road corridors across Chennai hubs (such as OMR, Velachery, Anna Nagar, and Tambaram). Each school card and profile highlights verified school bus and van coverage radiuses (typically 8–15 km) and caregiver attendant policies."
+    question: "How are commute distances and school bus boundaries estimated?",
+    answer: "Commute estimates use Chennai corridor distances (such as OMR, Velachery, Anna Nagar, and Tambaram). Each school card and profile highlights listed school bus and van coverage radiuses (typically 8–15 km) — always confirm exact pickup stops and attendant policies directly with the school."
   },
   {
     question: "When do Chennai CBSE, ICSE, and Cambridge admissions typically open?",
@@ -740,7 +740,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onOpenAdvisor }) => {
                     {hub.schoolCount} listed institutions
                   </span>
                   <span className="text-[11px] font-medium text-stone-500 tabular-nums">
-                    Avg ~ {hub.avgFee}
+                    Illustrative ~ {hub.avgFee}
                   </span>
                 </div>
 

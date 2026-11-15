@@ -168,7 +168,12 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
                   {activeSchool.name}
                 </h4>
                 <p className="text-[11px] text-stone-600 truncate mt-0.5">
-                  {activeSchool.area} · ₹{((activeSchool.annualFeeMin || 0) / 100000).toFixed(1)}L – {((activeSchool.annualFeeMax || 0) / 100000).toFixed(1)}L/yr
+                  {activeSchool.area} ·{' '}
+                  {typeof activeSchool.annualFeeMin === 'number' && activeSchool.annualFeeMin > 0
+                    ? `₹${(activeSchool.annualFeeMin / 100000).toFixed(1)}L – ${((activeSchool.annualFeeMax || activeSchool.annualFeeMin) / 100000).toFixed(1)}L/yr${
+                        activeSchool.dataStatus === 'demo' || !activeSchool.dataStatus ? ' (Illustrative demo fee)' : ''
+                      }`
+                    : 'Fee information not available'}
                 </p>
               </div>
 

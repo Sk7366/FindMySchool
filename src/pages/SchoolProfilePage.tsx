@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Star,
   Bookmark,
   Scale,
   MapPin,
@@ -99,7 +98,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
     if (!school) {
       return {
         title: 'Institution Profile | FindMySchool',
-        description: 'Explore comprehensive institution profiles with verified fee disclosures, student-teacher ratios, and commute logistics in Chennai.',
+        description: 'Explore comprehensive institution profiles with illustrative fee disclosures, student-teacher ratios, and commute logistics in Chennai.',
         canonicalPath: slug ? `/school/${slug}` : undefined,
       };
     }
@@ -109,11 +108,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
       : school.curriculum?.join(' / ') || 'K-12 School';
     const feeStr = school.annualFeeMin
       ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L–₹${(school.annualFeeMax / 100000).toFixed(1)}L/yr`
-      : 'fees disclosed in prospectus';
+      : 'fees not listed';
 
     return {
       title: `${school.name} (${school.area}, Chennai) | FindMySchool`,
-      description: `${school.name} in ${school.area}, Chennai. View verified fee ranges (${feeStr}), ${typeStr}, student-teacher ratio, and parent visit checklists.`,
+      description: `${school.name} in ${school.area}, Chennai. View illustrative fee ranges (${feeStr}), ${typeStr}, student-teacher ratio, and parent visit checklists.`,
       canonicalPath: `/school/${school.slug || slug}`,
       ogImage: school.photos?.[0]?.url,
       structuredData: {
@@ -211,11 +210,13 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
     return `₹${amount.toLocaleString('en-IN')}`;
   };
 
-  const dataStatusLabel = school.dataStatus === 'demo'
-    ? 'Demo data'
+  const isDemoData = school.dataStatus === 'demo' || !school.dataStatus || school.verificationStatus === 'Demo Data';
+
+  const dataStatusLabel = isDemoData
+    ? 'Illustrative demo data'
     : school.lastVerifiedAt && school.lastVerifiedAt !== 'Demonstration catalog'
     ? `Last updated: ${school.lastVerifiedAt}`
-    : 'Demo data';
+    : 'Catalog record';
 
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href);
@@ -329,10 +330,14 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
 
               <span className="text-stone-400">·</span>
               <span className="font-semibold text-stone-600">
-                {isEarlyYears && school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : school.grades}
+                {isEarlyYears && school.ageRange ? `Ages ${school.ageRange.min}–${school.ageRange.max} yrs` : school.grades || 'Grades not listed'}
               </span>
-              <span className="text-stone-400">·</span>
-              <span className="text-stone-600">Est. {school.establishedYear}</span>
+              {school.establishedYear && (
+                <>
+                  <span className="text-stone-400">·</span>
+                  <span className="text-stone-600">Est. {school.establishedYear}</span>
+                </>
+              )}
               <span className="text-stone-400">·</span>
               <span className="flex items-center gap-1 text-stone-700 font-medium">
                 <MapPin className="w-3.5 h-3.5 text-stone-400" />
@@ -362,7 +367,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <Baby className="w-4 h-4 text-amber-600 shrink-0" />
                   <div>
                     <span className="font-bold text-stone-900 block">Early Years Wing</span>
-                    <span className="text-stone-600">{school.preschoolPrograms?.map((p) => p.toUpperCase()).join(' · ')}</span>
+                    <span className="text-stone-600">
+                      {school.preschoolPrograms && school.preschoolPrograms.length > 0
+                        ? school.preschoolPrograms.map((p) => p.toUpperCase()).join(' · ')
+                        : 'Programs not listed'}
+                    </span>
                   </div>
                 </div>
                 <div className="h-4 w-px bg-stone-200 hidden sm:block" />
@@ -370,7 +379,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <SchoolIcon className="w-4 h-4 text-teal-700 shrink-0" />
                   <div>
                     <span className="font-bold text-stone-900 block">K–12 Academy</span>
-                    <span className="text-stone-600">Grade 1 to Class 12 ({school.curriculum?.join(', ') || 'Standard Curriculum'})</span>
+                    <span className="text-stone-600">
+                      {school.grades || 'Grades not listed'} ({school.curriculum && school.curriculum.length > 0 ? school.curriculum.join(', ') : 'Board not listed'})
+                    </span>
                   </div>
                 </div>
               </div>
@@ -388,13 +399,21 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
 
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
                 <span className="text-[11px] text-stone-500 font-medium block">
-                  {isEarlyYears ? 'Annual Fee' : 'Est. Annual Tuition'}
+                  {isDemoData
+                    ? isEarlyYears
+                      ? 'Illustrative Annual Fee'
+                      : 'Illustrative Tuition'
+                    : isEarlyYears
+                    ? 'Annual Fee'
+                    : 'Est. Annual Tuition'}
                 </span>
                 <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
-                  ₹{(school.annualFeeMin / 100000).toFixed(1)}L – {(school.annualFeeMax / 100000).toFixed(1)}L
+                  {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
+                    ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${((school.annualFeeMax || school.annualFeeMin) / 100000).toFixed(1)}L`
+                    : 'Not listed'}
                 </span>
                 <span className="text-[10px] text-stone-500 block truncate">
-                  {dataStatusLabel}
+                  {isDemoData ? 'Demo estimate · Not an official circular' : dataStatusLabel}
                 </span>
               </div>
 
@@ -403,7 +422,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   {isEarlyYears ? 'Caregiver Ratio' : 'Student:Teacher'}
                 </span>
                 <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
-                  {school.childToCaregiverRatio || school.studentTeacherRatio}
+                  {school.childToCaregiverRatio || school.studentTeacherRatio || 'Information not available'}
                 </span>
                 <span className="text-[10px] text-stone-500 block">
                   {dataStatusLabel}
@@ -416,7 +435,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   {school.distanceKm} km
                 </span>
                 <span className="text-[10px] text-stone-600 font-medium block">
-                  {school.hasTransport ? `Van/Bus (≤${school.transportRadiusKm} km)` : 'Parent drop'}
+                  {school.hasTransport === true
+                    ? `Van/Bus${school.transportRadiusKm ? ` (≤${school.transportRadiusKm} km)` : ''}`
+                    : school.hasTransport === false
+                    ? 'Parent drop'
+                    : 'Transport: Needs confirmation'}
                 </span>
               </div>
             </div>
@@ -458,7 +481,13 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">4. Daycare</span>
                     <span className="font-bold text-stone-900">
-                      {school.daycare ? (school.extendedHours ? 'Extended (till 6:30 PM)' : 'Available (Afternoon)') : 'Half-day Only'}
+                      {school.daycare === true
+                        ? school.extendedHours
+                          ? 'Extended (till 6:30 PM)'
+                          : 'Available (Afternoon)'
+                        : school.daycare === false
+                        ? 'Half-day Only'
+                        : 'Needs confirmation'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -475,23 +504,33 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">7. Outdoor Play</span>
                     <span className="font-bold text-stone-900">
-                      {school.outdoorPlay ? 'Outdoor Sand & Nature Yard' : 'Indoor Activity Play'}
+                      {school.outdoorPlay === true
+                        ? 'Outdoor Sand & Nature Yard'
+                        : school.outdoorPlay === false
+                        ? 'Indoor Activity Play'
+                        : 'Needs confirmation'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">8. Meals</span>
                     <span className="font-bold text-stone-900">
-                      {school.meals ? 'Fresh Kitchen Meals & Snacks' : 'Home-packed Snacks'}
+                      {school.meals === true
+                        ? 'Fresh Kitchen Meals & Snacks'
+                        : school.meals === false
+                        ? 'Home-packed Snacks'
+                        : 'Needs confirmation'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">9. Transport</span>
                     <span className="font-bold text-stone-900">
-                      {school.hasTransport
+                      {school.hasTransport === true
                         ? `AC Vans (${school.transportRadiusKm ? `up to ${school.transportRadiusKm} km` : 'Transport Available'})`
-                        : 'Parent Drop'}
+                        : school.hasTransport === false
+                        ? 'Parent Drop'
+                        : 'Needs confirmation'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -512,10 +551,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-stone-500 uppercase font-semibold block">3. Fees</span>
+                    <span className="text-[10px] text-stone-500 uppercase font-semibold block">
+                      {isDemoData ? '3. Fees (Illustrative)' : '3. Fees'}
+                    </span>
                     <span className="font-bold text-stone-900 tabular-nums">
                       {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
-                        ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${(school.annualFeeMax / 100000).toFixed(1)}L`
+                        ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${((school.annualFeeMax || school.annualFeeMin) / 100000).toFixed(1)}L`
                         : 'Information not available'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
@@ -548,16 +589,18 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">7. Student Support</span>
                     <span className="font-bold text-stone-900 truncate block">
-                      {school.hasSpecialNeedsSupport ? 'Special Needs Resource & IEP' : 'Wellness & Counselling'}
+                      {school.hasSpecialNeedsSupport === true ? 'Special Needs Resource & IEP' : 'Needs confirmation'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-stone-500 uppercase font-semibold block">8. Transport</span>
                     <span className="font-bold text-stone-900">
-                      {school.hasTransport
+                      {school.hasTransport === true
                         ? `Bus Fleet (${school.transportRadiusKm ? `≤${school.transportRadiusKm} km` : 'Transport Available'})`
-                        : 'Independent Commute'}
+                        : school.hasTransport === false
+                        ? 'Independent Commute'
+                        : 'Needs confirmation'}
                     </span>
                     <span className="text-[10px] text-stone-400 block font-normal">{dataStatusLabel}</span>
                   </div>
@@ -764,11 +807,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   Programs, Age Groups & Daily Schedule
                 </h3>
                 <p className="text-xs text-stone-600 mt-0.5 font-sans">
-                  Learning approach: {school.pedagogy?.join(' · ') || 'Activity-based & Montessori'} · Caregiver Ratio: {school.childToCaregiverRatio || '1:8'}
+                  Learning approach: {school.pedagogy && school.pedagogy.length > 0 ? school.pedagogy.join(' · ') : 'Information not available'} · Caregiver Ratio: {school.childToCaregiverRatio || 'Information not available'}
                 </p>
               </div>
 
-              {school.daycare && (
+              {school.daycare === true && (
                 <span className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200 self-start sm:self-auto">
                   ✓ Daycare & Nap Pods Available
                 </span>
@@ -785,7 +828,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       <th className="py-3 px-4">Eligible Age</th>
                       <th className="py-3 px-4">Timing</th>
                       <th className="py-3 px-4">Care Ratio</th>
-                      <th className="py-3 px-4">Tuition (Approx)</th>
+                      <th className="py-3 px-4">{isDemoData ? 'Illustrative Tuition (Demo)' : 'Tuition (Approx)'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -814,14 +857,18 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   </tbody>
                 </table>
               </div>
-            ) : (
+            ) : school.preschoolPrograms && school.preschoolPrograms.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {['playgroup', 'nursery', 'lkg', 'ukg'].map((p) => (
+                {school.preschoolPrograms.map((p) => (
                   <div key={p} className="p-3.5 rounded-xl bg-[#FAF9F6] border border-stone-200 text-xs">
                     <span className="font-bold text-stone-900 uppercase block">{p}</span>
-                    <span className="text-[11px] text-stone-500">Contact admissions desk for seat availability.</span>
+                    <span className="text-[11px] text-stone-500">Program-specific timings and fees require confirmation with admissions desk.</span>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200 text-xs text-stone-600">
+                Program-specific schedule and fee details are not listed in catalog data. Contact admissions desk for details.
               </div>
             )}
 
@@ -833,19 +880,43 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-stone-700">
                 <span className="flex items-center gap-1.5 font-medium">
                   <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
-                  <span>{school.daycare ? 'Afternoon Daycare' : 'Half-Day Only'}</span>
+                  <span>
+                    {school.daycare === true
+                      ? 'Afternoon Daycare'
+                      : school.daycare === false
+                      ? 'Half-Day Only'
+                      : 'Daycare: Needs confirmation'}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
-                  <span>{school.meals ? 'Fresh Kitchen Meals' : 'Home-Packed Meals'}</span>
+                  <span>
+                    {school.meals === true
+                      ? 'Fresh Kitchen Meals'
+                      : school.meals === false
+                      ? 'Home-Packed Meals'
+                      : 'Meals: Needs confirmation'}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
-                  <span>{school.cctvSecurity ? 'Parent App CCTV Access' : 'Internal CCTV'}</span>
+                  <span>
+                    {school.cctvSecurity === true
+                      ? 'Parent App CCTV Access'
+                      : school.cctvSecurity === false
+                      ? 'Standard Campus Security'
+                      : 'CCTV: Needs confirmation'}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />
-                  <span>{school.outdoorPlay ? 'Nature Sand/Mud Yard' : 'Indoor Activity Play'}</span>
+                  <span>
+                    {school.outdoorPlay === true
+                      ? 'Nature Sand/Mud Yard'
+                      : school.outdoorPlay === false
+                      ? 'Indoor Activity Play'
+                      : 'Outdoor Play: Needs confirmation'}
+                  </span>
                 </span>
               </div>
             </div>
@@ -989,10 +1060,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
-                          <span className="text-stone-500">Annual Fees</span>
+                          <span className="text-stone-500">
+                            {isDemoData ? 'Annual Fees (Illustrative)' : 'Annual Fees'}
+                          </span>
                           <span className="font-bold text-stone-900 tabular-nums">
                             {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
-                              ? `₹${(school.annualFeeMin / 1000).toFixed(0)}k – ₹${(school.annualFeeMax / 1000).toFixed(0)}k/yr`
+                              ? `₹${(school.annualFeeMin / 1000).toFixed(0)}k – ₹${((school.annualFeeMax || school.annualFeeMin) / 1000).toFixed(0)}k/yr`
                               : 'Information not available'}
                           </span>
                         </div>
@@ -1005,16 +1078,24 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Daycare & Care</span>
                           <span className="font-semibold text-stone-900">
-                            {school.daycare ? (school.extendedHours ? 'Extended (to 6:00 PM)' : 'Available (Afternoon)') : 'Half-day Only'}
+                            {school.daycare === true
+                              ? school.extendedHours
+                                ? 'Extended (to 6:00 PM)'
+                                : 'Available (Afternoon)'
+                              : school.daycare === false
+                              ? 'Half-day Only'
+                              : 'Needs confirmation'}
                           </span>
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
                           <span className="text-stone-500">Transport</span>
                           <span className="font-semibold text-stone-900">
-                            {school.hasTransport
+                            {school.hasTransport === true
                               ? `AC Vans (${school.transportRadiusKm ? `up to ${school.transportRadiusKm} km` : 'Transport Available'})`
-                              : 'Parent Drop'}
+                              : school.hasTransport === false
+                              ? 'Parent Drop'
+                              : 'Needs confirmation'}
                           </span>
                         </div>
 
@@ -1040,10 +1121,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         </div>
 
                         <div className="flex justify-between py-1 border-b border-stone-50">
-                          <span className="text-stone-500">Annual Tuition</span>
+                          <span className="text-stone-500">
+                            {isDemoData ? 'Annual Tuition (Illustrative)' : 'Annual Tuition'}
+                          </span>
                           <span className="font-bold text-stone-900 tabular-nums">
                             {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
-                              ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${(school.annualFeeMax / 100000).toFixed(1)}L/yr`
+                              ? `₹${(school.annualFeeMin / 100000).toFixed(1)}L – ${((school.annualFeeMax || school.annualFeeMin) / 100000).toFixed(1)}L/yr`
                               : 'Information not available'}
                           </span>
                         </div>
@@ -1072,9 +1155,13 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                         <div className="flex justify-between py-1">
                           <span className="text-stone-500">Transport Radius</span>
                           <span className="font-semibold text-stone-900 tabular-nums">
-                            {school.hasTransport
-                              ? `Up to ${school.transportRadiusKm || 15} km`
-                              : 'Information not available'}
+                            {school.hasTransport === true
+                              ? school.transportRadiusKm
+                                ? `Up to ${school.transportRadiusKm} km`
+                                : 'Transport Available'
+                              : school.hasTransport === false
+                              ? 'Not available'
+                              : 'Needs confirmation'}
                           </span>
                         </div>
                       </>
@@ -1118,7 +1205,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 Academic Framework & Board Affiliation
               </h3>
               <p className="text-xs text-stone-600 mt-1 font-sans">
-                Accredited boards: {school.curriculum?.join(', ') || 'Independent'} · Average Student-Teacher Cohort: {school.studentTeacherRatio}
+                Listed boards: {school.curriculum && school.curriculum.length > 0 ? school.curriculum.join(', ') : 'Information not available'} · Student-Teacher Cohort: {school.studentTeacherRatio || 'Information not available'}
               </p>
             </div>
 
@@ -1126,14 +1213,18 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
                 Scholastic Achievements & Milestones
               </h4>
-              <ul className="space-y-2.5">
-                {(school.academicHighlights || []).map((highlight, idx) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-stone-700">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                    <span>{highlight}</span>
-                  </li>
-                ))}
-              </ul>
+              {school.academicHighlights && school.academicHighlights.length > 0 ? (
+                <ul className="space-y-2.5">
+                  {school.academicHighlights.map((highlight, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-stone-700">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <span>{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-stone-500 italic">No academic highlights listed in catalog records.</p>
+              )}
             </div>
           </div>
         )}
@@ -1144,14 +1235,20 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 gap-2">
               <div>
                 <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
-                  Transparent Fee Breakdown
+                  {isDemoData ? 'Illustrative Fee Breakdown' : 'Fee Breakdown & Transparency'}
                 </span>
                 <h3 className="font-editorial text-xl font-bold text-stone-900 mt-1">
                   Itemized Fee Breakdown
                 </h3>
                 <p className="text-xs text-stone-600 mt-0.5 font-sans">
-                  Fee Source: <strong className="text-stone-800">{school.feeSource || 'Published circular'}</strong> · Status:{' '}
-                  <strong className="text-stone-800">{school.dataStatus === 'demo' ? 'Demo data' : school.lastVerifiedAt ? `Last updated: ${school.lastVerifiedAt}` : 'Verified 2025-26'}</strong>
+                  Fee Source: <strong className="text-stone-800">{school.feeSource || 'Illustrative catalog estimate'}</strong> · Status:{' '}
+                  <strong className="text-stone-800">
+                    {isDemoData
+                      ? 'Illustrative demo data (not an official fee circular)'
+                      : school.lastVerifiedAt
+                      ? `Last updated: ${school.lastVerifiedAt}`
+                      : 'Catalog record'}
+                  </strong>
                 </p>
               </div>
 
@@ -1165,6 +1262,18 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </div>
             </div>
 
+            {isDemoData && (
+              <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5 font-sans">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-bold">Illustrative Demo Figures:</strong>{' '}
+                  <span>
+                    These fee figures are prototype estimates for comparison only and are not official school fee circulars. Confirm current tuition, registration deposits, and optional charges directly with the institution.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Desktop Fee Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
@@ -1172,7 +1281,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <tr>
                     <th className="py-3 px-4">Fee Component</th>
                     <th className="py-3 px-4">Frequency</th>
-                    <th className="py-3 px-4">Estimated Amount</th>
+                    <th className="py-3 px-4">{isDemoData ? 'Illustrative Amount (Demo)' : 'Estimated Amount'}</th>
                     <th className="py-3 px-4">Notes / Disclosures</th>
                   </tr>
                 </thead>
@@ -1183,9 +1292,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                     </td>
                     <td className="py-3.5 px-4 text-stone-600">Annual (Quarterly splits)</td>
                     <td className="py-3.5 px-4 font-bold text-teal-800 tabular-nums">
-                      {formatFee(school.annualFeeMin)} – {formatFee(school.annualFeeMax)}
+                      {school.annualFeeMin ? `${formatFee(school.annualFeeMin)} – ${formatFee(school.annualFeeMax || school.annualFeeMin)}` : 'Information not available'}
                     </td>
-                    <td className="py-3.5 px-4 text-stone-600">Covers sensory materials, classroom guides, and learning kits.</td>
+                    <td className="py-3.5 px-4 text-stone-600">Illustrative tuition estimate; confirm inclusions with admissions.</td>
                   </tr>
 
                   <tr>
@@ -1194,7 +1303,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                     <td className="py-3.5 px-4 font-bold text-stone-900 tabular-nums">
                       {formatFee(school.admissionFee)}
                     </td>
-                    <td className="py-3.5 px-4 text-stone-600">Payable upon admission confirmation.</td>
+                    <td className="py-3.5 px-4 text-stone-600">Confirm exact admission charges prior to payment.</td>
                   </tr>
 
                   {school.transportFeeMin && (
@@ -1202,9 +1311,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       <td className="py-3.5 px-4 font-bold text-stone-900">Van / Bus Transport</td>
                       <td className="py-3.5 px-4 text-stone-600">Optional / Annual</td>
                       <td className="py-3.5 px-4 font-semibold text-stone-900 tabular-nums">
-                        {formatFee(school.transportFeeMin)} – {formatFee(school.transportFeeMax || 0)}
+                        {school.transportFeeMax
+                          ? `${formatFee(school.transportFeeMin)} – ${formatFee(school.transportFeeMax)}`
+                          : formatFee(school.transportFeeMin)}
                       </td>
-                      <td className="py-3.5 px-4 text-stone-600">Doorstep pickup with female attendants and GPS.</td>
+                      <td className="py-3.5 px-4 text-stone-600">Confirm route coverage and attendant policy directly with the school.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1228,34 +1339,38 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(school.facilities || []).map((fac) => {
-                const fColor = getFacilityCategoryColor(fac.category, fac.name);
-                return (
-                  <div
-                    key={fac.id}
-                    className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200/80 flex items-start gap-3"
-                  >
-                    <div className={`w-8 h-8 rounded-lg ${fColor.bg} ${fColor.text} flex items-center justify-center shrink-0 border ${fColor.border}`}>
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-stone-900">{fac.name}</h4>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${fColor.badge}`}>
-                          {fac.category}
-                        </span>
+            {school.facilities && school.facilities.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {school.facilities.map((fac) => {
+                  const fColor = getFacilityCategoryColor(fac.category, fac.name);
+                  return (
+                    <div
+                      key={fac.id}
+                      className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200/80 flex items-start gap-3"
+                    >
+                      <div className={`w-8 h-8 rounded-lg ${fColor.bg} ${fColor.text} flex items-center justify-center shrink-0 border ${fColor.border}`}>
+                        <CheckCircle2 className="w-4 h-4" />
                       </div>
-                      {fac.highlight && (
-                        <p className="text-xs text-stone-600 mt-1 leading-relaxed font-sans">
-                          {fac.highlight}
-                        </p>
-                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-stone-900">{fac.name}</h4>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${fColor.badge}`}>
+                            {fac.category}
+                          </span>
+                        </div>
+                        {fac.highlight && (
+                          <p className="text-xs text-stone-600 mt-1 leading-relaxed font-sans">
+                            {fac.highlight}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-stone-500 italic">No facilities listed in catalog records. Confirm available facilities directly with the institution.</p>
+            )}
           </div>
         )}
 
@@ -1349,25 +1464,25 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-[11px] text-stone-500 font-medium block">Commute Traffic</span>
-                <span className="text-sm font-bold text-stone-900">{school.neighbourhood?.trafficIntensity || 'Moderate'}</span>
+                <span className="text-sm font-bold text-stone-900">{school.neighbourhood?.trafficIntensity || 'Information not available'}</span>
               </div>
 
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-[11px] text-stone-500 font-medium block">Nearest Transit</span>
-                <span className="text-sm font-semibold text-stone-900">{school.neighbourhood?.nearestTransit || 'City transit corridors'}</span>
+                <span className="text-sm font-semibold text-stone-900">{school.neighbourhood?.nearestTransit || 'Information not available'}</span>
               </div>
 
               <div className="p-4 rounded-xl bg-[#FAF9F6] border border-stone-200">
                 <span className="text-[11px] text-stone-500 font-medium block">Surrounding Localities</span>
                 <span className="text-xs font-semibold text-stone-700">
-                  {school.neighbourhood?.neighbouringLocalities?.join(', ') || school.area}
+                  {school.neighbourhood?.neighbouringLocalities?.join(', ') || school.area || 'Information not available'}
                 </span>
               </div>
             </div>
 
             <div className="p-4 bg-teal-50/50 rounded-xl border border-teal-200/80 text-xs text-teal-950 leading-relaxed font-sans">
               <strong className="text-teal-900 block mb-1">Local Commute Advisory:</strong>
-              {school.neighbourhood?.commuteNote || `Convenient access across ${school.area} and adjacent arterial sectors.`}
+              {school.neighbourhood?.commuteNote || `Check peak-hour traffic along routes serving ${school.area}.`}
             </div>
           </div>
         )}
@@ -1421,9 +1536,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 <li className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0 mt-1.5" />
                   <div>
-                    <strong className="text-stone-900 block font-semibold">Fee is within your stated budget</strong>
+                    <strong className="text-stone-900 block font-semibold">Illustrative fee aligns with budget range</strong>
                     <span className="text-stone-600 text-xs">
-                      Annual tuition of ₹{(school.annualFeeMin / 100000).toFixed(1)}L – ₹{(school.annualFeeMax / 100000).toFixed(1)}L aligns with your target fee threshold.
+                      {typeof school.annualFeeMin === 'number' && school.annualFeeMin > 0
+                        ? `Listed illustrative fee of ₹${(school.annualFeeMin / 100000).toFixed(1)}L – ₹${((school.annualFeeMax || school.annualFeeMin) / 100000).toFixed(1)}L aligns with your target fee threshold (confirm official circular).`
+                        : 'Fee details are not listed; confirm the official 2026-27 fee schedule directly.'}
                     </span>
                   </div>
                 </li>
@@ -1431,11 +1548,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 <li className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0 mt-1.5" />
                   <div>
-                    <strong className="text-stone-900 block font-semibold">Offers the requested program</strong>
+                    <strong className="text-stone-900 block font-semibold">Listed program coverage</strong>
                     <span className="text-stone-600 text-xs">
                       {isEarlyYears
-                        ? `Offers dedicated early years programs (${school.preschoolPrograms?.map((p) => p.toUpperCase()).join(', ') || 'Playgroup, Nursery, LKG, UKG'}) with ${school.pedagogy?.join(' & ') || 'Montessori'} approach.`
-                        : `Provides ${school.curriculum?.join(', ') || 'CBSE'} board curriculum covering ${school.grades}.`}
+                        ? `Listed early years programs (${school.preschoolPrograms?.length ? school.preschoolPrograms.map((p) => p.toUpperCase()).join(', ') : 'programs not specified'})${school.pedagogy?.length ? ` with ${school.pedagogy.join(' & ')} approach` : ''}.`
+                        : `Provides ${school.curriculum?.length ? `${school.curriculum.join(', ')} board curriculum` : 'K–12 curriculum'} covering ${school.grades || 'listed grades'}.`}
                     </span>
                   </div>
                 </li>
@@ -1443,11 +1560,24 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                 <li className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0 mt-1.5" />
                   <div>
-                    <strong className="text-stone-900 block font-semibold">Relevant facility available</strong>
+                    <strong className="text-stone-900 block font-semibold">Listed facilities</strong>
                     <span className="text-stone-600 text-xs">
                       {isEarlyYears
-                        ? `${school.daycare ? 'Afternoon daycare nap pods' : 'Active play bays'}, ${school.outdoorPlay ? 'shaded outdoor play yard' : 'activity space'}, and CCTV monitoring.`
-                        : `${(school.facilities || []).slice(0, 3).map((f) => f.name).join(', ')} available on site.`}
+                        ? (() => {
+                            const items: string[] = [];
+                            if (school.daycare === true) items.push('daycare');
+                            if (school.outdoorPlay === true) items.push('outdoor play area');
+                            if (school.cctvSecurity === true) items.push('CCTV monitoring');
+                            if (items.length === 0 && school.facilities?.length) {
+                              items.push(...school.facilities.slice(0, 3).map((f) => f.name));
+                            }
+                            return items.length > 0
+                              ? `Catalog lists ${items.join(', ')}.`
+                              : 'Facility details are limited in catalog data; confirm amenities on site.';
+                          })()
+                        : school.facilities && school.facilities.length > 0
+                        ? `${school.facilities.slice(0, 3).map((f) => f.name).join(', ')} listed in catalog records.`
+                        : 'Facility details are not listed; confirm amenities on site.'}
                     </span>
                   </div>
                 </li>
@@ -1507,7 +1637,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div>
                     <strong className="text-stone-900 block font-semibold">Exact timings</strong>
                     <span className="text-stone-600 text-xs">
-                      Check exact morning arrival and afternoon dismissal hours ({school.timings || '8:30 AM – 1:30 PM'}), plus daycare extension buffers.
+                      Check exact morning arrival and afternoon dismissal hours ({school.timings || 'timings not listed'}), plus daycare extension buffers if needed.
                     </span>
                   </div>
                 </li>
@@ -1517,10 +1647,10 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div>
                     <strong className="text-stone-900 block font-semibold">Any preference that comes from demo/unverified data</strong>
                     <span className="text-stone-600 text-xs">
-                      {school.dataStatus === 'demo'
+                      {isDemoData
                         ? 'Fee and ratio figures are illustrative prototype data. Inspect campus facilities and staff qualifications directly on site.'
                         : school.dataStatus === 'partially_verified'
-                        ? 'Transport routes and optional activity fees await 2026 circular verification. Verify with admissions desk.'
+                        ? 'Transport routes and optional activity fees await 2026 institutional confirmation. Verify with admissions desk.'
                         : 'Review child-to-caregiver ratios and staff turnover directly with the administration during your visit.'}
                     </span>
                   </div>
@@ -1607,14 +1737,18 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       <span className="text-stone-500">{item.institutionType === 'preschool' ? 'Approach' : 'Board'}</span>
                       <span className="font-medium text-stone-900">
                         {item.institutionType === 'preschool'
-                          ? item.pedagogy?.[0] || 'Montessori'
-                          : item.curriculum?.[0] || 'CBSE'}
+                          ? item.pedagogy?.[0] || 'Information not available'
+                          : item.curriculum?.[0] || 'Information not available'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-stone-500">Fee Approx</span>
+                      <span className="text-stone-500">
+                        {item.dataStatus === 'demo' || !item.dataStatus ? 'Illustrative Fee' : 'Fee Approx'}
+                      </span>
                       <span className="font-bold text-stone-900 tabular-nums">
-                        ₹{(item.annualFeeMin / 100000).toFixed(1)}L/yr
+                        {typeof item.annualFeeMin === 'number' && item.annualFeeMin > 0
+                          ? `₹${(item.annualFeeMin / 100000).toFixed(1)}L/yr`
+                          : 'Not listed'}
                       </span>
                     </div>
                   </div>

@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   HelpCircle,
-  Star,
   MapPin,
   ExternalLink,
   ChevronRight,
@@ -43,7 +42,7 @@ interface ComparePageProps {
 export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
   useDocumentMeta({
     title: 'Compare Schools & Preschools in Chennai | FindMySchool',
-    description: 'Compare selected Chennai schools side-by-side on verified fees, commute distance, curriculum, student-teacher ratios, and facility offerings.',
+    description: 'Compare selected Chennai schools side-by-side on illustrative fees, commute distance, curriculum, student-teacher ratios, and facility offerings.',
     canonicalPath: '/compare',
     ogType: 'website',
   });
@@ -92,6 +91,18 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
     return comparisonSchools.some((s) => JSON.stringify(getter(s)) !== first);
   };
 
+  // Neutral tri-state status helper for optional booleans
+  const formatTriState = (
+    value: boolean | undefined,
+    yesLabel: string,
+    noLabel: string,
+    unknownLabel = 'Needs confirmation'
+  ): string => {
+    if (value === true) return yesLabel;
+    if (value === false) return noLabel;
+    return unknownLabel;
+  };
+
   // Neutral status helper
   const getNeutralSports = (s: School): string => {
     const hasSports =
@@ -101,8 +112,10 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
           f.name?.toLowerCase().includes('pool') ||
           f.name?.toLowerCase().includes('ground') ||
           f.name?.toLowerCase().includes('court')
-      ) || s.outdoorPlay;
-    return hasSports ? 'Available' : 'Not available';
+      ) || s.outdoorPlay === true;
+    if (hasSports) return 'Available';
+    if (s.outdoorPlay === false) return 'Not listed';
+    return 'Needs confirmation';
   };
 
   // Dynamic neutral questions generated based on actual differences
@@ -433,11 +446,14 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 {/* Fee */}
                 <tr className={isDiff((s) => s.annualFeeMin) ? 'bg-amber-50/20' : ''}>
                   <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => s.annualFeeMin) ? 'bg-amber-50/95' : 'bg-white'}`}>
-                    Fee
+                    Fee (Illustrative)
                   </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 font-bold text-stone-900 tabular-nums">
                       {formatFee(s.annualFeeMin)}
+                      <span className="block text-[10px] font-normal text-stone-500">
+                        {s.dataStatus === 'demo' || !s.dataStatus ? 'Illustrative demo fee' : 'Catalog figure'}
+                      </span>
                     </td>
                   ))}
                   <td className="py-3 px-4 text-center">
@@ -457,8 +473,8 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 text-stone-800">
                       {s.institutionType === 'preschool'
-                        ? s.pedagogy?.[0] || 'Montessori'
-                        : s.curriculum?.[0] || 'CBSE'}
+                        ? s.pedagogy?.[0] || 'Information not available'
+                        : s.curriculum?.[0] || 'Information not available'}
                     </td>
                   ))}
                   <td className="py-3 px-4 text-center">
@@ -490,7 +506,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   </td>
                   {comparisonSchools.map((s) => (
                     <td key={s.id} className="py-3 px-4 text-stone-800">
-                      {s.hasTransport ? 'Available' : 'Not available'}
+                      {formatTriState(s.hasTransport, 'Available', 'Not available')}
                     </td>
                   ))}
                   <td className="py-3 px-4 text-center">
@@ -640,16 +656,16 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                           Age: <strong>{s.ageRange ? `${s.ageRange.min}–${s.ageRange.max} yrs` : 'Needs confirmation'}</strong>
                         </div>
                         <div>
-                          Approach: <strong>{s.pedagogy?.[0] || 'Activity-based'}</strong>
+                          Approach: <strong>{s.pedagogy?.[0] || 'Information not available'}</strong>
                         </div>
                         <div>
-                          Daycare: <strong>{s.daycare ? 'Available' : 'Not available'}</strong>
+                          Daycare: <strong>{formatTriState(s.daycare, 'Available', 'Not available')}</strong>
                         </div>
                         <div>
-                          Outdoor: <strong>{s.outdoorPlay ? 'Available' : 'Not available'}</strong>
+                          Outdoor: <strong>{formatTriState(s.outdoorPlay, 'Available', 'Not available')}</strong>
                         </div>
                         <div>
-                          Meals: <strong>{s.meals ? 'Available' : 'Not available'}</strong>
+                          Meals: <strong>{formatTriState(s.meals, 'Available', 'Not available')}</strong>
                         </div>
                         <div>
                           Care Ratio: <strong>{s.childToCaregiverRatio || 'Information not available'}</strong>
@@ -658,7 +674,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                           Timings: <strong>{s.timings || 'Needs confirmation'}</strong>
                         </div>
                         <div>
-                          Transport: <strong>{s.hasTransport ? `Available (≤${s.transportRadiusKm} km)` : 'Not available'}</strong>
+                          Transport: <strong>{s.hasTransport === true ? `Available${s.transportRadiusKm ? ` (≤${s.transportRadiusKm} km)` : ''}` : s.hasTransport === false ? 'Not available' : 'Needs confirmation'}</strong>
                         </div>
                       </div>
                     </div>
@@ -685,22 +701,22 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                     <span className="font-bold text-stone-900 block truncate">{s.name}</span>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
                       <div>
-                        Board: <strong>{s.curriculum?.join(', ') || (s.institutionType === 'preschool' ? 'Information not available' : 'CBSE')}</strong>
+                        Board: <strong>{s.curriculum && s.curriculum.length > 0 ? s.curriculum.join(', ') : 'Information not available'}</strong>
                       </div>
                       <div>
                         Grades: <strong>{s.grades || 'Information not available'}</strong>
                       </div>
                       <div>
-                        Fee: <strong className="tabular-nums">{formatFee(s.annualFeeMin)}</strong>
+                        Fee (Illustrative): <strong className="tabular-nums">{formatFee(s.annualFeeMin)}</strong>
                       </div>
                       <div>
                         Distance: <strong>{s.distanceKm} km</strong>
                       </div>
                       <div>
-                        Transport: <strong>{s.hasTransport ? `Available (≤${s.transportRadiusKm} km)` : 'Not available'}</strong>
+                        Transport: <strong>{s.hasTransport === true ? `Available${s.transportRadiusKm ? ` (≤${s.transportRadiusKm} km)` : ''}` : s.hasTransport === false ? 'Not available' : 'Needs confirmation'}</strong>
                       </div>
                       <div>
-                        Support: <strong>{s.hasSpecialNeedsSupport ? 'Available' : 'Needs confirmation'}</strong>
+                        Support: <strong>{s.hasSpecialNeedsSupport === true ? 'Available' : 'Needs confirmation'}</strong>
                       </div>
                     </div>
                   </div>
@@ -768,7 +784,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
               {/* Fee */}
               <div className="p-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase">Annual Tuition</span>
+                  <span className="text-[11px] font-bold text-stone-500 uppercase">Illustrative Annual Fee</span>
                   {schoolA.annualFeeMin !== schoolB.annualFeeMin && (
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200">Different</span>
                   )}
@@ -816,8 +832,8 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   )}
                 </div>
                 <div className="grid grid-cols-2 divide-x divide-stone-100 text-center font-medium text-stone-800">
-                  <div>{schoolA.hasTransport ? 'Available' : 'Not available'}</div>
-                  <div>{schoolB.hasTransport ? 'Available' : 'Not available'}</div>
+                  <div>{formatTriState(schoolA.hasTransport, 'Available', 'Not available')}</div>
+                  <div>{formatTriState(schoolB.hasTransport, 'Available', 'Not available')}</div>
                 </div>
               </div>
             </div>
@@ -948,7 +964,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-800">
                     {s.preschoolPrograms && s.preschoolPrograms.length > 0
                       ? s.preschoolPrograms.map((p) => String(p).toUpperCase()).join(', ')
-                      : 'Playgroup to UKG'}
+                      : 'Information not available'}
                   </td>
                 ))}
               </tr>
@@ -968,7 +984,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                         {s.pedagogy.join(', ')}
                       </span>
                     ) : (
-                      'Activity-based / Montessori'
+                      <span className="text-stone-500 font-medium">Information not available</span>
                     )}
                   </td>
                 ))}
@@ -978,7 +994,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
               <tr className={isDiff((s) => s.annualFeeMin) ? 'bg-amber-50/20' : ''}>
                 <td className="p-3.5 px-5 font-bold text-stone-700 sticky left-0 bg-white z-10 border-r border-stone-200">
                   <div className="flex items-center justify-between">
-                    <span>4. Fees (Annual)</span>
+                    <span>4. Fees (Annual · Illustrative)</span>
                     <DiffBadge different={isDiff((s) => s.annualFeeMin)} />
                   </div>
                 </td>
@@ -988,7 +1004,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                       {formatFee(s.annualFeeMin)} – {formatFee(s.annualFeeMax)}
                     </span>
                     <span className="block text-[10px] text-stone-500 mt-0.5">
-                      {s.dataStatus === 'demo' ? 'Demo data' : 'Verified circular'}
+                      {s.dataStatus === 'demo' || !s.dataStatus ? 'Illustrative demo data' : 'Catalog disclosure'}
                     </span>
                   </td>
                 ))}
@@ -1004,7 +1020,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-800 font-medium">
-                    {s.timings || '8:30 AM – 1:30 PM'}
+                    {s.timings || 'Needs confirmation'}
                   </td>
                 ))}
               </tr>
@@ -1019,12 +1035,14 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
-                    {s.daycare ? (
+                    {s.daycare === true ? (
                       <span className="font-semibold text-stone-900">
                         {s.extendedHours ? 'Available (to 6:30 PM)' : 'Available (Afternoon)'}
                       </span>
-                    ) : (
+                    ) : s.daycare === false ? (
                       <span className="text-stone-500 font-medium">Not available</span>
+                    ) : (
+                      <span className="text-stone-500 font-medium">Needs confirmation</span>
                     )}
                   </td>
                 ))}
@@ -1040,12 +1058,14 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
-                    {s.outdoorPlay ? (
+                    {s.outdoorPlay === true ? (
                       <span className="font-semibold text-stone-900">
                         Available (Sand & nature yard)
                       </span>
-                    ) : (
+                    ) : s.outdoorPlay === false ? (
                       <span className="text-stone-500 font-medium">Not available</span>
+                    ) : (
+                      <span className="text-stone-500 font-medium">Needs confirmation</span>
                     )}
                   </td>
                 ))}
@@ -1061,12 +1081,14 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
-                    {s.hasTransport ? (
+                    {s.hasTransport === true ? (
                       <span className="font-semibold text-stone-900">
-                        Available (Vans ≤{s.transportRadiusKm} km)
+                        Available{s.transportRadiusKm ? ` (Vans ≤${s.transportRadiusKm} km)` : ''}
                       </span>
-                    ) : (
+                    ) : s.hasTransport === false ? (
                       <span className="text-stone-500 font-medium">Not available</span>
+                    ) : (
+                      <span className="text-stone-500 font-medium">Needs confirmation</span>
                     )}
                   </td>
                 ))}
@@ -1082,12 +1104,14 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
-                    {s.meals ? (
+                    {s.meals === true ? (
                       <span className="font-semibold text-stone-900">
                         Available (Fresh kitchen snacks)
                       </span>
-                    ) : (
+                    ) : s.meals === false ? (
                       <span className="text-stone-500 font-medium">Not available (Home-packed)</span>
+                    ) : (
+                      <span className="text-stone-500 font-medium">Needs confirmation</span>
                     )}
                   </td>
                 ))}
@@ -1144,7 +1168,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                       ? s.curriculum.join(', ')
                       : s.institutionType === 'preschool'
                       ? 'Information not available (Preschool)'
-                      : 'CBSE'}
+                      : 'Information not available'}
                   </td>
                 ))}
               </tr>
@@ -1168,13 +1192,16 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
               <tr className={isDiff((s) => s.annualFeeMin) ? 'bg-amber-50/20' : ''}>
                 <td className="p-3.5 px-5 font-bold text-stone-700 sticky left-0 bg-white z-10 border-r border-stone-200">
                   <div className="flex items-center justify-between">
-                    <span>3. Fees</span>
+                    <span>3. Fees (Illustrative)</span>
                     <DiffBadge different={isDiff((s) => s.annualFeeMin)} />
                   </div>
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 font-bold text-stone-900 tabular-nums">
                     {formatFee(s.annualFeeMin)} – {formatFee(s.annualFeeMax)}
+                    <span className="block text-[10px] font-normal text-stone-500 mt-0.5">
+                      {s.dataStatus === 'demo' || !s.dataStatus ? 'Illustrative demo data' : 'Catalog disclosure'}
+                    </span>
                   </td>
                 ))}
               </tr>
@@ -1207,7 +1234,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-800">
                     {s.facilities && s.facilities.length > 0
                       ? s.facilities.slice(0, 3).map((f) => f.name).join(', ')
-                      : 'Not available'}
+                      : 'Information not available'}
                   </td>
                 ))}
               </tr>
@@ -1224,7 +1251,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-800">
                     {s.extracurriculars && s.extracurriculars.length > 0
                       ? s.extracurriculars.slice(0, 3).join(', ')
-                      : 'Not available'}
+                      : 'Information not available'}
                   </td>
                 ))}
               </tr>
@@ -1239,12 +1266,14 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
-                    {s.hasTransport ? (
+                    {s.hasTransport === true ? (
                       <span className="font-semibold text-stone-900">
-                        Available (≤{s.transportRadiusKm} km fleet)
+                        Available{s.transportRadiusKm ? ` (≤${s.transportRadiusKm} km fleet)` : ''}
                       </span>
-                    ) : (
+                    ) : s.hasTransport === false ? (
                       <span className="text-stone-500 font-medium">Not available</span>
+                    ) : (
+                      <span className="text-stone-500 font-medium">Needs confirmation</span>
                     )}
                   </td>
                 ))}
@@ -1260,14 +1289,12 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 </td>
                 {comparisonSchools.map((s) => (
                   <td key={s.id} className="p-3.5 px-5 border-l border-stone-100">
-                    {s.hasSpecialNeedsSupport ? (
+                    {s.hasSpecialNeedsSupport === true ? (
                       <span className="font-semibold text-stone-900">
                         Available (Resource room / IEP)
                       </span>
-                    ) : s.institutionType === 'preschool' ? (
-                      <span className="text-stone-600 font-medium">Needs confirmation</span>
                     ) : (
-                      <span className="text-stone-700">Counseling & guidance</span>
+                      <span className="text-stone-600 font-medium">Needs confirmation</span>
                     )}
                   </td>
                 ))}
@@ -1300,7 +1327,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                       size="sm"
                     />
                     <span className="block text-[10px] text-stone-500 mt-1 font-sans">
-                      {s.dataStatus === 'demo' ? 'Demo data' : 'Verified schedule'}
+                      {s.dataStatus === 'demo' || !s.dataStatus ? 'Demo data' : 'Catalog record'}
                     </span>
                   </td>
                 ))}
@@ -1423,7 +1450,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                       )}
                     </div>
                     <p className="text-[11px] text-stone-500">
-                      {s.area} · {formatFee(s.annualFeeMin)}/yr
+                      {s.area} · {formatFee(s.annualFeeMin)}/yr {s.dataStatus === 'demo' || !s.dataStatus ? '(illustrative)' : ''}
                     </p>
                   </div>
                   <button
