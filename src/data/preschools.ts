@@ -1,6 +1,6 @@
 import { School } from '../types/school';
 
-export const CHENNAI_PRESCHOOLS: School[] = [
+const RAW_CHENNAI_PRESCHOOLS: School[] = [
   // 1. Dedicated Montessori Preschool in Velachery
   {
     id: 'pre-001',
@@ -728,3 +728,8 @@ export const CHENNAI_PRESCHOOLS: School[] = [
     },
   },
 ];
+
+export const CHENNAI_PRESCHOOLS: School[] = RAW_CHENNAI_PRESCHOOLS.map((preschool) => ({
+  ...preschool,
+  coordinateVerified: false,
+}));

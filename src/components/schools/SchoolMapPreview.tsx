@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { School } from '../../types/school';
 import { MapPin, Navigation, Compass, Layers, Check, ChevronRight } from 'lucide-react';
 import { getCurriculumColor, getMatchScoreStyle } from '../../utils/categoryColors';
-import { hasValidCoordinates, getSchoolDistanceKm } from '../../utils/locationFiltering';
+import { DISTANCE_UNAVAILABLE_LABEL, isCoordinateVerified, getSchoolDistanceKm } from '../../utils/locationFiltering';
 
 interface SchoolMapPreviewProps {
   schools: School[];
   selectedSchoolId?: string;
   onSelectSchool?: (schoolId: string) => void;
   radiusKm?: number;
+  radiusAvailable?: boolean;
 }
 
 export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
@@ -17,6 +18,7 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
   selectedSchoolId,
   onSelectSchool,
   radiusKm = 10,
+  radiusAvailable = false,
 }) => {
   const [hoveredSchool, setHoveredSchool] = useState<School | null>(null);
 
@@ -30,9 +32,11 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
         <div className="bg-white/95 backdrop-blur-xs px-3.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs pointer-events-auto flex items-center gap-2">
           <Navigation className="w-3.5 h-3.5 text-teal-700" />
           <span className="text-xs font-bold text-stone-800">
-            Chennai Metropolitan Map
+            Chennai Schematic Map
           </span>
-          <span className="text-[11px] text-stone-500">· {schools.length} listed campus pins</span>
+          <span className="text-[11px] text-stone-500">
+            · {schools.length} illustrative pins{!radiusAvailable ? ' (locations not verified)' : ''}
+          </span>
         </div>
 
         <div className="bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-stone-200 shadow-2xs pointer-events-auto flex items-center gap-1.5 text-xs text-stone-600 font-medium">
@@ -95,17 +99,19 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
             strokeWidth="1"
           />
 
-          {/* Commute Radius Circle Overlay centered around South Chennai / Tambaram */}
-          <circle
-            cx="65"
-            cy="55"
-            r={Math.min(35, radiusKm * 2.5)}
-            fill="#0D9488"
-            fillOpacity="0.06"
-            stroke="#0D9488"
-            strokeWidth="0.8"
-            strokeDasharray="1.5 1.5"
-          />
+          {/* Commute Radius Circle Overlay (only shown when verified coordinates and origin are available) */}
+          {radiusAvailable && (
+            <circle
+              cx="65"
+              cy="55"
+              r={Math.min(35, radiusKm * 2.5)}
+              fill="#0D9488"
+              fillOpacity="0.06"
+              stroke="#0D9488"
+              strokeWidth="0.8"
+              strokeDasharray="1.5 1.5"
+            />
+          )}
         </svg>
 
         {/* School Coordinate Markers */}
@@ -163,9 +169,9 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
                     {(activeSchool.curriculum && activeSchool.curriculum.length > 0)
                       ? activeSchool.curriculum.join(', ')
                       : (activeSchool.pedagogy?.join(' · ') || 'Early Years')} ·{' '}
-                    {hasValidCoordinates(activeSchool)
-                      ? `${typeof activeSchool.distanceKm === 'number' ? activeSchool.distanceKm : getSchoolDistanceKm(activeSchool)} km away`
-                      : 'Distance unavailable'}
+                    {isCoordinateVerified(activeSchool) && getSchoolDistanceKm(activeSchool) !== null
+                      ? `${getSchoolDistanceKm(activeSchool)} km away`
+                      : DISTANCE_UNAVAILABLE_LABEL}
                   </span>
                 </div>
                 <h4 className="font-editorial text-xs sm:text-sm font-bold text-stone-900 truncate">

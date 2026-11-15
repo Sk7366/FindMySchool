@@ -16,7 +16,7 @@ import {
 import { CHENNAI_SCHOOLS, CHENNAI_NEIGHBOURHOODS } from '../data/schools';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 import { generateDynamicMatchReasons } from '../utils/matchProvenance';
-import { evaluateLocationFilter, getSchoolDistanceKm } from '../utils/locationFiltering';
+import { evaluateLocationFilter, getSchoolDistanceKm, isRadiusFilteringAvailable } from '../utils/locationFiltering';
 import { apiClient } from './apiClient';
 import { SearchFilters, EducationTargetType } from '../types/search';
 
@@ -54,9 +54,14 @@ function filterMockSchools(schools: School[], params?: GetSchoolsParams): School
       if (params.target === 'combined' && !isCombined) return false;
     }
 
-    // Area / Corridor & Commute Radius filter
-    if (params.area || (typeof params.radiusKm === 'number' && params.radiusKm > 0)) {
-      const locEval = evaluateLocationFilter(school, params.area, params.radiusKm);
+    // Area / Corridor filter (radius exclusion only active when verified coordinates & origin exist)
+    const radiusAvailable = isRadiusFilteringAvailable(schools);
+    if (params.area || (radiusAvailable && typeof params.radiusKm === 'number' && params.radiusKm > 0)) {
+      const locEval = evaluateLocationFilter(
+        school,
+        params.area,
+        radiusAvailable ? params.radiusKm : undefined
+      );
       if (!locEval.included) return false;
     }
 
@@ -156,18 +161,21 @@ class MockSchoolService implements ISchoolService {
       };
     });
 
+    const radiusAvailable = isRadiusFilteringAvailable(CHENNAI_SCHOOLS);
+
     const filtered = filterMockSchools(scoredSchools, {
       target: filters.educationTarget,
       area: filters.location,
-      radiusKm: filters.radiusKm,
+      radiusKm: radiusAvailable ? filters.radiusKm : undefined,
       maxBudget: filters.budgetMax,
       q: request.query,
     });
 
     // Sort
-    if (sortBy === 'best_match') {
+    const effectiveSortBy = !radiusAvailable && sortBy === 'distance_asc' ? 'best_match' : sortBy;
+    if (effectiveSortBy === 'best_match') {
       filtered.sort((a, b) => b.matchScore - a.matchScore);
-    } else if (sortBy === 'distance_asc') {
+    } else if (effectiveSortBy === 'distance_asc') {
       filtered.sort((a, b) => {
         const distA = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
         const distB = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;

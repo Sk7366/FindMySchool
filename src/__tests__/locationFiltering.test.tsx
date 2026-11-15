@@ -7,10 +7,17 @@ import { ShortlistProvider } from '../context/ShortlistContext';
 import { ComparisonProvider } from '../context/ComparisonContext';
 import { SchoolCard } from '../components/schools/SchoolCard';
 import { SchoolMapPreview } from '../components/schools/SchoolMapPreview';
+import { FilterSidebar } from '../components/filters/FilterSidebar';
+import { GuidedSearchModal } from '../components/search/GuidedSearchModal';
+import { WhatWeUnderstoodPanel } from '../components/search/WhatWeUnderstoodPanel';
+import { SearchResultsPage } from '../pages/SearchResultsPage';
 import { ComparePage } from '../pages/ComparePage';
 import { SchoolProfilePage } from '../pages/SchoolProfilePage';
 import {
+  DISTANCE_UNAVAILABLE_LABEL,
   hasValidCoordinates,
+  isCoordinateVerified,
+  isRadiusFilteringAvailable,
   calculateHaversineDistanceKm,
   getSchoolDistanceKm,
   formatSchoolDistance,
@@ -18,6 +25,7 @@ import {
   evaluateLocationFilter,
 } from '../utils/locationFiltering';
 import { generateDynamicMatchReasons } from '../utils/matchProvenance';
+import { buildAdvisorContext, getAdvisorResponse } from '../utils/advisorContext';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 import { parseQueryLocally } from '../services/queryParserService';
 import { schoolService } from '../services/schoolService';
@@ -63,17 +71,27 @@ function createStorageMock(initial: Record<string, string> = {}) {
 function renderContextSnapshot(
   filters: SearchFilters,
   sortBy: SortField = 'best_match'
-): { ids: string[]; distances: Record<string, number | undefined> } {
-  let captured: { ids: string[]; distances: Record<string, number | undefined> } = {
+): {
+  ids: string[];
+  distances: Record<string, number | undefined>;
+  isRadiusFilterAvailable: boolean;
+} {
+  let captured: {
+    ids: string[];
+    distances: Record<string, number | undefined>;
+    isRadiusFilterAvailable: boolean;
+  } = {
     ids: [],
     distances: {},
+    isRadiusFilterAvailable: true,
   };
 
   function Probe() {
-    const { filteredSchools } = useSearch();
+    const { filteredSchools, isRadiusFilterAvailable } = useSearch();
     captured = {
       ids: filteredSchools.map((s) => s.id),
       distances: Object.fromEntries(filteredSchools.map((s) => [s.id, s.distanceKm])),
+      isRadiusFilterAvailable,
     };
     return <div data-count={filteredSchools.length} />;
   }
@@ -121,10 +139,10 @@ function renderWithProviders(
   );
 }
 
-describe('Deterministic Location & Radius Filtering Suite', () => {
-  const sch001 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-001')!; // Sholinganallur, OMR (lat 12.9010, lng 80.2279)
-  const sch008 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-008')!; // Kolapakkam / Porur (Lalaji Memorial Omega)
-  const sch009 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-009')!; // Padur, OMR (Gateway International)
+describe('Phase 1.5 Safe Location Handling & Coordinate Provenance Suite', () => {
+  const sch001 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-001')!; // Sholinganallur, OMR
+  const sch008 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-008')!; // Kolapakkam / Porur
+  const sch009 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-009')!; // Padur, OMR
   const sch004 = CHENNAI_SCHOOLS.find((s) => s.id === 'sch-004')!; // Anna Nagar
   const pre005 = CHENNAI_PRESCHOOLS.find((p) => p.id === 'pre-005')!; // Karapakkam, OMR
 
@@ -133,87 +151,120 @@ describe('Deterministic Location & Radius Filtering Suite', () => {
     vi.stubGlobal('localStorage', createStorageMock());
   });
 
-  describe('1. Coordinate validation & Haversine distance calculation', () => {
-    it('calculates real Haversine distance from valid lat/lng relative to the active corridor anchor', () => {
-      const distFromOMR = getSchoolDistanceKm(sch001, 'OMR / Sholinganallur');
-      const expected = calculateHaversineDistanceKm(
-        12.9095,
-        80.2295,
-        sch001.coordinates.lat,
-        sch001.coordinates.lng
-      );
-      expect(distFromOMR).toBe(expected);
-      expect(distFromOMR).toBe(1.0);
+  describe('1. Explicit coordinate provenance on all demo institutions', () => {
+    it('marks every existing demo school and preschool record as coordinateVerified: false with no fabricated verification metadata', () => {
+      expect(CHENNAI_SCHOOLS.length).toBe(18);
+      expect(CHENNAI_PRESCHOOLS.length).toBe(6);
 
-      // Gateway International (Padur, OMR) is ~12 km south along OMR from Sholinganallur hub
-      const padurDist = getSchoolDistanceKm(sch009, 'OMR / Sholinganallur');
-      expect(padurDist).toBeGreaterThan(10);
-      expect(padurDist).toBeLessThanOrEqual(25);
-    });
+      for (const inst of CHENNAI_SCHOOLS) {
+        expect(inst.coordinateVerified).toBe(false);
+        expect(inst.coordinateSource).toBeUndefined();
+        expect(inst.coordinateVerifiedAt).toBeUndefined();
+        expect(isCoordinateVerified(inst)).toBe(false);
+      }
 
-    it('never uses mapX/mapY illustration offsets or stale static distanceKm when coordinates are missing', () => {
-      const missingCoordSchool: School = {
-        ...sch001,
-        id: 'sch-missing-coords',
-        distanceKm: 4.8,
-        coordinates: { mapX: 85, mapY: 12 } as unknown as School['coordinates'],
-      };
-
-      const zeroCoordSchool: School = {
-        ...sch001,
-        id: 'sch-zero-coords',
-        distanceKm: 3.1,
-        coordinates: { lat: 0, lng: 0, mapX: 10, mapY: 10 },
-      };
-
-      const nanCoordSchool: School = {
-        ...sch001,
-        id: 'sch-nan-coords',
-        coordinates: { lat: Number.NaN, lng: 80.22, mapX: 10, mapY: 10 },
-      };
-
-      for (const candidate of [missingCoordSchool, zeroCoordSchool, nanCoordSchool]) {
-        expect(hasValidCoordinates(candidate)).toBe(false);
-        expect(getSchoolDistanceKm(candidate, 'OMR / Sholinganallur')).toBeNull();
-        expect(formatSchoolDistance(candidate, 'OMR / Sholinganallur')).toBe('Distance unavailable');
+      for (const pre of CHENNAI_PRESCHOOLS) {
+        expect(pre.coordinateVerified).toBe(false);
+        expect(pre.coordinateSource).toBeUndefined();
+        expect(pre.coordinateVerifiedAt).toBeUndefined();
       }
     });
   });
 
-  describe('2. Hard-exclusion radius & corridor filtering', () => {
-    it('includes institutions within the selected radius and strictly excludes those outside', () => {
-      // sch-001 is 1.0 km from OMR / Sholinganallur anchor
-      const withinEval = evaluateLocationFilter(sch001, 'OMR / Sholinganallur', 2);
-      expect(withinEval.included).toBe(true);
-      expect(withinEval.matchesCorridor).toBe(true);
-      expect(withinEval.exceedsRadius).toBe(false);
-      expect(withinEval.distanceKm).toBe(1.0);
+  describe('2. Unverified distance suppression & verified-only Haversine calculation', () => {
+    it('suppresses numerical distances for all unverified demo records even when raw lat/lng or distanceKm exist', () => {
+      expect(hasValidCoordinates(sch001)).toBe(true);
+      expect(sch001.distanceKm).toBeGreaterThan(0);
 
-      // sch-009 (Padur, OMR) is ~12.0 km from OMR / Sholinganallur anchor -> excluded at 2 km
-      const outsideRadiusEval = evaluateLocationFilter(sch009, 'OMR / Sholinganallur', 2);
-      expect(outsideRadiusEval.matchesCorridor).toBe(true);
-      expect(outsideRadiusEval.exceedsRadius).toBe(true);
-      expect(outsideRadiusEval.included).toBe(false);
+      expect(getSchoolDistanceKm(sch001, 'OMR / Sholinganallur')).toBeNull();
+      expect(getSchoolDistanceKm(sch009, 'OMR / Sholinganallur')).toBeNull();
+      expect(getSchoolDistanceKm(sch001, 'All Chennai', { lat: 12.9095, lng: 80.2295 })).toBeNull();
 
-      // Under All Chennai anchor (4.9 km), sch-001 must NOT be retained with a +4 km hidden buffer at 2 km
-      const allChennaiTightEval = evaluateLocationFilter(sch001, 'All Chennai', 2);
-      expect(allChennaiTightEval.distanceKm).toBe(4.9);
-      expect(allChennaiTightEval.exceedsRadius).toBe(true);
-      expect(allChennaiTightEval.included).toBe(false);
+      expect(formatSchoolDistance(sch001, 'OMR / Sholinganallur')).toBe(DISTANCE_UNAVAILABLE_LABEL);
     });
 
-    it('strictly enforces Area / Corridor boundaries without distance-based corridor bypass', () => {
-      // Kolapakkam / Porur school must never match OMR / Sholinganallur
-      expect(matchesLocationCorridor(sch008, 'OMR / Sholinganallur')).toBe(false);
-      const evalOmrPorur = evaluateLocationFilter(sch008, 'OMR / Sholinganallur', 25);
-      expect(evalOmrPorur.included).toBe(false);
+    it('never uses mapX/mapY illustration offsets or static fallback distanceKm', () => {
+      const missingCoordVerified: School = {
+        ...sch001,
+        id: 'sch-missing-coords',
+        coordinateVerified: true,
+        distanceKm: 4.8,
+        coordinates: { mapX: 85, mapY: 12 } as unknown as School['coordinates'],
+      };
 
-      // Anna Nagar school must never match OMR / Sholinganallur even with large radius
-      const evalOmrAnna = evaluateLocationFilter(sch004, 'OMR / Sholinganallur', 25);
-      expect(evalOmrAnna.included).toBe(false);
+      const zeroCoordVerified: School = {
+        ...sch001,
+        id: 'sch-zero-coords',
+        coordinateVerified: true,
+        distanceKm: 3.1,
+        coordinates: { lat: 0, lng: 0, mapX: 10, mapY: 10 },
+      };
+
+      const nanCoordVerified: School = {
+        ...sch001,
+        id: 'sch-nan-coords',
+        coordinateVerified: true,
+        coordinates: { lat: Number.NaN, lng: 80.22, mapX: 10, mapY: 10 },
+      };
+
+      const origin = { lat: 12.9095, lng: 80.2295 };
+      for (const candidate of [missingCoordVerified, zeroCoordVerified, nanCoordVerified]) {
+        expect(hasValidCoordinates(candidate)).toBe(false);
+        expect(isCoordinateVerified(candidate)).toBe(false);
+        expect(getSchoolDistanceKm(candidate, 'OMR / Sholinganallur', origin)).toBeNull();
+        expect(formatSchoolDistance(candidate, 'OMR / Sholinganallur', '', origin)).toBe(
+          DISTANCE_UNAVAILABLE_LABEL
+        );
+      }
     });
 
-    it('excludes out-of-radius schools when changing radius from 25 km to 2 km in both SearchContext and schoolService', async () => {
+    it('calculates real Haversine distance ONLY when BOTH coordinateVerified === true and a valid verifiedOrigin are supplied', () => {
+      const verifiedSch001: School = {
+        ...sch001,
+        id: 'sch-001-verified',
+        coordinateVerified: true,
+        coordinateSource: 'Official Campus Survey',
+        coordinateVerifiedAt: '2026-04-01',
+      };
+      const verifiedOrigin = { lat: 12.9095, lng: 80.2295 };
+
+      // Without verifiedOrigin, distance remains suppressed
+      expect(getSchoolDistanceKm(verifiedSch001, 'OMR / Sholinganallur')).toBeNull();
+
+      // With verifiedOrigin, Haversine distance is computed
+      const dist = getSchoolDistanceKm(verifiedSch001, 'OMR / Sholinganallur', verifiedOrigin);
+      const expected = calculateHaversineDistanceKm(
+        verifiedOrigin.lat,
+        verifiedOrigin.lng,
+        verifiedSch001.coordinates.lat,
+        verifiedSch001.coordinates.lng
+      );
+      expect(dist).toBe(expected);
+      expect(dist).toBe(1.0);
+      expect(formatSchoolDistance(verifiedSch001, 'OMR / Sholinganallur', '', verifiedOrigin)).toBe(
+        '1 km'
+      );
+    });
+  });
+
+  describe('3. Safe radius filtering & corridor matching without invented anchors', () => {
+    it('reports radius filtering unavailable for the unverified demo catalog', () => {
+      expect(isRadiusFilteringAvailable(CHENNAI_SCHOOLS)).toBe(false);
+      expect(isRadiusFilteringAvailable(CHENNAI_SCHOOLS, { lat: 12.9095, lng: 80.2295 })).toBe(false);
+
+      const snapshot = renderContextSnapshot({ ...DEFAULT_FILTERS, location: 'OMR / Sholinganallur' });
+      expect(snapshot.isRadiusFilterAvailable).toBe(false);
+    });
+
+    it('never excludes corridor-matching unverified schools due to radius (2 km vs 25 km)', async () => {
+      const eval2Km = evaluateLocationFilter(sch009, 'OMR / Sholinganallur', 2);
+      expect(eval2Km.matchesCorridor).toBe(true);
+      expect(eval2Km.locationVerified).toBe(false);
+      expect(eval2Km.distanceUnavailable).toBe(true);
+      expect(eval2Km.radiusApplied).toBe(false);
+      expect(eval2Km.exceedsRadius).toBe(false);
+      expect(eval2Km.included).toBe(true);
+
       const omrFilters25: SearchFilters = {
         ...DEFAULT_FILTERS,
         educationTarget: 'school',
@@ -225,104 +276,75 @@ describe('Deterministic Location & Radius Filtering Suite', () => {
         radiusKm: 2,
       };
 
-      // SearchContext path
-      const ctxAt25 = renderContextSnapshot(omrFilters25);
-      expect(ctxAt25.ids).toContain('sch-001');
-      expect(ctxAt25.ids).toContain('sch-009'); // Padur, OMR (~12 km) included at 25 km
-      expect(ctxAt25.ids).not.toContain('sch-008'); // Kolapakkam / Porur excluded
-      expect(ctxAt25.ids).not.toContain('sch-004'); // Anna Nagar excluded
+      const ctx25 = renderContextSnapshot(omrFilters25);
+      const ctx2 = renderContextSnapshot(omrFilters2);
+      expect(ctx2.ids).toEqual(ctx25.ids);
+      expect(ctx2.ids).toContain('sch-001');
+      expect(ctx2.ids).toContain('sch-009'); // Padur, OMR kept safely because location is unverified
+      expect(ctx2.ids).not.toContain('sch-008'); // Kolapakkam / Porur still strictly excluded by corridor
+      expect(ctx2.ids).not.toContain('sch-004'); // Anna Nagar excluded by corridor
+      expect(ctx2.distances['sch-001']).toBeUndefined();
 
-      const ctxAt2 = renderContextSnapshot(omrFilters2);
-      expect(ctxAt2.ids).toContain('sch-001'); // 1.0 km <= 2 km
-      expect(ctxAt2.ids).not.toContain('sch-009'); // 12.0 km > 2 km -> hard excluded
-      expect(ctxAt2.ids).not.toContain('sch-008');
-      expect(ctxAt2.distances['sch-001']).toBe(1.0);
-
-      // schoolService.search path
       const svc25 = await schoolService.search({ filters: omrFilters25 });
-      expect(svc25.data.schools.map((s) => s.id)).toContain('sch-009');
-      expect(svc25.data.schools.map((s) => s.id)).not.toContain('sch-008');
-
       const svc2 = await schoolService.search({ filters: omrFilters2 });
-      const svc2Ids = svc2.data.schools.map((s) => s.id);
-      expect(svc2Ids).toContain('sch-001');
-      expect(svc2Ids).not.toContain('sch-009');
-      expect(svc2Ids).not.toContain('sch-008');
+      expect(svc2.data.schools.map((s) => s.id)).toEqual(svc25.data.schools.map((s) => s.id));
+      expect(svc2.data.schools.map((s) => s.id)).toContain('sch-009');
+      expect(svc2.data.schools.map((s) => s.id)).not.toContain('sch-008');
     });
-  });
 
-  describe('3. "Find schools in OMR" end-to-end deterministic pipeline', () => {
-    it('extracts OMR / Sholinganallur from NL query and keeps only matching OMR institutions within 2 km', () => {
+    it('applies hard radius exclusion ONLY when both institution coordinates and search origin are verified', () => {
+      const origin = { lat: 12.9095, lng: 80.2295 };
+      const verifiedNear: School = { ...sch001, coordinateVerified: true };
+      const verifiedFar: School = { ...sch009, coordinateVerified: true };
+
+      const nearEval = evaluateLocationFilter(verifiedNear, 'OMR / Sholinganallur', 2, origin);
+      expect(nearEval.radiusApplied).toBe(true);
+      expect(nearEval.exceedsRadius).toBe(false);
+      expect(nearEval.included).toBe(true);
+      expect(nearEval.distanceKm).toBe(1.0);
+
+      const farEval = evaluateLocationFilter(verifiedFar, 'OMR / Sholinganallur', 2, origin);
+      expect(farEval.radiusApplied).toBe(true);
+      expect(farEval.exceedsRadius).toBe(true);
+      expect(farEval.included).toBe(false);
+      expect(farEval.distanceKm).toBeGreaterThan(10);
+    });
+
+    it('preserves strict Area / Corridor matching for "Find schools in OMR"', () => {
       const parsed = parseQueryLocally('Find schools in OMR', DEFAULT_FILTERS);
       expect(parsed.filters.location).toBe('OMR / Sholinganallur');
       expect(parsed.filters.educationTarget).toBe('school');
 
-      // With default 25 km radius: excludes non-OMR schools (e.g. Kolapakkam / Porur)
-      const res25 = renderContextSnapshot({ ...parsed.filters, radiusKm: 25 });
-      expect(res25.ids).not.toContain('sch-008');
-      expect(res25.ids).not.toContain('pre-005'); // standalone preschool excluded when target is 'school'
-      expect(res25.ids.every((id) => {
-        const inst = CHENNAI_SCHOOLS.find((s) => s.id === id)!;
-        return matchesLocationCorridor(inst, 'OMR / Sholinganallur');
-      })).toBe(true);
-
-      // Tightening radius to 2 km strictly excludes Gateway International (12.0 km) while retaining sch-001 (1.0 km)
-      const res2 = renderContextSnapshot({ ...parsed.filters, radiusKm: 2 });
-      expect(res2.ids).toContain('sch-001');
-      expect(res2.ids).not.toContain('sch-009');
-      expect(res2.ids).not.toContain('sch-008');
+      const res = renderContextSnapshot({ ...parsed.filters, radiusKm: 2 });
+      expect(res.ids).not.toContain('sch-008'); // Kolapakkam / Porur excluded
+      expect(res.ids).not.toContain('pre-005'); // Standalone preschool excluded for target='school'
+      expect(
+        res.ids.every((id) => {
+          const inst = CHENNAI_SCHOOLS.find((s) => s.id === id)!;
+          return matchesLocationCorridor(inst, 'OMR / Sholinganallur');
+        })
+      ).toBe(true);
     });
   });
 
-  describe('4. Missing coordinates handling across filtering, scoring, provenance & UI', () => {
-    const schoolWithoutCoords: School = {
-      ...sch001,
-      id: 'sch-no-coords',
-      name: 'No Coords Academy OMR',
-      distanceKm: 4.8,
-      coordinates: { mapX: 70, mapY: 30 } as unknown as School['coordinates'],
-    };
-
-    it('does not silently exclude missing-coordinate corridor matches and uses neutral scoring + confirmation reason', () => {
-      const locEval = evaluateLocationFilter(schoolWithoutCoords, 'OMR / Sholinganallur', 2);
-      expect(locEval.included).toBe(true);
-      expect(locEval.distanceKm).toBeNull();
-      expect(locEval.distanceUnavailable).toBe(true);
-      expect(locEval.exceedsRadius).toBe(false);
-
-      const filters: SearchFilters = {
-        ...DEFAULT_FILTERS,
-        location: 'OMR / Sholinganallur',
-        radiusKm: 2,
-      };
-      const reasons = generateDynamicMatchReasons(schoolWithoutCoords, filters);
-      const distReason = reasons.find((r) => r.matchedCriteria === 'distance')!;
-      expect(distReason).toBeDefined();
-      expect(distReason.type).toBe('unverified');
-      expect(distReason.sourceType).toBe('needs_confirmation');
-      expect(distReason.title).toContain('Distance unavailable');
-      expect(distReason.title).not.toContain('Within your');
-
-      // Scoring uses neutral 0.5 distance factor rather than fabricating a 5 km distance
-      const scoreMissing = calculateSchoolFitScore(schoolWithoutCoords, filters);
-      const schoolAt1Km: School = { ...sch001, id: 'sch-1km' };
-      const scoreNear = calculateSchoolFitScore(schoolAt1Km, filters);
-      expect(scoreNear).toBeGreaterThan(scoreMissing);
-    });
-
-    it('renders "Distance unavailable" across SchoolCard, SchoolMapPreview, ComparePage, and SchoolProfilePage when coordinates are missing', () => {
-      const cardHtml = renderWithProviders(<SchoolCard school={schoolWithoutCoords} />);
-      expect(cardHtml).toContain('Distance unavailable');
+  describe('4. Safe UI disclosure across cards, maps, filters, compare, profile, and advisor', () => {
+    it('renders "Distance unavailable — location not verified" instead of numerical km across views', () => {
+      const cardHtml = renderWithProviders(<SchoolCard school={sch001} />);
+      expect(cardHtml).toContain(DISTANCE_UNAVAILABLE_LABEL);
       expect(cardHtml).not.toContain('4.8 km');
+      expect(cardHtml).not.toContain('1.0 km');
 
       const mapHtml = renderWithProviders(
         <SchoolMapPreview
-          schools={[schoolWithoutCoords]}
-          selectedSchoolId={schoolWithoutCoords.id}
+          schools={[sch001]}
+          selectedSchoolId={sch001.id}
           radiusKm={2}
+          radiusAvailable={false}
         />
       );
-      expect(mapHtml).toContain('Distance unavailable');
+      expect(mapHtml).toContain(DISTANCE_UNAVAILABLE_LABEL);
+      expect(mapHtml).toContain('illustrative pins (locations not verified)');
+      expect(mapHtml).not.toContain('stroke-dasharray="5,5"'); // radius circle hidden when unavailable
       expect(mapHtml).not.toContain('4.8 km');
 
       const compareHtml = renderWithProviders(
@@ -330,7 +352,10 @@ describe('Deterministic Location & Radius Filtering Suite', () => {
         '/compare',
         { fms_comparison: JSON.stringify(['sch-001', 'sch-008']) }
       );
-      expect(compareHtml).toContain('4.9 km'); // All Chennai default anchor for sch-001
+      expect(compareHtml).toContain(DISTANCE_UNAVAILABLE_LABEL);
+      expect(compareHtml).toContain('Radius filter unavailable (demo data)');
+      expect(compareHtml).not.toContain('4.8 km');
+      expect(compareHtml).not.toContain('5.6 km');
 
       const profileHtml = renderWithProviders(
         <Routes>
@@ -339,50 +364,110 @@ describe('Deterministic Location & Radius Filtering Suite', () => {
         `/school/${sch001.slug}`
       );
       expect(profileHtml).toContain(sch001.name);
-      expect(profileHtml).toContain('4.9 km');
+      expect(profileHtml).toContain(DISTANCE_UNAVAILABLE_LABEL);
       expect(profileHtml).not.toContain('4.8 km');
+    });
+
+    it('disables radius controls and omits misleading radius pills/options when location data is unverified', () => {
+      const sidebarHtml = renderWithProviders(<FilterSidebar />);
+      expect(sidebarHtml).toContain('Unavailable');
+      expect(sidebarHtml).toContain('Radius filtering is unavailable');
+      expect(sidebarHtml).toContain('disabled=""');
+
+      const guidedHtml = renderWithProviders(
+        <GuidedSearchModal isOpen={true} onClose={() => {}} />
+      );
+      expect(guidedHtml).toContain('Unavailable');
+      expect(guidedHtml).toContain('Radius filtering is temporarily unavailable');
+      expect(guidedHtml).toContain('disabled=""');
+
+      const understoodHtml = renderWithProviders(
+        <WhatWeUnderstoodPanel onOpenPriorityTuner={() => {}} />,
+        '/results',
+        {
+          fms_search_state: JSON.stringify({
+            rawQuery: 'Find schools in OMR',
+            filters: { ...DEFAULT_FILTERS, location: 'OMR / Sholinganallur', radiusKm: 2 },
+            sortBy: 'best_match',
+          }),
+        }
+      );
+      expect(understoodHtml).toContain('Commute radius filter unavailable (locations not verified)');
+      expect(understoodHtml).not.toContain('Within 2 km');
+
+      const resultsHtml = renderWithProviders(
+        <SearchResultsPage />,
+        '/results',
+        {
+          fms_search_state: JSON.stringify({
+            rawQuery: 'Find schools in OMR',
+            filters: { ...DEFAULT_FILTERS, location: 'OMR / Sholinganallur', radiusKm: 2 },
+            sortBy: 'distance_asc',
+          }),
+        }
+      );
+      expect(resultsHtml).toContain('Nearest commute (unavailable)');
+      expect(resultsHtml).not.toContain('≤ 2 km radius');
+
+      // Provenance and advisor reflect unavailable distance/radius cleanly
+      const reasons = generateDynamicMatchReasons(sch001, {
+        ...DEFAULT_FILTERS,
+        location: 'OMR / Sholinganallur',
+        radiusKm: 2,
+      });
+      expect(reasons.some((r) => r.title === 'Listed in Sholinganallur, OMR')).toBe(true);
+      expect(reasons.some((r) => r.title === DISTANCE_UNAVAILABLE_LABEL)).toBe(true);
+      expect(reasons.some((r) => r.title.includes('Within your'))).toBe(false);
+
+      const advisorCtx = buildAdvisorContext(
+        {
+          rawQuery: 'Find schools in OMR',
+          filters: { ...DEFAULT_FILTERS, location: 'OMR / Sholinganallur', radiusKm: 2 },
+          sortBy: 'best_match',
+        },
+        [sch001],
+        [],
+        [sch001]
+      );
+      const schoolAdvisorReply = getAdvisorResponse(sch001.name, advisorCtx, [sch001]);
+      expect(schoolAdvisorReply.text).toContain(DISTANCE_UNAVAILABLE_LABEL);
+      expect(schoolAdvisorReply.text).not.toContain('4.8 km');
+      const advisorReply = getAdvisorResponse('adjust-search', advisorCtx, [sch001]);
+      expect(advisorReply.text).toContain('Commute Radius Filter**: Temporarily unavailable');
     });
   });
 
-  describe('5. Preservation of existing curriculum, budget, education target & facility filters', () => {
-    it('continues applying curriculum, budgetMax, educationTarget, and requiredFacilities alongside location/radius', () => {
-      // Curriculum + Corridor + Radius
+  describe('5. Preservation of existing curriculum, budget, target, facility filters & neutral scoring', () => {
+    it('continues enforcing curriculum, budgetMax, educationTarget, requiredFacilities, and neutral distance scoring', () => {
       const cbseOmr = renderContextSnapshot({
         ...DEFAULT_FILTERS,
         educationTarget: 'school',
         location: 'OMR / Sholinganallur',
-        radiusKm: 25,
         curriculums: ['CBSE'],
       });
       expect(cbseOmr.ids).toContain('sch-001');
       expect(cbseOmr.ids).not.toContain('sch-009'); // Cambridge (IGCSE)
 
-      // Preschool target in OMR within 2 km includes pre-005 (Karapakkam, OMR at 1.0 km)
       const preschoolOmr = renderContextSnapshot({
         ...DEFAULT_FILTERS,
         educationTarget: 'preschool',
         location: 'OMR / Sholinganallur',
-        radiusKm: 2,
       });
       expect(preschoolOmr.ids).toContain(pre005.id);
       expect(preschoolOmr.ids).not.toContain('pre-001'); // Adyar
 
-      // Budget filter excludes expensive OMR schools when budget is tight
       const lowBudgetOmr = renderContextSnapshot({
         ...DEFAULT_FILTERS,
         educationTarget: 'all',
         location: 'OMR / Sholinganallur',
-        radiusKm: 25,
-        budgetMax: 50000, // 50k * 1.25 grace = 62.5k; sch-001 min is 115k
+        budgetMax: 50000,
       });
       expect(lowBudgetOmr.ids).not.toContain('sch-001');
 
-      // Facility filter continues enforcing requiredFacilities
       const swimmingOmr = renderContextSnapshot({
         ...DEFAULT_FILTERS,
         educationTarget: 'school',
         location: 'OMR / Sholinganallur',
-        radiusKm: 25,
         requiredFacilities: ['Swimming Pool'],
       });
       for (const id of swimmingOmr.ids) {
@@ -391,6 +476,16 @@ describe('Deterministic Location & Radius Filtering Suite', () => {
           school.facilities.some((f) => f.name.toLowerCase().includes('swimming pool'))
         ).toBe(true);
       }
+
+      // Fit score still works deterministically without relying on unverified coordinates
+      const score = calculateSchoolFitScore(sch001, {
+        ...DEFAULT_FILTERS,
+        location: 'OMR / Sholinganallur',
+        curriculums: ['CBSE'],
+        budgetMax: 150000,
+      });
+      expect(score).toBeGreaterThan(70);
+      expect(score).toBeLessThanOrEqual(98);
     });
   });
 });

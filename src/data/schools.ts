@@ -1311,7 +1311,10 @@ const RAW_CHENNAI_SCHOOLS: School[] = [
 
 // Combine traditional K-12 schools and dedicated Early Years institutions into the master CHENNAI_SCHOOLS directory
 export const CHENNAI_SCHOOLS: School[] = [
-  ...RAW_CHENNAI_SCHOOLS,
+  ...RAW_CHENNAI_SCHOOLS.map((school) => ({
+    ...school,
+    coordinateVerified: false,
+  })),
   ...CHENNAI_PRESCHOOLS,
 ];
 

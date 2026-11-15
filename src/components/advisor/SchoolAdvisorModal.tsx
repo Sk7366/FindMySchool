@@ -49,7 +49,7 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
   onClose,
   contextSchoolName,
 }) => {
-  const { searchState, filteredSchools, updateFilters } = useSearch();
+  const { searchState, filteredSchools, updateFilters, isRadiusFilterAvailable } = useSearch();
   const { savedSchools } = useShortlist();
   const { comparisonSchools } = useComparison();
   const navigate = useNavigate();
@@ -149,8 +149,13 @@ export const SchoolAdvisorModal: React.FC<SchoolAdvisorModalProps> = ({
       onClose();
       navigate('/results');
     } else if (actionTrigger === 'adjust-radius') {
-      updateFilters({ radiusKm: Math.min(25, (searchState.filters.radiusKm || 12) + 5) });
-      handleAsk(undefined, 'I expanded your commute radius by 5 km to include neighboring corridors.');
+      if (isRadiusFilterAvailable) {
+        updateFilters({ radiusKm: Math.min(25, (searchState.filters.radiusKm || 12) + 5) });
+        handleAsk(undefined, 'I expanded your commute radius by 5 km to include neighboring corridors.');
+      } else {
+        updateFilters({ location: 'All Chennai' });
+        handleAsk(undefined, 'Radius filtering is unavailable for unverified demo data, so I broadened Area / Corridor to All Chennai.');
+      }
     } else if (actionTrigger === 'adjust-budget') {
       updateFilters({ budgetMax: (searchState.filters.budgetMax || 150000) + 50000 });
       handleAsk(undefined, 'I increased your budget ceiling by ₹50,000/year to evaluate additional institutions.');

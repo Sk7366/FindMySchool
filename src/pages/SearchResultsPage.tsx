@@ -57,6 +57,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
     relaxBudget,
     increaseDistance,
     activeFilterCount,
+    isRadiusFilterAvailable,
   } = useSearch();
 
   const { savedSchools, isDemoMode, loadDemoShortlist, clearShortlist } = useShortlist();
@@ -245,7 +246,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
     let count = 0;
     if (filters.location && filters.location !== 'All Chennai') count++;
     if (filters.budgetMax && filters.budgetMax < 250000) count++;
-    if (filters.radiusKm && filters.radiusKm < 20) count++;
+    if (isRadiusFilterAvailable && filters.radiusKm && filters.radiusKm < 20) count++;
     if (filters.grade && filters.grade !== 'Any Grade') count++;
     if (filters.curriculums && filters.curriculums.length > 0) count += filters.curriculums.length;
     if (filters.preschool?.programs && filters.preschool.programs.length > 0) count += filters.preschool.programs.length;
@@ -255,7 +256,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
     if (filters.requiresTransport) count++;
     if (filters.requiresSpecialNeeds) count++;
     return Math.max(count, 1);
-  }, [filters]);
+  }, [filters, isRadiusFilterAvailable]);
 
   // Construct individual removable active filter pills
   const activeFilterList = useMemo(() => {
@@ -264,7 +265,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
     if (filters.location && filters.location !== 'All Chennai') {
       items.push({ id: 'loc', label: `Area: ${filters.location}`, onRemove: () => removeFilter('location') });
     }
-    if (typeof filters.radiusKm === 'number' && filters.radiusKm < 20) {
+    if (isRadiusFilterAvailable && typeof filters.radiusKm === 'number' && filters.radiusKm < 20) {
       items.push({ id: 'rad', label: `≤ ${filters.radiusKm} km radius`, onRemove: () => removeFilter('radiusKm') });
     }
     if (typeof filters.budgetMax === 'number' && filters.budgetMax < 250000) {
@@ -327,7 +328,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
     });
 
     return items;
-  }, [filters, removeFilter]);
+  }, [filters, removeFilter, isRadiusFilterAvailable]);
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] pb-24 text-stone-900 selection:bg-teal-100 selection:text-teal-900 font-sans">
@@ -567,12 +568,18 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
                 <label htmlFor="search-sort-select" className="text-stone-500 font-bold hidden sm:inline">Sort:</label>
                 <select
                   id="search-sort-select"
-                  value={sortBy === 'rating_desc' ? 'best_match' : sortBy}
+                  value={
+                    sortBy === 'rating_desc' || (!isRadiusFilterAvailable && sortBy === 'distance_asc')
+                      ? 'best_match'
+                      : sortBy
+                  }
                   onChange={(e) => setSortBy(e.target.value as SortField)}
                   className="bg-white border border-stone-200 hover:border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer shadow-2xs transition-colors min-h-[40px]"
                 >
                   <option value="best_match">Fit with priorities</option>
-                  <option value="distance_asc">Nearest commute</option>
+                  <option value="distance_asc" disabled={!isRadiusFilterAvailable}>
+                    {isRadiusFilterAvailable ? 'Nearest commute' : 'Nearest commute (unavailable)'}
+                  </option>
                   <option value="fee_asc">Fees: Low to high</option>
                   <option value="fee_desc">Fees: High to low</option>
                 </select>
@@ -593,6 +600,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
               selectedSchoolId={selectedSchoolId || undefined}
               onSelectSchool={(id) => setSelectedSchoolId(id)}
               radiusKm={filters.radiusKm}
+              radiusAvailable={isRadiusFilterAvailable}
             />
           </div>
         )}
@@ -781,16 +789,32 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
                   </div>
                 )}
 
-                {/* 4 Required Actions: Relax distance, Expand budget, Remove a preference, View all nearby institutions */}
+                {/* Recovery actions */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={increaseDistance}
-                    className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
-                  >
-                    <Compass className="w-4 h-4 text-blue-700" />
-                    <span>Relax distance</span>
-                  </button>
+                  {isRadiusFilterAvailable ? (
+                    <button
+                      type="button"
+                      onClick={increaseDistance}
+                      className="px-4 py-3 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                    >
+                      <Compass className="w-4 h-4 text-blue-700" />
+                      <span>Relax distance</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeFilter('location')}
+                      disabled={!filters.location || filters.location === 'All Chennai'}
+                      className="px-4 py-3 bg-white hover:bg-stone-50 disabled:opacity-60 disabled:cursor-not-allowed border border-stone-300 text-stone-800 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                    >
+                      <Compass className="w-4 h-4 text-blue-700" />
+                      <span>
+                        {filters.location && filters.location !== 'All Chennai'
+                          ? 'Broaden to All Chennai'
+                          : 'Radius filter unavailable'}
+                      </span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -831,6 +855,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ onOpenAdvi
                 selectedSchoolId={selectedSchoolId || undefined}
                 onSelectSchool={(id) => setSelectedSchoolId(id)}
                 radiusKm={filters.radiusKm}
+                radiusAvailable={isRadiusFilterAvailable}
               />
             </div>
           )}

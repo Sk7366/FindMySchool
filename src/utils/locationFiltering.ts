@@ -11,54 +11,57 @@ export type CorridorKey =
 
 interface CorridorDefinition {
   key: CorridorKey;
-  anchor: { lat: number; lng: number };
   areaTokens: string[];
 }
 
+export const DISTANCE_UNAVAILABLE_LABEL = 'Distance unavailable — location not verified';
+
+/**
+ * Deterministic Chennai corridor metadata used strictly for Area / Corridor matching
+ * against listed institution localities and addresses (no invented anchor coordinates).
+ */
 export const CORRIDOR_DEFINITIONS: Record<CorridorKey, CorridorDefinition> = {
   'All Chennai': {
     key: 'All Chennai',
-    anchor: { lat: 12.9450, lng: 80.2280 },
     areaTokens: [],
   },
   'Tambaram & GST Corridor': {
     key: 'Tambaram & GST Corridor',
-    anchor: { lat: 12.9260, lng: 80.1100 },
     areaTokens: ['tambaram', 'gst', 'mudichur', 'chromepet', 'irumbuliyur', 'perungalathur', 'selaiyur', 'chitlapakkam'],
   },
   'OMR / Sholinganallur': {
     key: 'OMR / Sholinganallur',
-    anchor: { lat: 12.9095, lng: 80.2295 },
     areaTokens: ['omr', 'sholinganallur', 'karapakkam', 'padur', 'navalur', 'siruseri', 'kelambakkam', 'thoraipakkam', 'perungudi', 'semmancheri', 'perumbakkam'],
   },
   'Adyar & Besant Nagar': {
     key: 'Adyar & Besant Nagar',
-    anchor: { lat: 13.0050, lng: 80.2560 },
     areaTokens: ['adyar', 'besant nagar', 'besant', 'gandhi nagar', 'padmanabha nagar', 'indira nagar', 'kasturba nagar', 'shastri nagar', 'thiruvanmiyur'],
   },
   'Porur & Manapakkam': {
     key: 'Porur & Manapakkam',
-    anchor: { lat: 13.0250, lng: 80.1500 },
     areaTokens: ['porur', 'manapakkam', 'gerugambakkam', 'kolapakkam', 'mugalivakkam', 'iyyappanthangal'],
   },
   'Anna Nagar & Mogappair': {
     key: 'Anna Nagar & Mogappair',
-    anchor: { lat: 13.0865, lng: 80.2060 },
     areaTokens: ['anna nagar', 'mogappair', 'shanti colony', 'shenoy nagar', 'kilpauk'],
   },
   'Velachery & Guindy': {
     key: 'Velachery & Guindy',
-    anchor: { lat: 12.9780, lng: 80.2180 },
     areaTokens: ['velachery', 'guindy', 'dhandeeswaram', 'vijaya nagar', 'taramani', 'madipakkam'],
   },
 };
 
+export interface VerifiedOrigin {
+  lat: number;
+  lng: number;
+}
+
 /**
- * Checks whether an institution has valid, reliable geographical latitude/longitude coordinates.
- * Explicitly ignores mapX/mapY illustration offsets and static fallback distanceKm values.
+ * Validates that a coordinate object holds finite, non-zero lat/lng bounds.
  */
-export function hasValidCoordinates(school: Pick<School, 'coordinates'> | null | undefined): boolean {
-  const coords = school?.coordinates;
+export function isValidCoordinatePair(
+  coords?: { lat?: number; lng?: number } | null
+): coords is VerifiedOrigin {
   if (!coords) return false;
   const { lat, lng } = coords;
   if (typeof lat !== 'number' || typeof lng !== 'number') return false;
@@ -66,6 +69,38 @@ export function hasValidCoordinates(school: Pick<School, 'coordinates'> | null |
   if (lat === 0 && lng === 0) return false;
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
   return true;
+}
+
+/**
+ * Checks whether an institution has finite, non-zero latitude/longitude coordinates.
+ * Explicitly ignores mapX/mapY illustration offsets and static fallback distanceKm values.
+ * Note: Valid numerical shape alone does NOT imply coordinates are verified.
+ */
+export function hasValidCoordinates(school: Pick<School, 'coordinates'> | null | undefined): boolean {
+  return isValidCoordinatePair(school?.coordinates);
+}
+
+/**
+ * Checks whether an institution's coordinates are explicitly verified AND numerically valid.
+ * All demo catalog records default to unverified (false) until geocoded from a trusted source.
+ */
+export function isCoordinateVerified(
+  school: Pick<School, 'coordinates' | 'coordinateVerified'> | null | undefined
+): boolean {
+  return Boolean(school?.coordinateVerified === true && hasValidCoordinates(school));
+}
+
+/**
+ * Radius filtering requires both a verified search origin and at least one verified institution coordinate.
+ * Returns false for unverified demo catalogs so users are never misled by unverified radius claims.
+ */
+export function isRadiusFilteringAvailable(
+  schools?: Pick<School, 'coordinates' | 'coordinateVerified'>[],
+  verifiedOrigin?: VerifiedOrigin | null
+): boolean {
+  if (!isValidCoordinatePair(verifiedOrigin)) return false;
+  if (!schools || schools.length === 0) return false;
+  return schools.some((s) => isCoordinateVerified(s));
 }
 
 /**
@@ -117,54 +152,49 @@ export function resolveLocationCorridor(location?: string): CorridorKey | null {
 }
 
 /**
- * Returns the geographical reference coordinates for the selected location/corridor.
- */
-export function getLocationAnchor(selectedLocation?: string): { lat: number; lng: number } {
-  const corridor = resolveLocationCorridor(selectedLocation);
-  if (corridor) {
-    return CORRIDOR_DEFINITIONS[corridor].anchor;
-  }
-  return CORRIDOR_DEFINITIONS['All Chennai'].anchor;
-}
-
-/**
- * Calculates an institution's distance in km strictly from real latitude/longitude coordinates.
- * Returns null if valid geographical coordinates are unavailable (never fabricates from mapX/mapY).
+ * Calculates an institution's distance in km ONLY when:
+ * 1. The institution has explicitly verified, valid lat/lng coordinates (coordinateVerified === true), AND
+ * 2. A verified geographical search origin is supplied.
+ *
+ * Returns null for all unverified demo records, missing coordinates, or when no reliable origin exists.
+ * Never falls back to mapX/mapY, static distanceKm, or unverified corridor anchors.
  */
 export function getSchoolDistanceKm(
-  school: Pick<School, 'coordinates'>,
-  selectedLocation?: string
+  school: Pick<School, 'coordinates' | 'coordinateVerified'>,
+  _selectedLocation?: string,
+  verifiedOrigin?: VerifiedOrigin | null
 ): number | null {
-  if (!hasValidCoordinates(school)) {
+  if (!isCoordinateVerified(school) || !isValidCoordinatePair(verifiedOrigin)) {
     return null;
   }
-  const anchor = getLocationAnchor(selectedLocation);
   return calculateHaversineDistanceKm(
-    anchor.lat,
-    anchor.lng,
+    verifiedOrigin.lat,
+    verifiedOrigin.lng,
     school.coordinates.lat,
     school.coordinates.lng
   );
 }
 
 /**
- * Formats distance reliably for display, returning 'Distance unavailable' if coordinates are missing.
+ * Formats distance safely for display, returning 'Distance unavailable — location not verified'
+ * whenever reliable verified distance cannot be established.
  */
 export function formatSchoolDistance(
-  school: Pick<School, 'coordinates'>,
+  school: Pick<School, 'coordinates' | 'coordinateVerified'>,
   selectedLocation?: string,
-  suffix: string = ''
+  suffix: string = '',
+  verifiedOrigin?: VerifiedOrigin | null
 ): string {
-  const dist = getSchoolDistanceKm(school, selectedLocation);
+  const dist = getSchoolDistanceKm(school, selectedLocation, verifiedOrigin);
   if (dist === null) {
-    return 'Distance unavailable';
+    return DISTANCE_UNAVAILABLE_LABEL;
   }
   return `${dist} km${suffix}`;
 }
 
 /**
- * Strictly checks whether an institution belongs to the selected Area / Corridor.
- * Does not bypass corridor boundaries via arbitrary distance fallbacks.
+ * Strictly checks whether an institution belongs to the selected Area / Corridor
+ * using only institution locality and address metadata (never distance or anchor coordinates).
  */
 export function matchesLocationCorridor(
   school: Pick<School, 'area' | 'address' | 'neighbourhood'>,
@@ -190,33 +220,39 @@ export interface LocationFilterEvaluation {
   included: boolean;
   distanceKm: number | null;
   distanceUnavailable: boolean;
+  locationVerified: boolean;
   matchesCorridor: boolean;
   exceedsRadius: boolean;
+  radiusApplied: boolean;
 }
 
 /**
- * Deterministic location and radius filter evaluation:
- * 1. Enforces selected Area / Corridor strictly.
- * 2. Calculates real Haversine distance from valid lat/lng coordinates.
- * 3. Hard-excludes institutions whose reliably calculated distance exceeds radiusKm (no hidden buffer).
- * 4. Does not manufacture distances or silently drop institutions when lat/lng coordinates are missing.
+ * Safe deterministic location filter evaluation:
+ * 1. Enforces selected Area / Corridor strictly via locality & address metadata.
+ * 2. Suppresses numerical distances and radius exclusions whenever institution coordinates or origin are unverified.
+ * 3. Only applies hard radius exclusion when both institution coordinates and origin are verified.
  */
 export function evaluateLocationFilter(
-  school: Pick<School, 'area' | 'address' | 'neighbourhood' | 'coordinates'>,
+  school: Pick<School, 'area' | 'address' | 'neighbourhood' | 'coordinates' | 'coordinateVerified'>,
   selectedLocation?: string,
-  radiusKm?: number
+  radiusKm?: number,
+  verifiedOrigin?: VerifiedOrigin | null
 ): LocationFilterEvaluation {
   const corridorMatch = matchesLocationCorridor(school, selectedLocation);
-  const distanceKm = getSchoolDistanceKm(school, selectedLocation);
+  const locationVerified = isCoordinateVerified(school);
+  const distanceKm = getSchoolDistanceKm(school, selectedLocation, verifiedOrigin);
   const distanceUnavailable = distanceKm === null;
   const hasRadiusLimit = typeof radiusKm === 'number' && radiusKm > 0;
-  const exceedsRadius = hasRadiusLimit && distanceKm !== null && distanceKm > radiusKm;
+  const radiusApplied = hasRadiusLimit && distanceKm !== null;
+  const exceedsRadius = radiusApplied && distanceKm > radiusKm;
 
   return {
     included: corridorMatch && !exceedsRadius,
     distanceKm,
     distanceUnavailable,
+    locationVerified,
     matchesCorridor: corridorMatch,
     exceedsRadius,
+    radiusApplied,
   };
 }

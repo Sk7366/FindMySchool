@@ -1,7 +1,7 @@
 import { School } from '../types/school';
 import { SearchState, SearchFilters } from '../types/search';
 import { schoolService } from '../services/schoolService';
-import { getSchoolDistanceKm } from './locationFiltering';
+import { DISTANCE_UNAVAILABLE_LABEL, getSchoolDistanceKm, isRadiusFilteringAvailable } from './locationFiltering';
 
 export interface AdvisorContext {
   educationTarget: 'all' | 'preschool' | 'school' | 'combined';
@@ -135,9 +135,10 @@ export function buildAdvisorContext(
   }
 
   // Count active non-default filters
+  const radiusActive = isRadiusFilteringAvailable(filteredSchools);
   let activeCount = 0;
   if (filters.location && filters.location !== 'All Chennai') activeCount++;
-  if (filters.radiusKm && filters.radiusKm < 25) activeCount++;
+  if (radiusActive && filters.radiusKm && filters.radiusKm < 25) activeCount++;
   if (filters.budgetMax && filters.budgetMax < 350000) activeCount++;
   if (filters.grade && filters.grade !== 'Any Grade') activeCount++;
   if (filters.curriculums && filters.curriculums.length > 0) activeCount += filters.curriculums.length;
@@ -540,7 +541,7 @@ export function getAdvisorResponse(
         return `${idx + 1}. **${s.name}** (${s.area})
    • **Curriculum / Approach**: ${approach}
    • **Tuition**: ${fee}
-   • **Commute**: ${dist !== null ? `~${dist} km` : 'Distance unavailable'} (${s.hasTransport ? 'Transport available' : 'Self drop'})
+   • **Commute**: ${dist !== null ? `~${dist} km` : DISTANCE_UNAVAILABLE_LABEL} (${s.hasTransport ? 'Transport available' : 'Self drop'})
    • **Fit with your criteria**: ${s.matchScore}% fit`;
       }).join('\n\n');
 
@@ -592,19 +593,18 @@ To compare schools objectively:
   // ----------------------------------------------------
   if (norm === 'adjust-search' || norm.includes('adjust') || norm.includes('filter') || norm.includes('narrow') || norm.includes('expand')) {
     const totalCount = context.filteredCount;
-    const radius = context.radiusKm;
     const budget = context.budgetMax;
 
     return {
-      text: `Your current search has **${totalCount} matching institution${totalCount === 1 ? '' : 's'}** near **${context.location}** with **${context.activeFilterCount} active filters**.
+      text: `Your current search has **${totalCount} matching institution${totalCount === 1 ? '' : 's'}** in **${context.location}** with **${context.activeFilterCount} active filters**.
 
 **Search Diagnostic**:
-• **Commute Buffer**: Set to **${radius} km**. In Chennai, expanding by 3–4 km often introduces established school options in adjacent residential corridors (e.g. Medavakkam for Tambaram, or Thiruvanmiyur for Adyar).
+• **Commute Radius Filter**: Temporarily unavailable — demo campus locations and search origin are not geographically verified. Results are filtered by your **Area / Corridor** (${context.location}).
 • **Budget Ceiling**: Set to **₹${(budget / 100000).toFixed(1)}L/year**.
 • **Curriculum / Stage**: Focused on **${context.isEarlyYears ? 'Early Years / Preschool' : context.curriculums.join(', ') || 'All Boards'}**.
 
 **Suggested Refinements**:
-• If you need more options: Increase your radial distance to 15 km or relax the budget threshold slightly.
+• If you need more options: Broaden **Area / Corridor** to **All Chennai** or relax the budget threshold slightly.
 • If you have too many results: Add non-negotiables such as school bus transport, specific boards, or dedicated daycare hours.`,
       checklist: [
         'Use the "Tune Priorities" tool to adjust how heavily commute vs budget influences matching scores.',
@@ -760,7 +760,7 @@ You can evaluate their profiles, compare fees, and schedule campus visits to mak
 • **Curriculum / Approach**: ${currStr}
 • **Tuition Estimate**: ${feeStr}
 • **Student-Teacher Ratio**: ${matchedSchool.studentTeacherRatio || 'Disclosed during admission'}
-• **Commute Distance**: ${matchedDist !== null ? `~${matchedDist} km from ${context.location} hub` : 'Distance unavailable'} (${matchedSchool.hasTransport ? 'Bus fleet available' : 'Self drop'})
+• **Commute Distance**: ${matchedDist !== null ? `~${matchedDist} km` : DISTANCE_UNAVAILABLE_LABEL} (${matchedSchool.hasTransport ? 'Bus fleet available' : 'Self drop'})
 • **Key Facilities**: ${matchedSchool.facilities.slice(0, 3).map((f) => f.name).join(', ')}
 • **Data Status**: ${matchedSchool.dataStatus === 'verified' ? 'Verified with institutional disclosures' : 'Demonstration catalog entry'}`,
       checklist: [

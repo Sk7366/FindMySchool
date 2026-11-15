@@ -32,7 +32,8 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
     parsingStatus,
     parsingSource,
     clarificationMessage,
-    dismissClarification 
+    dismissClarification,
+    isRadiusFilterAvailable,
   } = useSearch();
   const { filters, rawQuery } = searchState;
   const [isExpanded, setIsExpanded] = useState(true);
@@ -233,7 +234,11 @@ export const WhatWeUnderstoodPanel: React.FC<WhatWeUnderstoodPanelProps> = ({ on
                     <MapPin className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                     <div>
                       <span className="font-bold text-stone-900">Area: {filters.location || 'All Chennai'}</span>
-                      <span className="block text-[11px] text-stone-500">Within {filters.radiusKm || 12} km radius</span>
+                      <span className="block text-[11px] text-stone-500">
+                        {isRadiusFilterAvailable
+                          ? `Within ${filters.radiusKm || 12} km radius`
+                          : 'Commute radius filter unavailable (locations not verified)'}
+                      </span>
                     </div>
                   </div>
                   <button

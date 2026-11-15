@@ -34,7 +34,7 @@ import { useSearch } from '../../context/SearchContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../../utils/categoryColors';
 import { VerificationBadge } from '../common/VerificationBadge';
 import { formatMatchReason, generateDynamicMatchReasons } from '../../utils/matchProvenance';
-import { getSchoolDistanceKm } from '../../utils/locationFiltering';
+import { DISTANCE_UNAVAILABLE_LABEL, getSchoolDistanceKm } from '../../utils/locationFiltering';
 import { SearchFilters } from '../../types/search';
 
 interface SchoolCardProps {
@@ -333,7 +333,7 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                   <span className="truncate">{school.area}</span>
                   <span className="text-stone-400">·</span>
                   <span className="tabular-nums font-bold text-stone-900">
-                    {effectiveDistanceKm !== null ? `${effectiveDistanceKm} km commute` : 'Distance unavailable'}
+                    {effectiveDistanceKm !== null ? `${effectiveDistanceKm} km commute` : DISTANCE_UNAVAILABLE_LABEL}
                   </span>
                 </span>
                 <span className="text-stone-300">·</span>

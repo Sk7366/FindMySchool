@@ -68,7 +68,7 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
   initialCategory = 'location',
 }) => {
   const [activeTab, setActiveTab] = useState<GuidedCategory>(initialCategory);
-  const { searchState, updateFilters } = useSearch();
+  const { searchState, updateFilters, isRadiusFilterAvailable } = useSearch();
   const navigate = useNavigate();
 
   const modalRef = useFocusTrap({
@@ -199,16 +199,24 @@ export const GuidedSearchModal: React.FC<GuidedSearchModalProps> = ({
               <div className="pt-4 border-t border-stone-200">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="font-bold text-stone-700">Acceptable Commute Radius</span>
-                  <span className="font-bold text-teal-800">{filters.radiusKm} km</span>
+                  <span className={`font-bold ${isRadiusFilterAvailable ? 'text-teal-800' : 'text-stone-500'}`}>
+                    {isRadiusFilterAvailable ? `${filters.radiusKm} km` : 'Unavailable'}
+                  </span>
                 </div>
                 <input
                   type="range"
                   min={2}
                   max={25}
+                  disabled={!isRadiusFilterAvailable}
                   value={filters.radiusKm}
                   onChange={(e) => updateFilters({ radiusKm: Number(e.target.value) })}
-                  className="w-full accent-teal-600 cursor-pointer"
+                  className={`w-full accent-teal-600 ${isRadiusFilterAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                 />
+                {!isRadiusFilterAvailable && (
+                  <p className="text-[11px] text-stone-600 mt-1.5">
+                    Radius filtering is temporarily unavailable because demo campus locations and search origin are not verified. Select an educational corridor above instead.
+                  </p>
+                )}
               </div>
             </div>
           )}

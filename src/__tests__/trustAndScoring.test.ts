@@ -8,6 +8,7 @@ import { schoolService } from '../services/schoolService';
 import { DEFAULT_FILTERS } from '../context/SearchContext';
 import { School } from '../types/school';
 import { SearchFilters } from '../types/search';
+import { DISTANCE_UNAVAILABLE_LABEL } from '../utils/locationFiltering';
 
 describe('Phase 1 Trust, Correctness & Data Integrity Suite', () => {
   const pre003 = CHENNAI_PRESCHOOLS.find((p) => p.id === 'pre-003')!;
@@ -49,25 +50,50 @@ describe('Phase 1 Trust, Correctness & Data Integrity Suite', () => {
 
   // 2. P0: Dynamic Match Explanations vs Static Hardcoded Strings
   describe('P0 Defect 2 & 3: Truthful, query-aware dynamic match explanations', () => {
-    it('updates distance explanations dynamically based on active search radius', () => {
-      // sch-001 distanceKm is 4.8 km
+    it('suppresses unverified radius claims for demo records and computes dynamic radius explanations only for verified coordinates + origin', () => {
+      // Unverified demo school must NOT claim "Within your X km search radius" or numeric distance
       const filtersNear: SearchFilters = { ...DEFAULT_FILTERS, radiusKm: 8 };
-      const reasonsNear = generateDynamicMatchReasons(sch001, filtersNear);
-      const distReasonNear = reasonsNear.find((r) => r.matchedCriteria === 'distance')!;
+      const reasonsDemo = generateDynamicMatchReasons(sch001, filtersNear);
+      const demoDistReason = reasonsDemo.find((r) => r.matchedCriteria === 'distance')!;
 
-      expect(distReasonNear).toBeDefined();
-      expect(distReasonNear.type).toBe('positive');
-      expect(distReasonNear.title).toContain('Within your 8 km search radius');
+      expect(demoDistReason).toBeDefined();
+      expect(demoDistReason.type).toBe('unverified');
+      expect(demoDistReason.sourceType).toBe('needs_confirmation');
+      expect(demoDistReason.title).toBe(DISTANCE_UNAVAILABLE_LABEL);
+      expect(demoDistReason.title).not.toContain('Within your 8 km search radius');
 
-      // Change search radius to 3 km (4.8 km exceeds 3 km)
-      const filtersTight: SearchFilters = { ...DEFAULT_FILTERS, radiusKm: 3 };
-      const reasonsTight = generateDynamicMatchReasons(sch001, filtersTight);
-      const distReasonTight = reasonsTight.find((r) => r.matchedCriteria === 'distance')!;
+      // Verified school + verified origin computes dynamic radius match/overage
+      const verifiedSchool: School = {
+        ...sch001,
+        id: 'sch-001-verified',
+        coordinateVerified: true,
+        coordinates: { lat: 12.901, lng: 80.2279, mapX: 78, mapY: 82 },
+      };
+      // ~1.0 km away from 12.9095, 80.2295
+      const verifiedOrigin = { lat: 12.9095, lng: 80.2295 };
 
-      expect(distReasonTight).toBeDefined();
-      expect(distReasonTight.type).toBe('partial');
-      expect(distReasonTight.sourceType).toBe('needs_confirmation');
-      expect(distReasonTight.title).toContain('exceeds 3 km radius');
+      const verifiedReasonsNear = generateDynamicMatchReasons(
+        verifiedSchool,
+        filtersNear,
+        undefined,
+        verifiedOrigin
+      );
+      const verifiedDistNear = verifiedReasonsNear.find((r) => r.matchedCriteria === 'distance')!;
+      expect(verifiedDistNear.type).toBe('positive');
+      expect(verifiedDistNear.title).toContain('Within your 8 km search radius');
+
+      // Tight radius 0.5 km (1.0 km exceeds 0.5 km)
+      const filtersTight: SearchFilters = { ...DEFAULT_FILTERS, radiusKm: 0.5 };
+      const verifiedReasonsTight = generateDynamicMatchReasons(
+        verifiedSchool,
+        filtersTight,
+        undefined,
+        verifiedOrigin
+      );
+      const verifiedDistTight = verifiedReasonsTight.find((r) => r.matchedCriteria === 'distance')!;
+      expect(verifiedDistTight.type).toBe('partial');
+      expect(verifiedDistTight.sourceType).toBe('needs_confirmation');
+      expect(verifiedDistTight.title).toContain('exceeds 0.5 km radius');
     });
 
     it('updates budget explanations dynamically based on user budget threshold', () => {
@@ -290,11 +316,12 @@ describe('Phase 1 Trust, Correctness & Data Integrity Suite', () => {
       expect(topSchool.matchReasons).toBeDefined();
       expect(topSchool.matchReasons.length).toBeGreaterThanOrEqual(2);
 
-      // Verify reasons are dynamically computed and not the static "Within your 8 km commute zone" for every school
-      const distReason = topSchool.matchReasons.find((r) => r.matchedCriteria === 'distance');
-      if (distReason) {
-        expect(distReason.title).toContain('12 km');
-      }
+      // Verify reasons are dynamically computed, not the static "Within your 8 km commute zone",
+      // and do not fabricate numeric distance for unverified demo records
+      const distReasons = topSchool.matchReasons.filter((r) => r.matchedCriteria === 'distance');
+      expect(distReasons.length).toBeGreaterThan(0);
+      expect(distReasons.some((r) => r.title === DISTANCE_UNAVAILABLE_LABEL)).toBe(true);
+      expect(distReasons.some((r) => r.title.includes('Within your'))).toBe(false);
     });
   });
 });

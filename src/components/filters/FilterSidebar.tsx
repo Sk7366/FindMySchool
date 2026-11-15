@@ -104,6 +104,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
     setEducationTarget,
     clearAllFilters,
     activeFilterCount,
+    isRadiusFilterAvailable,
   } = useSearch();
   const { filters } = searchState;
   const [priorityTunerOpen, setPriorityTunerOpen] = React.useState(false);
@@ -296,13 +297,15 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
         </select>
       </div>
 
-      {/* 3. Distance Radius Slider */}
-      <div className="space-y-2">
+      {/* 3. Distance Radius Slider (marked unavailable while demo locations are unverified) */}
+      <div className={`space-y-2 ${!isRadiusFilterAvailable ? 'opacity-75' : ''}`}>
         <div className="flex items-center justify-between text-xs">
           <label htmlFor="filter-radius-slider" className="font-bold text-stone-700 uppercase tracking-wider">
             Max Commute Radius
           </label>
-          <span className="font-bold text-teal-800 tabular-nums">{filters.radiusKm} km</span>
+          <span className={`font-bold tabular-nums ${isRadiusFilterAvailable ? 'text-teal-800' : 'text-stone-500'}`}>
+            {isRadiusFilterAvailable ? `${filters.radiusKm} km` : 'Unavailable'}
+          </span>
         </div>
         <input
           id="filter-radius-slider"
@@ -310,19 +313,32 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({ onCloseMobile }) =
           min={2}
           max={25}
           step={1}
+          disabled={!isRadiusFilterAvailable}
           value={filters.radiusKm}
           aria-valuemin={2}
           aria-valuemax={25}
           aria-valuenow={filters.radiusKm}
-          aria-valuetext={`${filters.radiusKm} kilometers commute radius`}
+          aria-valuetext={
+            isRadiusFilterAvailable
+              ? `${filters.radiusKm} kilometers commute radius`
+              : 'Commute radius filtering unavailable — locations not verified'
+          }
           onChange={(e) => updateFilters({ radiusKm: Number(e.target.value) })}
-          className="w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+          className={`w-full accent-teal-600 h-1.5 bg-stone-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
+            isRadiusFilterAvailable ? 'cursor-pointer' : 'cursor-not-allowed'
+          }`}
         />
-        <div className="flex justify-between text-[11px] text-stone-500">
-          <span>2 km (Local)</span>
-          <span>15 km</span>
-          <span>25 km</span>
-        </div>
+        {isRadiusFilterAvailable ? (
+          <div className="flex justify-between text-[11px] text-stone-500">
+            <span>2 km (Local)</span>
+            <span>15 km</span>
+            <span>25 km</span>
+          </div>
+        ) : (
+          <p className="text-[11px] text-stone-600 leading-snug bg-stone-50 border border-stone-200/80 rounded-lg px-2.5 py-1.5">
+            Radius filtering is unavailable for demo data until institution locations and search origin are verified. Use Area / Corridor above to filter by locality.
+          </p>
+        )}
       </div>
 
       {/* 4. Budget Slider */}

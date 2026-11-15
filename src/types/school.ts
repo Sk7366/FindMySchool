@@ -104,6 +104,9 @@ export interface School {
     mapX: number; // Percentage coordinate for mock map visual
     mapY: number;
   };
+  coordinateVerified?: boolean;
+  coordinateSource?: string;
+  coordinateVerifiedAt?: string;
   curriculum: Curriculum[];
   schoolType: SchoolType[];
   grades: string;

@@ -34,7 +34,7 @@ import { School } from '../types/school';
 import { getCurriculumColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { getSchoolDistanceKm } from '../utils/locationFiltering';
+import { DISTANCE_UNAVAILABLE_LABEL, getSchoolDistanceKm } from '../utils/locationFiltering';
 
 interface ComparePageProps {
   onOpenAdvisor?: () => void;
@@ -56,7 +56,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
     loadDemoComparison,
     clearComparison,
   } = useComparison();
-  const { searchState } = useSearch();
+  const { searchState, isRadiusFilterAvailable } = useSearch();
   const { filters } = searchState;
 
   const [highlightDifferencesOnly, setHighlightDifferencesOnly] = useState(false);
@@ -357,7 +357,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                 {filters?.location || 'All Chennai'}
               </span>
               <span className="text-[10px] text-stone-500">
-                ≤ {filters?.radiusKm || 12} km commute
+                {isRadiusFilterAvailable ? `≤ ${filters?.radiusKm || 12} km commute` : 'Radius filter unavailable (demo data)'}
               </span>
             </div>
 
@@ -826,8 +826,8 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                       )}
                     </div>
                     <div className="grid grid-cols-2 divide-x divide-stone-100 text-center font-semibold text-stone-900">
-                      <div>{distA !== null ? `${distA} km` : 'Distance unavailable'}</div>
-                      <div>{distB !== null ? `${distB} km` : 'Distance unavailable'}</div>
+                      <div>{distA !== null ? `${distA} km` : DISTANCE_UNAVAILABLE_LABEL}</div>
+                      <div>{distB !== null ? `${distB} km` : DISTANCE_UNAVAILABLE_LABEL}</div>
                     </div>
                   </div>
                 );
@@ -1229,7 +1229,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                   return (
                     <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-900">
                       <span className="font-bold tabular-nums">
-                        {dist !== null ? `${dist} km` : 'Distance unavailable'}
+                        {dist !== null ? `${dist} km` : DISTANCE_UNAVAILABLE_LABEL}
                       </span>
                       <span className="text-stone-500 text-[11px] block">{s.area}</span>
                     </td>

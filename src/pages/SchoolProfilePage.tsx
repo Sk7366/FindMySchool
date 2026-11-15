@@ -41,7 +41,7 @@ import { ProfileSkeleton } from '../components/schools/ProfileSkeleton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useSchool, useSimilarSchools } from '../hooks/useSchoolData';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { getSchoolDistanceKm } from '../utils/locationFiltering';
+import { DISTANCE_UNAVAILABLE_LABEL, getSchoolDistanceKm } from '../utils/locationFiltering';
 
 type ProfileTab = 'overview' | 'programs' | 'academics' | 'fees' | 'facilities' | 'admissions' | 'neighbourhood';
 
@@ -436,9 +436,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
-                <span className="text-[11px] text-stone-500 font-medium block">Commute Radius</span>
+                <span className="text-[11px] text-stone-500 font-medium block">Commute Distance</span>
                 <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
-                  {effectiveDistanceKm !== null ? `${effectiveDistanceKm} km` : 'Distance unavailable'}
+                  {effectiveDistanceKm !== null ? `${effectiveDistanceKm} km` : DISTANCE_UNAVAILABLE_LABEL}
                 </span>
                 <span className="text-[10px] text-stone-600 font-medium block">
                   {school.hasTransport === true
@@ -1536,7 +1536,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                     <span className="text-stone-600 text-xs">
                       {effectiveDistanceKm !== null
                         ? `Located in ${school.area} (${effectiveDistanceKm} km commute distance), within your Chennai travel radius.`
-                        : `Located in ${school.area} (commute distance unavailable — coordinates missing).`}
+                        : `Located in ${school.area} (${DISTANCE_UNAVAILABLE_LABEL}).`}
                     </span>
                   </div>
                 </li>
@@ -1742,7 +1742,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                       <span className="font-medium text-stone-900">
                         {(() => {
                           const itemDist = getSchoolDistanceKm(item, searchState.filters.location);
-                          return itemDist !== null ? `${item.area} (${itemDist} km)` : `${item.area} (Distance unavailable)`;
+                          return itemDist !== null ? `${item.area} (${itemDist} km)` : `${item.area} (${DISTANCE_UNAVAILABLE_LABEL})`;
                         })()}
                       </span>
                     </div>

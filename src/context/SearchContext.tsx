@@ -4,7 +4,7 @@ import { School, Curriculum, SchoolType, PreschoolProgram } from '../types/schoo
 import { schoolService } from '../services/schoolService';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 import { parseQuery, parseQueryLocally } from '../services/queryParserService';
-import { evaluateLocationFilter, getSchoolDistanceKm } from '../utils/locationFiltering';
+import { evaluateLocationFilter, getSchoolDistanceKm, isRadiusFilteringAvailable } from '../utils/locationFiltering';
 
 export const DEFAULT_FILTERS: SearchFilters = {
   location: 'All Chennai',
@@ -65,6 +65,7 @@ interface SearchContextType {
   clearSavedSearches: () => void;
   isDemoSearches: boolean;
   loadDemoSearches: () => void;
+  isRadiusFilterAvailable: boolean;
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
@@ -516,10 +517,16 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const isRadiusFilterAvailable = useMemo(
+    () => isRadiusFilteringAvailable(schoolService.getSchoolsSync()),
+    []
+  );
+
   // Filter and dynamic scoring computation
   const filteredSchools = useMemo(() => {
     const { filters, sortBy } = searchState;
     const allSchools = schoolService.getSchoolsSync();
+    const radiusAvailable = isRadiusFilteringAvailable(allSchools);
 
     const list = allSchools.filter((school) => {
       // 1. Education target filtering
@@ -535,8 +542,12 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!isCombined) return false;
       }
 
-      // 2 & 3. Deterministic Area / Corridor and Coordinate-based Commute Radius Filtering
-      const locationEval = evaluateLocationFilter(school, filters.location, filters.radiusKm);
+      // 2 & 3. Deterministic Area / Corridor filtering (radius exclusion disabled when coordinates/origin unverified)
+      const locationEval = evaluateLocationFilter(
+        school,
+        filters.location,
+        radiusAvailable ? filters.radiusKm : undefined
+      );
       if (!locationEval.included) {
         return false;
       }
@@ -686,9 +697,11 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
     });
 
-    // Dynamic sort
+    // Dynamic sort (fall back to best_match if distance_asc is selected while distance is unavailable)
+    const effectiveSortBy = !radiusAvailable && sortBy === 'distance_asc' ? 'best_match' : sortBy;
+
     return scoredList.sort((a, b) => {
-      switch (sortBy) {
+      switch (effectiveSortBy) {
         case 'distance_asc': {
           const distA = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
           const distB = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
@@ -711,7 +724,7 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let count = 0;
     const f = searchState.filters || DEFAULT_FILTERS;
     if (f.location && f.location !== 'All Chennai') count += 1;
-    if (typeof f.radiusKm === 'number' && f.radiusKm < 20) count += 1;
+    if (isRadiusFilterAvailable && typeof f.radiusKm === 'number' && f.radiusKm < 20) count += 1;
     if (typeof f.budgetMax === 'number' && f.budgetMax < 250000) count += 1;
 
     // School filters
@@ -773,11 +786,13 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       clearSavedSearches,
       isDemoSearches,
       loadDemoSearches,
+      isRadiusFilterAvailable,
     }),
     [
       searchState,
       filteredSchools,
       activeFilterCount,
+      isRadiusFilterAvailable,
       recentSearches,
       savedSearches,
       isDemoSearches,
