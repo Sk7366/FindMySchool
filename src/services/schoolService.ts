@@ -16,6 +16,7 @@ import {
 import { CHENNAI_SCHOOLS, CHENNAI_NEIGHBOURHOODS } from '../data/schools';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 import { generateDynamicMatchReasons } from '../utils/matchProvenance';
+import { evaluateLocationFilter, getSchoolDistanceKm } from '../utils/locationFiltering';
 import { apiClient } from './apiClient';
 import { SearchFilters, EducationTargetType } from '../types/search';
 
@@ -53,13 +54,10 @@ function filterMockSchools(schools: School[], params?: GetSchoolsParams): School
       if (params.target === 'combined' && !isCombined) return false;
     }
 
-    // Area filter
-    if (params.area && params.area !== 'All Chennai') {
-      const areaLower = params.area.toLowerCase();
-      const schoolArea = (school.area + ' ' + (school.neighbourhood?.area || '')).toLowerCase();
-      if (!schoolArea.includes(areaLower.split(' ')[0])) {
-        if (school.distanceKm > 12) return false;
-      }
+    // Area / Corridor & Commute Radius filter
+    if (params.area || (typeof params.radiusKm === 'number' && params.radiusKm > 0)) {
+      const locEval = evaluateLocationFilter(school, params.area, params.radiusKm);
+      if (!locEval.included) return false;
     }
 
     // Curriculum
@@ -145,12 +143,14 @@ class MockSchoolService implements ISchoolService {
     await new Promise((r) => setTimeout(r, 50));
     const { filters = {}, sortBy = 'best_match' } = request;
 
-    // Apply fit scoring and dynamic match reasons
+    // Apply fit scoring, reliable coordinate-based distance, and dynamic match reasons
     const scoredSchools = CHENNAI_SCHOOLS.map((school) => {
       const score = calculateSchoolFitScore(school, filters as SearchFilters);
       const dynamicReasons = generateDynamicMatchReasons(school, filters as SearchFilters, request.query);
+      const computedDist = getSchoolDistanceKm(school, filters.location);
       return {
         ...school,
+        distanceKm: computedDist ?? undefined,
         matchScore: score,
         matchReasons: dynamicReasons,
       };
@@ -159,6 +159,7 @@ class MockSchoolService implements ISchoolService {
     const filtered = filterMockSchools(scoredSchools, {
       target: filters.educationTarget,
       area: filters.location,
+      radiusKm: filters.radiusKm,
       maxBudget: filters.budgetMax,
       q: request.query,
     });
@@ -167,7 +168,11 @@ class MockSchoolService implements ISchoolService {
     if (sortBy === 'best_match') {
       filtered.sort((a, b) => b.matchScore - a.matchScore);
     } else if (sortBy === 'distance_asc') {
-      filtered.sort((a, b) => a.distanceKm - b.distanceKm);
+      filtered.sort((a, b) => {
+        const distA = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+        const distB = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+        return distA - distB;
+      });
     } else if (sortBy === 'fee_asc') {
       filtered.sort((a, b) => (a.annualFeeMin || 0) - (b.annualFeeMin || 0));
     } else if (sortBy === 'fee_desc') {

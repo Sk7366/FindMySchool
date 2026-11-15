@@ -36,11 +36,12 @@ import { useShortlist } from '../context/ShortlistContext';
 import { useSearch } from '../context/SearchContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
-import { formatMatchReason } from '../utils/matchProvenance';
+import { formatMatchReason, generateDynamicMatchReasons } from '../utils/matchProvenance';
 import { ProfileSkeleton } from '../components/schools/ProfileSkeleton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useSchool, useSimilarSchools } from '../hooks/useSchoolData';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { getSchoolDistanceKm } from '../utils/locationFiltering';
 
 type ProfileTab = 'overview' | 'programs' | 'academics' | 'fees' | 'facilities' | 'admissions' | 'neighbourhood';
 
@@ -211,6 +212,11 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
   };
 
   const isDemoData = school.dataStatus === 'demo' || !school.dataStatus || school.verificationStatus === 'Demo Data';
+  const effectiveDistanceKm = getSchoolDistanceKm(school, searchState.filters.location);
+  const dynamicMatchReasons = useMemo(() => {
+    const generated = generateDynamicMatchReasons(school, searchState.filters, searchState.rawQuery);
+    return generated.length > 0 ? generated : (school.matchReasons || []);
+  }, [school, searchState.filters, searchState.rawQuery]);
 
   const dataStatusLabel = isDemoData
     ? 'Illustrative demo data'
@@ -432,7 +438,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               <div className="p-3 rounded-xl bg-[#FAF9F6] border border-stone-200/80">
                 <span className="text-[11px] text-stone-500 font-medium block">Commute Radius</span>
                 <span className="font-bold text-stone-900 text-sm sm:text-base tabular-nums">
-                  {school.distanceKm} km
+                  {effectiveDistanceKm !== null ? `${effectiveDistanceKm} km` : 'Distance unavailable'}
                 </span>
                 <span className="text-[10px] text-stone-600 font-medium block">
                   {school.hasTransport === true
@@ -944,7 +950,7 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(school.matchReasons || []).map((reason) => {
+                {dynamicMatchReasons.map((reason) => {
                   const exp = formatMatchReason(reason);
                   return (
                     <div
@@ -1528,7 +1534,9 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div>
                     <strong className="text-stone-900 block font-semibold">Location fits your preference</strong>
                     <span className="text-stone-600 text-xs">
-                      Located in {school.area} ({school.distanceKm} km commute distance), within your Chennai travel radius.
+                      {effectiveDistanceKm !== null
+                        ? `Located in ${school.area} (${effectiveDistanceKm} km commute distance), within your Chennai travel radius.`
+                        : `Located in ${school.area} (commute distance unavailable — coordinates missing).`}
                     </span>
                   </div>
                 </li>
@@ -1731,7 +1739,12 @@ export const SchoolProfilePage: React.FC<SchoolProfilePageProps> = ({ onOpenAdvi
                   <div className="pt-2 text-xs space-y-1 text-stone-700 font-sans border-t border-stone-200/70">
                     <div className="flex justify-between">
                       <span className="text-stone-500">Location</span>
-                      <span className="font-medium text-stone-900">{item.area} ({item.distanceKm} km)</span>
+                      <span className="font-medium text-stone-900">
+                        {(() => {
+                          const itemDist = getSchoolDistanceKm(item, searchState.filters.location);
+                          return itemDist !== null ? `${item.area} (${itemDist} km)` : `${item.area} (Distance unavailable)`;
+                        })()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-stone-500">{item.institutionType === 'preschool' ? 'Approach' : 'Board'}</span>

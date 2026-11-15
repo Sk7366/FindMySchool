@@ -1,5 +1,6 @@
 import { School, PreschoolProgram } from '../types/school';
 import { SearchFilters, SearchPriorityWeights } from '../types/search';
+import { getSchoolDistanceKm } from './locationFiltering';
 
 export const DEFAULT_PRESCHOOL_WEIGHTS: SearchPriorityWeights = {
   distance: 0.25,
@@ -158,8 +159,11 @@ export function calculateSchoolFitScore(school: School, filters: SearchFilters):
   // 1. Distance fit (0 to 1)
   let distanceScore = 1.0;
   if (filters.radiusKm > 0) {
-    const dist = school.distanceKm ?? 5;
-    if (dist <= filters.radiusKm) {
+    const dist = getSchoolDistanceKm(school, filters.location);
+    if (dist === null) {
+      // Coordinates missing — avoid assuming proximity
+      distanceScore = 0.5;
+    } else if (dist <= filters.radiusKm) {
       // 1.0 down to 0.70 based on proximity within target radius
       distanceScore = 1.0 - (dist / (filters.radiusKm * 1.5)) * 0.3;
     } else {

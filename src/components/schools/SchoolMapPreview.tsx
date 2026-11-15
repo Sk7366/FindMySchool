@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { School } from '../../types/school';
 import { MapPin, Navigation, Compass, Layers, Check, ChevronRight } from 'lucide-react';
 import { getCurriculumColor, getMatchScoreStyle } from '../../utils/categoryColors';
+import { hasValidCoordinates, getSchoolDistanceKm } from '../../utils/locationFiltering';
 
 interface SchoolMapPreviewProps {
   schools: School[];
@@ -161,7 +162,10 @@ export const SchoolMapPreview: React.FC<SchoolMapPreviewProps> = ({
                   <span className="text-[11px] text-stone-500 font-medium">
                     {(activeSchool.curriculum && activeSchool.curriculum.length > 0)
                       ? activeSchool.curriculum.join(', ')
-                      : (activeSchool.pedagogy?.join(' · ') || 'Early Years')} · {activeSchool.distanceKm} km away
+                      : (activeSchool.pedagogy?.join(' · ') || 'Early Years')} ·{' '}
+                    {hasValidCoordinates(activeSchool)
+                      ? `${typeof activeSchool.distanceKm === 'number' ? activeSchool.distanceKm : getSchoolDistanceKm(activeSchool)} km away`
+                      : 'Distance unavailable'}
                   </span>
                 </div>
                 <h4 className="font-editorial text-xs sm:text-sm font-bold text-stone-900 truncate">

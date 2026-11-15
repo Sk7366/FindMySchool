@@ -1,6 +1,7 @@
 import { School } from '../types/school';
 import { SearchState, SearchFilters } from '../types/search';
 import { schoolService } from '../services/schoolService';
+import { getSchoolDistanceKm } from './locationFiltering';
 
 export interface AdvisorContext {
   educationTarget: 'all' | 'preschool' | 'school' | 'combined';
@@ -535,10 +536,11 @@ export function getAdvisorResponse(
           ? s.pedagogy?.join(', ') || 'Early Years'
           : s.curriculum?.join(', ') || 'K-12';
         const fee = s.annualFeeMin ? `₹${(s.annualFeeMin / 100000).toFixed(1)}L–${(s.annualFeeMax / 100000).toFixed(1)}L/yr` : 'Disclosed in prospectus';
+        const dist = getSchoolDistanceKm(s, context.location);
         return `${idx + 1}. **${s.name}** (${s.area})
    • **Curriculum / Approach**: ${approach}
    • **Tuition**: ${fee}
-   • **Commute**: ~${s.distanceKm} km (${s.hasTransport ? 'Transport available' : 'Self drop'})
+   • **Commute**: ${dist !== null ? `~${dist} km` : 'Distance unavailable'} (${s.hasTransport ? 'Transport available' : 'Self drop'})
    • **Fit with your criteria**: ${s.matchScore}% fit`;
       }).join('\n\n');
 
@@ -750,13 +752,15 @@ You can evaluate their profiles, compare fees, and schedule campus visits to mak
       ? matchedSchool.pedagogy?.join(' / ') || 'Early Years'
       : matchedSchool.curriculum?.join(' / ') || 'K-12';
 
+    const matchedDist = getSchoolDistanceKm(matchedSchool, context.location);
+
     return {
       text: `**${matchedSchool.name}** (${matchedSchool.area}, Chennai):
 
 • **Curriculum / Approach**: ${currStr}
 • **Tuition Estimate**: ${feeStr}
 • **Student-Teacher Ratio**: ${matchedSchool.studentTeacherRatio || 'Disclosed during admission'}
-• **Commute Distance**: ~${matchedSchool.distanceKm} km from central hub (${matchedSchool.hasTransport ? 'Bus fleet available' : 'Self drop'})
+• **Commute Distance**: ${matchedDist !== null ? `~${matchedDist} km from ${context.location} hub` : 'Distance unavailable'} (${matchedSchool.hasTransport ? 'Bus fleet available' : 'Self drop'})
 • **Key Facilities**: ${matchedSchool.facilities.slice(0, 3).map((f) => f.name).join(', ')}
 • **Data Status**: ${matchedSchool.dataStatus === 'verified' ? 'Verified with institutional disclosures' : 'Demonstration catalog entry'}`,
       checklist: [

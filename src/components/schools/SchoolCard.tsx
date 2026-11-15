@@ -34,6 +34,7 @@ import { useSearch } from '../../context/SearchContext';
 import { getCurriculumColor, getFacilityCategoryColor, getMatchScoreStyle, getPedagogyColor } from '../../utils/categoryColors';
 import { VerificationBadge } from '../common/VerificationBadge';
 import { formatMatchReason, generateDynamicMatchReasons } from '../../utils/matchProvenance';
+import { getSchoolDistanceKm } from '../../utils/locationFiltering';
 import { SearchFilters } from '../../types/search';
 
 interface SchoolCardProps {
@@ -150,6 +151,7 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
 
   const compared = isComparing(school.id);
   const saved = isSaved(school.id);
+  const effectiveDistanceKm = getSchoolDistanceKm(school, searchState.filters.location);
 
   const isEarlyYears = school.institutionType === 'preschool';
   const isCombined = school.institutionType === 'combined';
@@ -330,7 +332,9 @@ export const SchoolCardComponent: React.FC<SchoolCardProps> = ({ school }) => {
                   <MapPin className="w-3.5 h-3.5 text-teal-700 shrink-0" aria-hidden="true" />
                   <span className="truncate">{school.area}</span>
                   <span className="text-stone-400">·</span>
-                  <span className="tabular-nums font-bold text-stone-900">{school.distanceKm} km commute</span>
+                  <span className="tabular-nums font-bold text-stone-900">
+                    {effectiveDistanceKm !== null ? `${effectiveDistanceKm} km commute` : 'Distance unavailable'}
+                  </span>
                 </span>
                 <span className="text-stone-300">·</span>
                 <VerificationBadge

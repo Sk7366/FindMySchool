@@ -3,6 +3,7 @@ import { School } from '../types/school';
 import { GetSchoolsParams, SearchRequest, ChennaiNeighbourhood, FacilitySummary } from '../types/api';
 import { schoolService } from '../services/schoolService';
 import { useAsync, AsyncState } from './useAsync';
+import { getSchoolDistanceKm } from '../utils/locationFiltering';
 
 /**
  * Centralized hook to fetch a single school profile by ID or slug.
@@ -80,9 +81,12 @@ export function useSimilarSchools(targetSchool?: School | null, limit: number = 
       .sort((a, b) => {
         const aSameArea = a.area === targetSchool.area ? 1 : 0;
         const bSameArea = b.area === targetSchool.area ? 1 : 0;
+        const targetDist = getSchoolDistanceKm(targetSchool) ?? 0;
+        const aDist = getSchoolDistanceKm(a) ?? Number.POSITIVE_INFINITY;
+        const bDist = getSchoolDistanceKm(b) ?? Number.POSITIVE_INFINITY;
         return (
           bSameArea - aSameArea ||
-          Math.abs(a.distanceKm - targetSchool.distanceKm) - Math.abs(b.distanceKm - targetSchool.distanceKm)
+          Math.abs(aDist - targetDist) - Math.abs(bDist - targetDist)
         );
       })
       .slice(0, limit);

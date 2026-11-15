@@ -1,6 +1,7 @@
 import { MatchReason, School } from '../types/school';
 import { SearchFilters } from '../types/search';
 import { checkGradeOfferings } from './preschoolScoring';
+import { getSchoolDistanceKm } from './locationFiltering';
 
 export interface FormattedMatchExplanation {
   category: 'preference' | 'fact' | 'confirmation';
@@ -94,28 +95,39 @@ export function generateDynamicMatchReasons(
 
   // 1. Distance & Locality
   if (filters?.radiusKm && filters.radiusKm > 0) {
-    if (typeof school.distanceKm === 'number') {
-      if (school.distanceKm <= filters.radiusKm) {
+    const reliableDistanceKm = getSchoolDistanceKm(school, filters.location);
+    if (reliableDistanceKm !== null) {
+      if (reliableDistanceKm <= filters.radiusKm) {
         reasons.push({
           id: `${school.id}-dyn-dist`,
           type: 'positive',
           sourceType: 'preference',
           matchedCriteria: 'distance',
           title: `Within your ${filters.radiusKm} km search radius`,
-          description: `Located ~${school.distanceKm.toFixed(1)} km away in ${school.area}.`,
+          description: `Located ~${reliableDistanceKm.toFixed(1)} km away in ${school.area}.`,
         });
       } else {
-        const overage = (school.distanceKm - filters.radiusKm).toFixed(1);
+        const overage = (reliableDistanceKm - filters.radiusKm).toFixed(1);
         reasons.push({
           id: `${school.id}-dyn-dist-over`,
           type: 'partial',
           sourceType: 'needs_confirmation',
           matchedCriteria: 'distance',
-          title: `Distance (~${school.distanceKm} km) exceeds ${filters.radiusKm} km radius`,
+          title: `Distance (~${reliableDistanceKm.toFixed(1)} km) exceeds ${filters.radiusKm} km radius`,
           description: `Located in ${school.area}, ~${overage} km beyond your specified target zone.`,
           confirmationAction: 'Check daily travel times and school bus pickup routes.',
         });
       }
+    } else {
+      reasons.push({
+        id: `${school.id}-dyn-dist-unavail`,
+        type: 'unverified',
+        sourceType: 'needs_confirmation',
+        matchedCriteria: 'distance',
+        title: 'Distance unavailable — coordinates missing',
+        description: `Reliable geographical coordinates are unavailable for ${school.area}; proximity within ${filters.radiusKm} km cannot be confirmed.`,
+        confirmationAction: 'Confirm exact campus address and commute distance directly with the institution.',
+      });
     }
   } else if (filters?.location && filters.location !== 'All Chennai') {
     const locKey = filters.location.toLowerCase().split(' ')[0];

@@ -4,6 +4,7 @@ import { School, Curriculum, SchoolType, PreschoolProgram } from '../types/schoo
 import { schoolService } from '../services/schoolService';
 import { calculateSchoolFitScore } from '../utils/preschoolScoring';
 import { parseQuery, parseQueryLocally } from '../services/queryParserService';
+import { evaluateLocationFilter, getSchoolDistanceKm } from '../utils/locationFiltering';
 
 export const DEFAULT_FILTERS: SearchFilters = {
   location: 'All Chennai',
@@ -534,29 +535,10 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!isCombined) return false;
       }
 
-      // 2. Distance filter
-      if (filters.radiusKm > 0 && school.distanceKm > filters.radiusKm + 4) {
+      // 2 & 3. Deterministic Area / Corridor and Coordinate-based Commute Radius Filtering
+      const locationEval = evaluateLocationFilter(school, filters.location, filters.radiusKm);
+      if (!locationEval.included) {
         return false;
-      }
-
-      // 3. Location corridor filter (if not "All Chennai")
-      if (filters.location && filters.location !== 'All Chennai') {
-        const normLoc = filters.location.toLowerCase();
-        const schoolArea = (school.area + ' ' + school.neighbourhood.area).toLowerCase();
-        // Match key parts
-        if (normLoc.includes('tambaram') && !schoolArea.includes('tambaram') && !schoolArea.includes('mudichur')) {
-          if (school.distanceKm > 10) return false;
-        } else if (normLoc.includes('omr') && !schoolArea.includes('omr') && !schoolArea.includes('sholinganallur') && !schoolArea.includes('karapakkam')) {
-          if (school.distanceKm > 10) return false;
-        } else if (normLoc.includes('adyar') && !schoolArea.includes('adyar') && !schoolArea.includes('besant')) {
-          if (school.distanceKm > 10) return false;
-        } else if (normLoc.includes('anna nagar') && !schoolArea.includes('anna nagar') && !schoolArea.includes('mogappair')) {
-          if (school.distanceKm > 10) return false;
-        } else if (normLoc.includes('porur') && !schoolArea.includes('porur') && !schoolArea.includes('gerugambakkam') && !schoolArea.includes('kolapakkam')) {
-          if (school.distanceKm > 10) return false;
-        } else if (normLoc.includes('velachery') && !schoolArea.includes('velachery') && !schoolArea.includes('guindy')) {
-          if (school.distanceKm > 10) return false;
-        }
       }
 
       // 4. Budget filter (minimum fee <= budgetMax with 20% grace)
@@ -693,11 +675,13 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return true;
     });
 
-    // Compute dynamic fit score for each candidate school based on current priorities
+    // Compute dynamic fit score and reliable coordinate-based distance for each candidate school
     const scoredList = list.map((school) => {
       const dynamicScore = calculateSchoolFitScore(school, filters);
+      const computedDist = getSchoolDistanceKm(school, filters.location);
       return {
         ...school,
+        distanceKm: computedDist ?? undefined,
         matchScore: dynamicScore,
       };
     });
@@ -705,8 +689,11 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Dynamic sort
     return scoredList.sort((a, b) => {
       switch (sortBy) {
-        case 'distance_asc':
-          return a.distanceKm - b.distanceKm;
+        case 'distance_asc': {
+          const distA = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+          const distB = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+          return distA - distB;
+        }
         case 'fee_asc':
           return a.annualFeeMin - b.annualFeeMin;
         case 'fee_desc':

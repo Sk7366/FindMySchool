@@ -120,7 +120,7 @@ export interface School {
   transportFeeMax?: number;
   rating: number;
   reviewCount: number;
-  distanceKm: number; // Relative to default search location (e.g., Tambaram / Chennai centre)
+  distanceKm?: number; // Computed dynamically from real lat/lng coordinates relative to active search hub
   matchScore: number; // 0 - 100
   matchTier: 'Exceptional fit' | 'Strong match' | 'Moderate match' | 'Partial fit';
   matchReasons: MatchReason[];

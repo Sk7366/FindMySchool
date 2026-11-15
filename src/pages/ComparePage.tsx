@@ -34,6 +34,7 @@ import { School } from '../types/school';
 import { getCurriculumColor, getMatchScoreStyle, getPedagogyColor } from '../utils/categoryColors';
 import { VerificationBadge } from '../components/common/VerificationBadge';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { getSchoolDistanceKm } from '../utils/locationFiltering';
 
 interface ComparePageProps {
   onOpenAdvisor?: () => void;
@@ -429,17 +430,20 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
               </thead>
               <tbody className="divide-y divide-stone-100 font-sans">
                 {/* Distance */}
-                <tr className={isDiff((s) => s.distanceKm) ? 'bg-amber-50/20' : ''}>
-                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => s.distanceKm) ? 'bg-amber-50/95' : 'bg-white'}`}>
+                <tr className={isDiff((s) => getSchoolDistanceKm(s, filters.location)) ? 'bg-amber-50/20' : ''}>
+                  <td className={`py-3 px-4 font-bold text-stone-700 sticky left-0 z-10 border-r border-stone-200 shadow-[1px_0_0_0_#e7e5e4] ${isDiff((s) => getSchoolDistanceKm(s, filters.location)) ? 'bg-amber-50/95' : 'bg-white'}`}>
                     Distance
                   </td>
-                  {comparisonSchools.map((s) => (
-                    <td key={s.id} className="py-3 px-4 font-medium text-stone-900 tabular-nums">
-                      {s.distanceKm} km
-                    </td>
-                  ))}
+                  {comparisonSchools.map((s) => {
+                    const dist = getSchoolDistanceKm(s, filters.location);
+                    return (
+                      <td key={s.id} className="py-3 px-4 font-medium text-stone-900 tabular-nums">
+                        {dist !== null ? `${dist} km` : 'Distance unavailable'}
+                      </td>
+                    );
+                  })}
                   <td className="py-3 px-4 text-center">
-                    <DiffBadge different={isDiff((s) => s.distanceKm)} />
+                    <DiffBadge different={isDiff((s) => getSchoolDistanceKm(s, filters.location))} />
                   </td>
                 </tr>
 
@@ -710,7 +714,7 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
                         Fee (Illustrative): <strong className="tabular-nums">{formatFee(s.annualFeeMin)}</strong>
                       </div>
                       <div>
-                        Distance: <strong>{s.distanceKm} km</strong>
+                        Distance: <strong>{(() => { const d = getSchoolDistanceKm(s, filters.location); return d !== null ? `${d} km` : 'Distance unavailable'; })()}</strong>
                       </div>
                       <div>
                         Transport: <strong>{s.hasTransport === true ? `Available${s.transportRadiusKm ? ` (≤${s.transportRadiusKm} km)` : ''}` : s.hasTransport === false ? 'Not available' : 'Needs confirmation'}</strong>
@@ -810,18 +814,24 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
               </div>
 
               {/* Distance */}
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase">Distance</span>
-                  {schoolA.distanceKm !== schoolB.distanceKm && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200">Different</span>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 divide-x divide-stone-100 text-center font-semibold text-stone-900">
-                  <div>{schoolA.distanceKm} km</div>
-                  <div>{schoolB.distanceKm} km</div>
-                </div>
-              </div>
+              {(() => {
+                const distA = getSchoolDistanceKm(schoolA, filters.location);
+                const distB = getSchoolDistanceKm(schoolB, filters.location);
+                return (
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-stone-500 uppercase">Distance</span>
+                      {distA !== distB && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200">Different</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 divide-x divide-stone-100 text-center font-semibold text-stone-900">
+                      <div>{distA !== null ? `${distA} km` : 'Distance unavailable'}</div>
+                      <div>{distB !== null ? `${distB} km` : 'Distance unavailable'}</div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Transport */}
               <div className="p-3">
@@ -1207,19 +1217,24 @@ export const ComparePage: React.FC<ComparePageProps> = ({ onOpenAdvisor }) => {
               </tr>
 
               {/* 4. Distance */}
-              <tr className={isDiff((s) => s.distanceKm) ? 'bg-amber-50/20' : ''}>
+              <tr className={isDiff((s) => getSchoolDistanceKm(s, filters.location)) ? 'bg-amber-50/20' : ''}>
                 <td className="p-3.5 px-5 font-bold text-stone-700 sticky left-0 bg-white z-10 border-r border-stone-200">
                   <div className="flex items-center justify-between">
                     <span>4. Distance</span>
-                    <DiffBadge different={isDiff((s) => s.distanceKm)} />
+                    <DiffBadge different={isDiff((s) => getSchoolDistanceKm(s, filters.location))} />
                   </div>
                 </td>
-                {comparisonSchools.map((s) => (
-                  <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-900">
-                    <span className="font-bold tabular-nums">{s.distanceKm} km</span>
-                    <span className="text-stone-500 text-[11px] block">{s.area}</span>
-                  </td>
-                ))}
+                {comparisonSchools.map((s) => {
+                  const dist = getSchoolDistanceKm(s, filters.location);
+                  return (
+                    <td key={s.id} className="p-3.5 px-5 border-l border-stone-100 text-stone-900">
+                      <span className="font-bold tabular-nums">
+                        {dist !== null ? `${dist} km` : 'Distance unavailable'}
+                      </span>
+                      <span className="text-stone-500 text-[11px] block">{s.area}</span>
+                    </td>
+                  );
+                })}
               </tr>
 
               {/* 5. Facilities */}

@@ -37,6 +37,7 @@ export interface GetSchoolsParams {
   pageSize?: number;
   target?: EducationTargetType;
   area?: string;
+  radiusKm?: number;
   curriculum?: Curriculum;
   pedagogy?: string;
   minBudget?: number;
